@@ -6,7 +6,7 @@ Finance_lab은 초보 개인 투자자를 위한 주식 투자 학습 및 관리
 
 ## 설치
 
-아직 앱 런타임은 초기화되지 않았습니다. 예정 스택은 다음과 같습니다.
+현재 프론트엔드 런타임이 `web/`에 초기화되어 있습니다. 예정 스택은 다음과 같습니다.
 
 - Frontend: React
 - Backend: FastAPI
@@ -16,13 +16,28 @@ Finance_lab은 초보 개인 투자자를 위한 주식 투자 학습 및 관리
 
 ## 실행
 
-현재 단계에서는 디자인 스켈레톤을 먼저 확인합니다.
+디자인 스켈레톤은 다음 명령으로 확인합니다.
 
 ```bash
 open "design/STOCKLAB Wireframes v3.html"
 ```
 
-React/FastAPI 앱이 생성되면 이 섹션에 실제 실행 명령을 추가합니다.
+프론트엔드 앱은 다음 명령으로 실행합니다.
+
+```bash
+cp .env.example .env
+cd web
+npm install
+npm run dev
+```
+
+검증 명령은 다음과 같습니다.
+
+```bash
+cd web
+npm run lint
+npm run build
+```
 
 ## 사용 방식
 
