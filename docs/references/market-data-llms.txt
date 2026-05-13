@@ -1,0 +1,28 @@
+Market data quick reference for agents.
+
+Purpose
+- Guide selection and integration of stock, economic, filing, and report data sources.
+
+Priority
+- US stocks first.
+- Korean stocks selectively when data access, cost, and reliability are acceptable.
+- Free-tier operation is preferred for MVP.
+
+Constraints
+- Build internal screen data models before binding UI to a vendor response.
+- Cache or persist data to protect free-tier API quotas.
+- Track source, timestamp, and freshness for any displayed market data.
+- Separate raw source records from normalized app records when ingestion begins.
+- Do not require cron for the first real data screen.
+
+Potential Sources
+- US stocks: Alpha Vantage, yfinance-style sources, SEC EDGAR, FMP-like fundamentals if available within limits.
+- Macro/economic: FRED, public calendars, ECOS for Korea if needed.
+- Korea: DART for filings and selected stock coverage where feasible.
+- 13F: SEC filings and normalized manager/holding tables.
+
+Pitfalls
+- Free APIs often have low rate limits, delayed data, redistribution restrictions, or unstable schemas.
+- Real-time quotes are not required for MVP.
+- Report/RAG features need source provenance and should not be treated as market data truth.
+

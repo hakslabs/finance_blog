@@ -1,0 +1,27 @@
+Scheduled jobs quick reference for agents.
+
+Purpose
+- Keep scheduled automation ready for later without making cron part of the first MVP path.
+
+Current Priority
+- Last phase.
+- First build manual or command-driven job functions.
+- Add cron only after visible data paths and ingestion commands work.
+
+Recommended Shape
+- Put job logic under backend app code, for example app/jobs/.
+- Make each job callable from a CLI runner.
+- Optionally expose protected internal endpoints later.
+- Track each run in an ingestion_runs-style table.
+
+Constraints
+- Jobs should be idempotent where practical.
+- Jobs should record source, start time, finish time, status, row counts, and error summary.
+- Failed updates should not break dashboard rendering.
+- Data screens should show freshness or last-updated timestamps when relevant.
+
+Pitfalls
+- Do not run always-on schedulers inside a web process if deployment may be serverless or multi-replica.
+- Do not use cron to hide missing API boundaries.
+- Do not add frequent jobs before free-tier API limits and caching are understood.
+

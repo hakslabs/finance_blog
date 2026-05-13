@@ -1,0 +1,22 @@
+Supabase quick reference for agents.
+
+Purpose
+- Use Supabase for initial persistence and auth-ready user data while preserving future migration options.
+
+Commands
+- Discover CLI commands first: supabase --help
+- Use generated migrations only after schema direction is clear.
+
+Constraints
+- Enable RLS on exposed tables that contain user-owned data.
+- Never expose service role keys in browser code.
+- Store portfolio, transaction, thesis, review, watchlist, and preference data as private user-owned records.
+- Keep app data access behind backend/service contracts where possible.
+- Avoid locking business logic into Supabase-only client calls if the project may move to NAS/self-hosted infrastructure.
+
+Pitfalls
+- RLS controls row access, but Data API exposure and grants are separate concerns.
+- Views can bypass RLS depending on configuration.
+- User-editable metadata must not drive authorization.
+- Supabase is the first platform, not necessarily the permanent infrastructure boundary.
+

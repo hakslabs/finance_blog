@@ -1,0 +1,20 @@
+Vercel quick reference for agents.
+
+Purpose
+- Deploy the frontend and lightweight serverless integration points where appropriate.
+
+Commands
+- Planned production target: Vercel frontend deployment.
+- Keep deployment commands in README after the app scaffold exists.
+
+Constraints
+- Stay aware of free-tier limits.
+- Treat Vercel Cron as optional and late-stage, not a prerequisite for MVP data display.
+- Keep long-running ingestion out of frontend/serverless request paths unless the limits are explicitly acceptable.
+- Environment variables must separate public browser-safe values from private backend secrets.
+
+Pitfalls
+- Do not assume Vercel is the right place for heavy data collection.
+- Do not design cron-first flows; Finance_lab should work with manual or command-driven ingestion before scheduled automation.
+- Do not expose private API keys through NEXT_PUBLIC-style variables if a framework later uses that convention.
+

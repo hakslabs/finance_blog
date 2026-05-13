@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>STOCKLAB · 와이어프레임 v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Pretendard&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+<style>
+  html, body { margin: 0; padding: 0; }
+  body { background: #f0eee9; transition: background 0.2s; }
+  /* Dark mode — uses well-known invert+hue-rotate trick on each wireframe surface
+     so all hard-coded hex colors flip without rewriting every component. */
+  [data-theme="dark"] body { background: #1a1a1a; }
+  [data-theme="dark"] .w-root { filter: invert(1) hue-rotate(180deg); }
+  /* Dark-mode toggle button */
+  #theme-toggle {
+    position: fixed; top: 12px; right: 12px; z-index: 9999;
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid #1a1a1a; background: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; line-height: 1;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  }
+  [data-theme="dark"] #theme-toggle {
+    background: #2a2a2a; color: #f0f0f0; border-color: #f0f0f0;
+  }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+<button id="theme-toggle" type="button" aria-label="테마 전환" title="다크 모드 전환">☾</button>
+<script>
+  (function() {
+    const root = document.documentElement;
+    const btn = document.getElementById('theme-toggle');
+    const saved = localStorage.getItem('stocklab-theme');
+    if (saved === 'dark') { root.dataset.theme = 'dark'; btn.textContent = '☀'; }
+    btn.addEventListener('click', function() {
+      const isDark = root.dataset.theme === 'dark';
+      if (isDark) {
+        delete root.dataset.theme;
+        btn.textContent = '☾';
+        localStorage.setItem('stocklab-theme', 'light');
+      } else {
+        root.dataset.theme = 'dark';
+        btn.textContent = '☀';
+        localStorage.setItem('stocklab-theme', 'dark');
+      }
+    });
+  })();
+</script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="wires-v3/wires-shared.jsx"></script>
+<script type="text/babel" src="wires-v3/wire-ia.jsx"></script>
+<script type="text/babel" src="wires-v3/wire-home.jsx"></script>
+<script type="text/babel" src="wires-v3/wire-stock.jsx"></script>
+<script type="text/babel" src="wires-v3/wire-portfolio.jsx"></script>
+<script type="text/babel" src="wires-v3/wire-analysis.jsx"></script>
+<script type="text/babel" src="wires-v3/wire-stock-tabs-a.jsx"></script>
+<script type="text/babel" src="wires-v3/wire-stock-tabs-b.jsx"></script>
+<script type="text/babel" src="wires-v3/wire-remaining.jsx"></script>
+<script type="text/babel" src="wires-v3/wire-masters-learn.jsx"></script>
+<script type="text/babel" src="wires-v3/wire-screener-heatmap-login.jsx"></script>
+<script type="text/babel" src="wires-v3/wire-mypage-admin.jsx"></script>
+<script type="text/babel" src="wires-v3/wire-data-arch.jsx"></script>
+<script type="text/babel" src="wires-v3/wire-primary.jsx"></script>
+<script type="text/babel" src="wires-v3/wire-overview.jsx"></script>
+<script type="text/babel" src="wires-v3/wire-modals.jsx"></script>
+
+<script type="text/babel" data-presets="env,react">
+  // v2 wireframe canvas — IA, primary screens, secondary, personal area, admin, auth, data arch.
+
+  const App = () => (
+    <DesignCanvas>
+      <DCSection id="overview" title="개관 · Overview"
+        subtitle="제품이 무엇인지 · 누구를 위한 것인지 · 어떻게 작동하는지. 핵심 원칙: 조회→행동 전환, 판단은 잠그고 결과는 나중에, 차트보다 맥락.">
+        <DCArtboard id="product" label="프로젝트 개요 · Product Overview" width={1280} height={1180}>
+          <WireProductOverview />
+        </DCArtboard>
+        <DCArtboard id="ia" label="IA · Site Map v2" width={1280} height={980}>
+          <WireIA />
+        </DCArtboard>
+        <DCArtboard id="data-arch" label="데이터 아키텍처" width={1280} height={1000}>
+          <WireDataArch />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="personal" title="개인 영역 · Personal"
+        subtitle="헤더 ★ 드롭다운 / 프로필 메뉴에서 진입. 마이페이지는 통합 허브, 거래 내역은 포트폴리오의 원천 데이터, 계정 설정은 통화·언어·테마·알림.">
+        <DCArtboard id="mypage" label="마이페이지 · 내 투자노트 (탭 전환 · 3 tabs)" width={1280} height={1480}>
+          <WireMyPageAll />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="primary" title="주요 화면"
+        subtitle="상단 탭 클릭으로 전환 — 홈 · 분석 · 종목 검색 · 고수 · 리포트 · 학습 · 포트폴리오. 종목 상세 · 시장 지도 · 리포트 상세는 깊은 화면이라 별도 보드.">
+        <DCArtboard id="primary-nav" label="주요 화면 · 상단 탭 전환 (Home / Analysis / Screener / Masters / Reports / Learn / Portfolio)" width={1280} height={1560}>
+          <WirePrimary initial="home" />
+        </DCArtboard>
+        <DCArtboard id="stock" label="종목 상세 · Stock Detail (탭 전환 · 8 tabs)" width={1280} height={1100}>
+          <WireStockDetail />
+        </DCArtboard>
+        <DCArtboard id="report-detail" label="리포트 상세 · Docling + Gemini AI 요약" width={1280} height={1500}>
+          <WireReportDetail />
+        </DCArtboard>
+        <DCArtboard id="heatmap" label="시장 지도 (분석 하위) · Heatmap" width={1280} height={720}>
+          <WireHeatmap />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="admin" title="관리자 · Admin"
+        subtitle="고수·학습 콘텐츠 CRUD, 13F 자동 파싱 보정, 뉴스 큐레이션, 사용자/권한, API 사용량·Cron 모니터. /admin 별도 라우트, 권한 있는 사용자만.">
+        <DCArtboard id="admin-dash" label="관리자 대시보드" width={1280} height={780}>
+          <WireAdmin />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="mobile" title="모바일 · Mobile"
+        subtitle="홈과 종목 상세 두 화면을 우선 모바일로 검증. 데스크탑 정보 위계를 좁은 화면에 어떻게 압축할지 — 가로 스크롤 스트립, 하단 탭바, 가로 스크롤 탭바.">
+        <DCArtboard id="m-home" label="모바일 · 홈" width={420} height={840}>
+          <WireMobileHome />
+        </DCArtboard>
+        <DCArtboard id="m-stock" label="모바일 · 종목 상세" width={420} height={840}>
+          <WireMobileStock />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="states" title="상태 · States"
+        subtitle="빈 상태(추천 + CTA) · 에러 상태(이전 데이터 + 갱신시각 + 재시도). 모든 데이터 위젯에 일관 적용.">
+        <DCArtboard id="empty-error" label="빈 상태 · 에러 상태 가이드" width={1280} height={1900}>
+          <WireEmptyAndError />
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="auth" title="인증 · Auth"
+        subtitle="포트폴리오 저장은 로그인 필요. 소셜 로그인(구글·애플·카카오) 우선, 이메일/비번은 보조.">
+        <DCArtboard id="login" label="로그인 · Login" width={720} height={760}>
+          <WireLogin />
+        </DCArtboard>
+        <DCPostIt top={120} left={780} rotate={2} width={240}>
+          ✅ v3 변경점:<br/>
+          · 대시보드 = 「오늘의 투자 상황판」<br/>
+          · 마이페이지 = 「내 투자노트」<br/>
+          · 「오늘 할 일」카드 (홈 + 마이페이지)<br/>
+          · 뉴스 「내 해석 추가」/ 관심종목 「메모 작성」<br/>
+          · 거래 내역 → 복기 상태 · 실수 태그<br/>
+          · 메모/일지: 종목·뉴스·거래·학습 4종 + 태그 + 연결<br/>
+          · 저장 검색 신규/제외 편입 알림<br/>
+          · 계정 설정에 투자 성향 · 관심 시장 추가
+        </DCPostIt>
+      </DCSection>
+    </DesignCanvas>
+  );
+
+  // Modal host outside the canvas — survives pan/zoom, sits above artboards.
+  const AppWithModals = () => (<><App /><ModalHost /></>);
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<AppWithModals />);
+</script>
+</body>
+</html>

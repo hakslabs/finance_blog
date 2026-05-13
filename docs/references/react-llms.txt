@@ -1,0 +1,22 @@
+React quick reference for agents.
+
+Purpose
+- Build the Finance_lab frontend from the existing design skeleton.
+- Keep implementation traceable to design/STOCKLAB Wireframes v3.html and design/wires-v3/.
+
+Commands
+- Inspect wireframes: open "design/STOCKLAB Wireframes v3.html"
+- Search design components: rg "function Wire" design/wires-v3
+
+Constraints
+- Implement the design skeleton before expanding product scope.
+- Keep dashboard, watchlist, stock detail, and portfolio flows fast to scan.
+- Prefer stable component boundaries: layout, navigation, cards, tables, charts, forms, and screen-level containers.
+- UI should consume typed backend responses, not directly encode vendor-specific data shapes.
+- Korean UI copy is expected for product screens.
+
+Pitfalls
+- The design files say STOCKLAB, but the implementation name is Finance_lab.
+- Do not put data fetching, normalization, and provider-specific parsing inside visual components.
+- Do not treat placeholder charts as finished unless they are wired to backend data models.
+

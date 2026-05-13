@@ -1,0 +1,158 @@
+# Execution Plan — EP-0001 MVP Foundation
+
+## Goal
+
+Create the first production foundation for Finance_lab from the existing design skeleton, then connect it to real backend and data flows.
+
+## Context
+
+Repository contains a wireframe canvas under `design/`. One developer, agent-assisted (Codex / Claude / OpenCode). Implementation order is fixed: frontend first → backend/API → screen-facing data pipeline → external data → automatic scheduled collection last.
+
+## How To Use This Plan
+
+This plan is sliced into PR-sized units so that a single agent session can complete one PR within a ~200k context budget.
+
+Per-PR conventions:
+- Each PR section lists **Scope**, **Required Reading** (load these only), **Files**, **Acceptance**, **Out Of Scope**.
+- **Required Reading is the upper bound, not the floor.** Do not load files outside this list unless the PR scope requires it.
+- Do not load all `docs/references/*-llms.txt` into context. Open at most one per PR, and only when its domain is in scope.
+- Do not load all `design/wires-v3/*.jsx` into context. Open only the wires listed in the PR's Required Reading.
+- One PR = one merge. If a PR grows beyond its acceptance, split a follow-up PR rather than expanding scope.
+- Mark a PR `[x]` only after it is merged and its acceptance has been verified on the running app.
+
+Cross-cutting rules:
+- Frontend-only PRs use seeded fixtures inline; no API calls.
+- Backend PRs return typed responses with example payloads; no UI changes.
+- Data-path PRs touch one endpoint at a time and must show real values on screen.
+- Schema PRs land the minimum tables needed by the next data PR — not the full domain.
+
+## PR Ledger
+
+### PR-01 — Repo scaffold and route shell
+
+- [ ] Scope: Vite + React + TypeScript app at repo root (or `app/`), router with empty page components for the 11 first routes from `docs/FRONTEND.md`, lint/format config, `.env.example`, CI build check.
+- [ ] Required Reading: `AGENTS.md`, `ARCHITECTURE.md`, `docs/FRONTEND.md`, `docs/design-docs/repo-layout.md`, `docs/design-docs/wires-inventory.md`, `vercel-labs/agent-skills:react-best-practices`.
+- [ ] Files: app scaffold, `src/routes/*`, `src/App.tsx`, lint config, README run instructions.
+- [ ] Acceptance: `npm run dev` boots; every route in `FRONTEND.md` renders a placeholder heading; `npm run build` and lint pass.
+- [ ] Out Of Scope: any layout chrome, any wire content, any backend.
+
+### PR-02 — Layout chrome and shared primitives
+
+- [ ] Scope: Extract layout shell (sidebar + top bar + page container) and the shared primitives used across wires: `Card`, `Section`, `DataTable`, `KpiTile`, `ChartPlaceholder`, `EmptyState`, `Badge`. Static styles only.
+- [ ] Required Reading: `docs/FRONTEND.md`, `docs/design-docs/core-beliefs.md`, `design/wires-v3/wire-overview.jsx`, `design/wires-v3/wire-primary.jsx`, `design/wires-v3/wires-shared.jsx`, `vercel-labs/agent-skills:react-best-practices`, `vercel-labs/agent-skills:composition-patterns`, `vercel-labs/agent-skills:web-design-guidelines`.
+- [ ] Files: `src/components/layout/*`, `src/components/primitives/*`, layout applied in `App.tsx`.
+- [ ] Acceptance: All routes render inside the shared layout; primitives are usable in isolation (storybook not required, but a `/_kitchen-sink` dev-only route is acceptable).
+- [ ] Out Of Scope: page-specific composition, real charts.
+
+### PR-03 — Dashboard page (static)
+
+- [ ] Scope: Implement `/` and `/dashboard` from `wire-home.jsx`: `WatchlistCard`, `PortfolioSummaryCard`, `IndicatorStrip`, `EconomicEventsList`, `ActionPrompts`. Hardcoded fixtures imported from `src/fixtures/dashboard.ts`.
+- [ ] Required Reading: `docs/design-docs/wires-inventory.md`, `design/wires-v3/wire-home.jsx`, `design/wires-v3/wires-shared.jsx`, `vercel-labs/agent-skills:react-best-practices`, `vercel-labs/agent-skills:web-design-guidelines`.
+- [ ] Files: `src/routes/dashboard/*`, `src/fixtures/dashboard.ts`.
+- [ ] Acceptance: Dashboard visually matches the wire at the section level; no network calls; fixtures typed.
+- [ ] Out Of Scope: stock detail, portfolio internals, any API call.
+
+### PR-04 — Stocks list and Stock detail (static)
+
+- [ ] Scope: `/stocks` list + `/stocks/:symbol` detail using `wire-stock.jsx`, `wire-stock-tabs-a.jsx`, `wire-stock-tabs-b.jsx`. Tabs render with fixture data. Chart area uses `ChartPlaceholder`.
+- [ ] Required Reading: `design/wires-v3/wire-stock.jsx`, `design/wires-v3/wire-stock-tabs-a.jsx`, `design/wires-v3/wire-stock-tabs-b.jsx`, `vercel-labs/agent-skills:react-best-practices`.
+- [ ] Files: `src/routes/stocks/*`, `src/fixtures/stocks.ts`.
+- [ ] Acceptance: `/stocks/AAPL` renders all tabs from fixtures; route param drives the title and fixture lookup.
+- [ ] Out Of Scope: real prices, screener/heatmap (PR-06b territory).
+
+### PR-05 — Portfolio page (static)
+
+- [ ] Scope: `/portfolio` from `wire-portfolio.jsx`: holdings table, transactions table, basic performance summary tile. Fixtures only.
+- [ ] Required Reading: `design/wires-v3/wire-portfolio.jsx`, `vercel-labs/agent-skills:react-best-practices`.
+- [ ] Files: `src/routes/portfolio/*`, `src/fixtures/portfolio.ts`.
+- [ ] Acceptance: Holdings and transactions render from fixtures; empty state covered.
+- [ ] Out Of Scope: thesis notes editor, write paths.
+
+### PR-06 — Remaining static pages
+
+- [ ] Scope: `/analysis`, `/masters`, `/reports`, `/reports/:id`, `/learn`, `/mypage`, `/admin` static implementations from the matching wires. Skeletons are acceptable where the wire is sparse.
+- [ ] Required Reading: `design/wires-v3/wire-analysis.jsx`, `design/wires-v3/wire-masters-learn.jsx`, `design/wires-v3/wire-mypage-admin.jsx`, `design/wires-v3/wire-remaining.jsx`, `vercel-labs/agent-skills:react-best-practices`, `vercel-labs/agent-skills:web-design-guidelines`.
+- [ ] Files: route folders for each, fixtures per route.
+- [ ] Acceptance: Every route from `FRONTEND.md` has a non-placeholder page.
+- [ ] Out Of Scope: screener/heatmap interactivity, login flow (defer).
+
+### PR-07 — FastAPI scaffold
+
+- [ ] Scope: `api/` folder with FastAPI app, `/health`, one typed example endpoint (`/v1/dashboard/example`), CORS for local dev, settings via env, request/response models in Pydantic, local run instructions.
+- [ ] Required Reading: `ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/API.md`, `docs/design-docs/repo-layout.md`, `docs/references/fastapi-llms.txt`.
+- [ ] Files: `api/app/main.py`, `api/app/models/*`, `api/.env.example`, `api/README.md`.
+- [ ] Acceptance: `uvicorn` boots; `/health` returns 200; example endpoint returns typed sample.
+- [ ] Out Of Scope: any DB connection, any real data source.
+
+### PR-08 — Supabase minimum schema and RLS
+
+- [ ] Scope: Migration introducing only what PR-09 needs: `profiles`, `watchlists`, `watchlist_items`, `instruments`. RLS enabled on user-owned tables with owner-only policies. Seed a handful of instruments (AAPL, MSFT, SPY, plus a KR sample).
+- [ ] Required Reading: `docs/generated/db-schema.md`, `docs/SECURITY.md`, `docs/references/supabase-llms.txt`.
+- [ ] Files: `supabase/migrations/0001_*.sql`, seed script, schema notes update.
+- [ ] Acceptance: Migration applies clean on a fresh project; RLS verified via a manual two-user check or SQL test.
+- [ ] Out Of Scope: portfolio/transactions/positions/theses/13F/reports tables. Those land in later PRs only when an endpoint needs them.
+
+### PR-09 — First end-to-end path: dashboard watchlist
+
+- [ ] Scope: Backend `GET /v1/watchlists/me` returns the signed-in user's watchlist from Supabase. Frontend dashboard `WatchlistCard` reads from this endpoint with a typed client and last-updated timestamp. Auth is the dev header `X-Dev-User` per `docs/design-docs/auth.md`; real auth is deferred to PR-14 (final PR).
+- [ ] Required Reading: `docs/API.md` (the `/v1/watchlists/me` section), PR-07/PR-08 outputs, `docs/design-docs/first-real-data.md`, `docs/RELIABILITY.md`.
+- [ ] Files: `api/app/routes/watchlists.py`, `api/app/repos/watchlists.py`, `src/lib/api-client.ts`, dashboard wiring.
+- [ ] Acceptance: Inserting a row in Supabase reflects on the dashboard within a refresh. Empty state and error state both render.
+- [ ] Out Of Scope: write endpoints, multiple watchlists.
+
+### PR-10 — First real market data on a stock detail page
+
+- [ ] Scope: Implement the source chosen in `docs/design-docs/first-real-data.md`. Backend endpoint exposes latest quote + recent OHLCV for one symbol; frontend renders it on `/stocks/AAPL` with a real chart and a `last_refreshed_at` label. Failure shows stale data plus a warning, not a blank.
+- [ ] Required Reading: `docs/API.md` (the `/v1/quotes/{symbol}` section), `docs/design-docs/first-real-data.md`, `docs/RELIABILITY.md`, `docs/references/market-data-llms.txt`.
+- [ ] Files: `api/app/sources/<provider>.py`, `api/app/routes/quotes.py`, frontend chart adapter.
+- [ ] Acceptance: `/stocks/AAPL` shows live values on first load; rate-limit and provider-outage paths produce stale-with-warning, not a crash. **This is the production milestone bar from `ARCHITECTURE.md`.**
+- [ ] Out Of Scope: multiple providers, caching strategy beyond a simple in-memory TTL.
+
+### PR-11 — Portfolio data path
+
+- [ ] Scope: Extend schema with `portfolios`, `transactions`, `positions`. Backend endpoints for read-only listing. Frontend `/portfolio` reads from API. Position derivation may be a stored snapshot or a backend-side computation — pick one and document.
+- [ ] Required Reading: `docs/API.md` (the `/v1/portfolios/me` section), `docs/generated/db-schema.md`, `docs/SECURITY.md`, PR-09 patterns.
+- [ ] Files: migration `0002_*`, repo + route + frontend wiring.
+- [ ] Acceptance: Manually inserted transactions render as holdings and history on `/portfolio` for the dev user.
+- [ ] Out Of Scope: transaction write UI, performance analytics.
+
+### PR-12 — Deployment and env docs
+
+- [ ] Scope: Vercel deploy for the frontend, deploy/run notes for the FastAPI service (Render/Fly/NAS — pick the first realistic target), `.env` matrix per environment, secret handling rules pointing at `docs/SECURITY.md`.
+- [ ] Required Reading: `docs/SECURITY.md`, `docs/references/vercel-llms.txt`, `vercel-labs/agent-skills:deploy-to-vercel`, `vercel-labs/agent-skills:vercel-cli-with-tokens`.
+- [ ] Files: `docs/DEPLOYMENT.md`, Vercel config, backend deploy config.
+- [ ] Acceptance: Frontend reachable on a Vercel preview; backend reachable from that preview; secrets not in browser bundle.
+- [ ] Out Of Scope: custom domain, observability stack.
+
+### PR-13 — Scheduled refresh proof of concept (deferred phase)
+
+- [ ] Scope: One cron job that refreshes the PR-10 quote source on a schedule, writing into `ingestion_runs` with status, counts, and timestamps. UI surfaces `last_refreshed_at` from this row.
+- [ ] Required Reading: `docs/RELIABILITY.md`, `docs/references/scheduled-jobs-llms.txt`.
+- [ ] Files: cron entrypoint, `ingestion_runs` migration, UI badge.
+- [ ] Acceptance: Two consecutive scheduled runs produce two `ingestion_runs` rows; UI shows the latest timestamp; failure path writes a failed row without crashing the dashboard.
+- [ ] Out Of Scope: backfill, multi-source orchestration, retries beyond a single attempt.
+
+### PR-14 — Supabase Auth (final PR)
+
+- [ ] Scope: Replace the `X-Dev-User` header path with Supabase Auth + Google OAuth. Frontend signs in via `@supabase/supabase-js`; backend verifies the JWT with `SUPABASE_JWT_SECRET` and derives `user_id` from `jwt.sub`. Delete dev-header acceptance in the same PR — no overlap window in production.
+- [ ] Required Reading: `docs/design-docs/auth.md`, `docs/API.md`, `docs/SECURITY.md`, `docs/references/supabase-llms.txt`.
+- [ ] Operator Prerequisites (you, not the agent): Google OAuth client created in Google Cloud Console, client ID/secret pasted into Supabase Auth Providers, `SUPABASE_JWT_SECRET` copied into `.env`. See `docs/design-docs/auth.md` "Operator Action Required".
+- [ ] Files: `api/app/auth.py` (JWT verifier), middleware/dependency wiring, frontend sign-in route + session bootstrap, removal of dev-header code.
+- [ ] Acceptance: Logging in via Google reaches the dashboard with real user data; the dev header is rejected with 401 in `APP_ENV != local`; existing RLS policies continue to pass without edits.
+- [ ] Out Of Scope: additional providers, password sign-in, role/permission system, organization accounts.
+- [ ] Blocking Gate: **Do not share any deployed URL beyond yourself until this PR is merged.** This is the only gate that lifts the single-user constraint on PR-12's deployment.
+
+## Done When
+
+- PR-01 through PR-10 are merged.
+- The dashboard renders real watchlist data and `/stocks/AAPL` renders real market data through the backend path.
+- Initial Supabase schema and security notes are documented and applied.
+- PR-11 through PR-13 are tracked but not blocking the MVP milestone.
+
+## Open Questions
+
+- Backend hosting target before NAS migration (Render vs Fly vs Vercel Functions for FastAPI).
+- Authentication choice for dev vs prod (Supabase Auth vs a stub header).
+- Korean stock data source for the first KR symbol after PR-10.
+
+Track answers here, then collapse into the relevant PR section before that PR starts.

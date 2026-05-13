@@ -1,0 +1,37 @@
+Reference for agents.
+
+Project
+- Name: Finance_lab.
+- Current design source: design/STOCKLAB Wireframes v3.html and design/wires-v3/.
+- Build order: frontend, backend, data loading, scheduled updates.
+- Updated build order: frontend, backend/API, screen-facing data pipeline, external data collection, scheduled automation last.
+
+Stack
+- Frontend: React.
+- Backend: FastAPI.
+- Database/Auth-ready platform: Supabase.
+- Deployment: Vercel.
+- Future option: personal NAS or self-hosted backend/database.
+
+Commands
+- Inspect design HTML: open "design/STOCKLAB Wireframes v3.html"
+- Scan current tree: find . -maxdepth 3 -type f | sort
+- Run harness setup script: bash scripts/init.sh
+
+Constraints
+- README may be Korean; generated docs should stay English unless asked otherwise.
+- Use design skeleton before inventing new UI.
+- Optimize for quick dashboard and stock-detail interactions.
+- Stay within free-tier limits where practical, including market/report APIs.
+- Focus US stocks first; include Korean stocks selectively.
+- Never expose Supabase service role keys in browser code.
+- User portfolio and notes are private data.
+- Real data on screen is the MVP acceptance bar.
+- Build display/API data paths before cron or automatic ingestion.
+
+Pitfalls
+- Wireframes say STOCKLAB, but project name is Finance_lab.
+- Supabase is the first persistence platform, but future self-hosting is planned.
+- Do not hard-code data provider assumptions into UI components.
+- Do not make cron a prerequisite for the first real data screen.
+- Do not treat report summaries as trustworthy without source provenance.

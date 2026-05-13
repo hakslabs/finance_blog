@@ -1,0 +1,22 @@
+FastAPI quick reference for agents.
+
+Purpose
+- Own backend API boundaries, response models, and data orchestration for Finance_lab.
+- Build screen-facing data paths before external ingestion and cron automation.
+
+Commands
+- Planned app entrypoint: backend/app/main.py
+- Planned job runner shape: python -m app.jobs.runner <job-name>
+
+Constraints
+- Keep API responses typed and stable for frontend screens.
+- Start with health checks and dashboard/stock-detail response examples.
+- Put provider-specific logic in services or jobs, not route handlers.
+- Keep job logic callable manually before adding scheduled automation.
+- Design for future NAS/self-host migration.
+
+Pitfalls
+- Do not make the web server process responsible for always-on cron scheduling in serverless or multi-replica environments.
+- Do not expose backend secrets through frontend responses.
+- Do not block UI progress on a complete ingestion system; build visible data paths first.
+

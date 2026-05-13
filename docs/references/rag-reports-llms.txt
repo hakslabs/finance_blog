@@ -1,0 +1,20 @@
+RAG and reports quick reference for agents.
+
+Purpose
+- Prepare later expansion for 13F filings, domestic brokerage briefings, reports, summaries, and retrieval-style research pages.
+
+Current Priority
+- Future phase after core dashboard, stock detail, portfolio, and first real data screens work.
+
+Constraints
+- Preserve source provenance for every parsed report, summary, and retrieved answer.
+- Store raw document metadata separately from parsed text and generated summaries.
+- Do not treat generated summaries as verified financial advice.
+- Prefer small, inspectable ingestion steps before automated report collection.
+- Keep Korean brokerage reports and US filings as separate source families until normalization rules are clear.
+
+Pitfalls
+- RAG quality cannot be assumed from embedding alone.
+- PDF parsing and table extraction will require source-specific checks.
+- Copyright and redistribution constraints may limit what can be stored or shown.
+- 13F data is delayed and should not be presented as current trading activity.
