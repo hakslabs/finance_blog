@@ -21,4 +21,3 @@ The design direction is a personal investing workbench:
 ## Implementation Guidance
 
 Translate wireframe screens into production components before visual redesign. Keep the first pass functional and traceable to the wireframe source.
-

@@ -1,0 +1,19 @@
+{
+  "name": "finance-lab",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Finance_lab planning docs and app workspace.",
+  "scripts": {
+    "lint": "npm run lint:docs && npm run lint:web",
+    "lint:docs": "markdownlint-cli2 \"*.md\" \"docs/**/*.md\"",
+    "lint:web": "npm --prefix web run lint -- --max-warnings=0",
+    "format": "prettier --write \"*.md\" \"docs/**/*.md\" \"web/**/*.{js,ts,tsx,json,css,html}\"",
+    "format:check": "prettier --check \"*.md\" \"docs/**/*.md\" \"web/**/*.{js,ts,tsx,json,css,html}\"",
+    "format:docs": "prettier --write \"*.md\" \"docs/**/*.md\"",
+    "format:docs:check": "prettier --check \"*.md\" \"docs/**/*.md\""
+  },
+  "devDependencies": {
+    "markdownlint-cli2": "^0.22.1",
+    "prettier": "^3.8.3"
+  }
+}

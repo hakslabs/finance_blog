@@ -31,21 +31,21 @@ All non-2xx responses use this shape:
   "error": {
     "code": "string_enum",
     "message": "human-readable",
-    "details": { }
+    "details": {}
   }
 }
 ```
 
 Standard codes:
 
-| HTTP | code | When |
-| --- | --- | --- |
-| 400 | `bad_request` | Validation error on input. `details` lists the failing fields. |
-| 401 | `unauthenticated` | Missing/invalid JWT. |
-| 403 | `forbidden` | Authenticated but not allowed (RLS or scope). |
-| 404 | `not_found` | Resource does not exist or is invisible to this user. |
-| 429 | `rate_limited` | Upstream provider throttled or our own limit. |
-| 503 | `upstream_unavailable` | External data source failed and no cache is usable. |
+| HTTP | code                   | When                                                           |
+| ---- | ---------------------- | -------------------------------------------------------------- |
+| 400  | `bad_request`          | Validation error on input. `details` lists the failing fields. |
+| 401  | `unauthenticated`      | Missing/invalid JWT.                                           |
+| 403  | `forbidden`            | Authenticated but not allowed (RLS or scope).                  |
+| 404  | `not_found`            | Resource does not exist or is invisible to this user.          |
+| 429  | `rate_limited`         | Upstream provider throttled or our own limit.                  |
+| 503  | `upstream_unavailable` | External data source failed and no cache is usable.            |
 
 ### Stale Data Flag
 
@@ -67,7 +67,7 @@ Endpoints that serve cached external data may return `stale: true` alongside the
 - Purpose: liveness check, used by deploy and uptime probes.
 - 200 response: `{ "status": "ok", "version": "0.1.0" }`.
 
-### `GET /v1/watchlists/me`  *(PR-09)*
+### `GET /v1/watchlists/me` _(PR-09)_
 
 - Auth: required.
 - Purpose: return the signed-in user's primary watchlist for the dashboard.
@@ -103,7 +103,7 @@ Notes:
 
 Errors: `401 unauthenticated`.
 
-### `GET /v1/quotes/{symbol}`  *(PR-10)*
+### `GET /v1/quotes/{symbol}` _(PR-10)_
 
 - Auth: required.
 - Purpose: latest quote and recent OHLCV bars for one symbol. Backs the stock detail page.
@@ -123,7 +123,14 @@ Errors: `401 unauthenticated`.
   "change_pct": 0.66,
   "as_of": "iso8601",
   "bars": [
-    { "t": "iso8601", "o": 186.1, "h": 188.0, "l": 185.8, "c": 187.42, "v": 50123400 }
+    {
+      "t": "iso8601",
+      "o": 186.1,
+      "h": 188.0,
+      "l": 185.8,
+      "c": 187.42,
+      "v": 50123400
+    }
   ],
   "last_refreshed_at": "iso8601",
   "stale": false
@@ -136,7 +143,7 @@ Errors:
 - `429 rate_limited` — provider throttled; client may retry after `Retry-After` seconds.
 - `503 upstream_unavailable` — provider down and no cache; UI shows empty-state card.
 
-### `GET /v1/portfolios/me`  *(PR-11, sketch — refine in that PR)*
+### `GET /v1/portfolios/me` _(PR-11, sketch — refine in that PR)_
 
 - Auth: required.
 - Returns the user's portfolio summary, holdings, and recent transactions. Final shape decided when PR-11 starts; reserve the endpoint name now so PR-09/10 don't collide.

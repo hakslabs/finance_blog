@@ -25,4 +25,3 @@ Scheduled jobs should track:
 ## Future Hosting
 
 The project may move backend and database workloads to a personal NAS or self-hosted server. Keep external service assumptions documented, especially storage, cron, auth, and database-specific features.
-

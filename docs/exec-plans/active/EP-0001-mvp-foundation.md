@@ -13,6 +13,7 @@ Repository contains a wireframe canvas under `design/`. One developer, agent-ass
 This plan is sliced into PR-sized units so that a single agent session can complete one PR within a ~200k context budget.
 
 Per-PR conventions:
+
 - Each PR section lists **Scope**, **Required Reading** (load these only), **Files**, **Acceptance**, **Out Of Scope**.
 - **Required Reading is the upper bound, not the floor.** Do not load files outside this list unless the PR scope requires it.
 - Do not load all `docs/references/*-llms.txt` into context. Open at most one per PR, and only when its domain is in scope.
@@ -21,6 +22,7 @@ Per-PR conventions:
 - Mark a PR `[x]` only after it is merged and its acceptance has been verified on the running app.
 
 Cross-cutting rules:
+
 - Frontend-only PRs use seeded fixtures inline; no API calls.
 - Backend PRs return typed responses with example payloads; no UI changes.
 - Data-path PRs touch one endpoint at a time and must show real values on screen.
@@ -30,11 +32,11 @@ Cross-cutting rules:
 
 ### PR-01 — Repo scaffold and route shell
 
-- [ ] Scope: Vite + React + TypeScript app at repo root (or `app/`), router with empty page components for the 11 first routes from `docs/FRONTEND.md`, lint/format config, `.env.example`, CI build check.
-- [ ] Required Reading: `AGENTS.md`, `ARCHITECTURE.md`, `docs/FRONTEND.md`, `docs/design-docs/repo-layout.md`, `docs/design-docs/wires-inventory.md`, `vercel-labs/agent-skills:react-best-practices`.
-- [ ] Files: app scaffold, `src/routes/*`, `src/App.tsx`, lint config, README run instructions.
-- [ ] Acceptance: `npm run dev` boots; every route in `FRONTEND.md` renders a placeholder heading; `npm run build` and lint pass.
-- [ ] Out Of Scope: any layout chrome, any wire content, any backend.
+- [x] Scope: Vite + React + TypeScript app at repo root (or `app/`), router with empty page components for the 11 first routes from `docs/FRONTEND.md`, lint/format config, `.env.example`, CI build check.
+- [x] Required Reading: `AGENTS.md`, `ARCHITECTURE.md`, `docs/FRONTEND.md`, `docs/design-docs/repo-layout.md`, `docs/design-docs/wires-inventory.md`, `vercel-labs/agent-skills:react-best-practices`.
+- [x] Files: app scaffold, `src/routes/*`, `src/App.tsx`, lint config, README run instructions.
+- [x] Acceptance: `npm run dev` boots; every route in `FRONTEND.md` renders a placeholder heading; `npm run build` and lint pass.
+- [x] Out Of Scope: any layout chrome, any wire content, any backend.
 
 ### PR-02 — Layout chrome and shared primitives
 

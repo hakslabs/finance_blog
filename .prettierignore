@@ -1,0 +1,6 @@
+node_modules
+web/node_modules
+web/dist
+web/package-lock.json
+design/STOCKLAB Wireframes v3.html
+docs/references/*-llms.txt

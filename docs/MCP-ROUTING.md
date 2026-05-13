@@ -8,17 +8,17 @@ This project has MCP servers configured. Agents must prefer the right MCP over g
 
 ## Trigger → Tool Table
 
-| Trigger (what you're about to do) | First choice | Fallback | Why |
-| --- | --- | --- | --- |
-| Look up current API/syntax of a library (FastAPI, React, Next, Supabase client, Pydantic, yfinance, etc.) | `context7` | `websearch` | `context7` returns version-pinned docs; avoid stale `docs/references/*-llms.txt`. |
-| Find real-world code examples of a pattern across public repos | `grep_app` | `websearch` | Pattern discovery, not generic search. |
-| Fetch a known URL where the server returns clean HTML/JSON | `fetch` | `scrapling` | Cheap, no anti-bot needed. |
-| Scrape a page that blocks `fetch` (Cloudflare, JS-rendered, anti-bot) | `scrapling` | manual note + skip | Only use when `fetch` actually fails; do not default to it. |
-| Parse a PDF / DOCX / messy HTML into structured text (reports, 13F filings, financial statements) | `docling` | `fetch` + manual parse | Required for PR-13+ report ingestion; do not roll your own parser. |
-| Search the web for news, blog posts, current events, "what is X" | `websearch` | — | Use when no specific URL is known. |
-| Any Supabase work: migrations, schema introspection, RLS policy, seed, query check | `supabase` | `psql` via Bash | Direct, idempotent; avoid hand-typed `psql` for schema. |
-| Get a real US stock quote, OHLCV, fundamentals, earnings | `alphavantage` | `yfinance` via FastAPI | First-class for PR-10 fallback path and PR-11 fundamentals. |
-| Repo operations Claude Code already handles (status, diff, log, blame) | `Bash git` | `git` MCP | `Bash` is faster and visible in transcript. Use `git` MCP only when an op needs structured output or runs against a non-cwd repo. |
+| Trigger (what you're about to do)                                                                         | First choice   | Fallback               | Why                                                                                                                               |
+| --------------------------------------------------------------------------------------------------------- | -------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Look up current API/syntax of a library (FastAPI, React, Next, Supabase client, Pydantic, yfinance, etc.) | `context7`     | `websearch`            | `context7` returns version-pinned docs; avoid stale `docs/references/*-llms.txt`.                                                 |
+| Find real-world code examples of a pattern across public repos                                            | `grep_app`     | `websearch`            | Pattern discovery, not generic search.                                                                                            |
+| Fetch a known URL where the server returns clean HTML/JSON                                                | `fetch`        | `scrapling`            | Cheap, no anti-bot needed.                                                                                                        |
+| Scrape a page that blocks `fetch` (Cloudflare, JS-rendered, anti-bot)                                     | `scrapling`    | manual note + skip     | Only use when `fetch` actually fails; do not default to it.                                                                       |
+| Parse a PDF / DOCX / messy HTML into structured text (reports, 13F filings, financial statements)         | `docling`      | `fetch` + manual parse | Required for PR-13+ report ingestion; do not roll your own parser.                                                                |
+| Search the web for news, blog posts, current events, "what is X"                                          | `websearch`    | —                      | Use when no specific URL is known.                                                                                                |
+| Any Supabase work: migrations, schema introspection, RLS policy, seed, query check                        | `supabase`     | `psql` via Bash        | Direct, idempotent; avoid hand-typed `psql` for schema.                                                                           |
+| Get a real US stock quote, OHLCV, fundamentals, earnings                                                  | `alphavantage` | `yfinance` via FastAPI | First-class for PR-10 fallback path and PR-11 fundamentals.                                                                       |
+| Repo operations Claude Code already handles (status, diff, log, blame)                                    | `Bash git`     | `git` MCP              | `Bash` is faster and visible in transcript. Use `git` MCP only when an op needs structured output or runs against a non-cwd repo. |
 
 ## Runtime Budget And Timeouts
 
@@ -26,13 +26,13 @@ MCP tool calls run over stdio with a per-call timeout enforced by the client (Op
 
 Expected runtime per server (rough):
 
-| Server | Typical | Risk of timeout |
-| --- | --- | --- |
-| `context7`, `grep_app`, `websearch`, `fetch`, `git`, `supabase` (queries) | <5s | low |
-| `alphavantage` | 1–10s, occasional spikes on free tier | medium |
-| `scrapling` | 5–30s per page; JS-rendered pages are slower | medium |
-| `supabase` (migration apply against large DB) | up to minutes | medium |
-| `docling` (big PDFs, 13F filings, multi-hundred-page reports) | tens of seconds to minutes | high |
+| Server                                                                    | Typical                                      | Risk of timeout |
+| ------------------------------------------------------------------------- | -------------------------------------------- | --------------- |
+| `context7`, `grep_app`, `websearch`, `fetch`, `git`, `supabase` (queries) | <5s                                          | low             |
+| `alphavantage`                                                            | 1–10s, occasional spikes on free tier        | medium          |
+| `scrapling`                                                               | 5–30s per page; JS-rendered pages are slower | medium          |
+| `supabase` (migration apply against large DB)                             | up to minutes                                | medium          |
+| `docling` (big PDFs, 13F filings, multi-hundred-page reports)             | tens of seconds to minutes                   | high            |
 
 Rules:
 
@@ -57,7 +57,7 @@ If a tool call times out, or the next call to that server fails with a connectio
 
 ## Anti-Patterns
 
-- Reading `docs/references/*-llms.txt` *and* calling `context7` for the same library — pick `context7`.
+- Reading `docs/references/*-llms.txt` _and_ calling `context7` for the same library — pick `context7`.
 - Using `scrapling` for a site that responds to plain `fetch` — wasteful.
 - Hitting Alpha Vantage from the browser. All `alphavantage` calls go through FastAPI (see `docs/SECURITY.md`).
 - Writing migrations as raw SQL strings in chat when `supabase` MCP can apply and verify them.

@@ -20,4 +20,3 @@
 ## Resolved Debt
 
 - Harness documentation structure created.
-

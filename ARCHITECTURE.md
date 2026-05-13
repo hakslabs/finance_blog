@@ -42,4 +42,3 @@ The product has four major surfaces:
 - Cron/import jobs must be idempotent where possible.
 - Design source remains `design/` until a production design system supersedes it.
 - The first production milestone requires real market or economic data rendered in the UI.
-

@@ -4,24 +4,24 @@ Map of `design/wires-v3/*.jsx` to production routes and the shared primitives ea
 
 ## Wire → Route Map
 
-| Wire file | Production route(s) | First-pass primitives |
-| --- | --- | --- |
-| `wire-overview.jsx` | layout reference only | `AppShell`, `Sidebar`, `TopBar`, `PageContainer` |
-| `wire-primary.jsx` | layout reference only | `AppShell`, `Sidebar`, `TopBar` |
-| `wires-shared.jsx` | (shared primitives source) | `Card`, `Section`, `DataTable`, `KpiTile`, `ChartPlaceholder`, `EmptyState`, `Badge` |
-| `wire-home.jsx` | `/`, `/dashboard` | `WatchlistCard`, `PortfolioSummaryCard`, `IndicatorStrip`, `EconomicEventsList`, `ActionPrompts` |
-| `wire-stock.jsx` | `/stocks/:symbol` (header + chart area) | `StockHeader`, `PriceBlock`, `ChartPlaceholder` |
-| `wire-stock-tabs-a.jsx` | `/stocks/:symbol` (tabs A) | `TabBar`, fundamentals tables |
-| `wire-stock-tabs-b.jsx` | `/stocks/:symbol` (tabs B) | reports list, related items |
-| `wire-portfolio.jsx` | `/portfolio` | `HoldingsTable`, `TransactionsTable`, `PerformanceTile` |
-| `wire-analysis.jsx` | `/analysis` | screeners, comparison tables |
-| `wire-masters-learn.jsx` | `/masters`, `/learn` | manager cards, article list |
-| `wire-mypage-admin.jsx` | `/mypage`, `/admin` | settings forms, admin tables |
-| `wire-screener-heatmap-login.jsx` | screener inside `/analysis`, login modal | heatmap grid, login form |
-| `wire-modals.jsx` | modal layer (any route) | `Modal`, `ConfirmDialog` |
-| `wire-remaining.jsx` | `/reports`, `/reports/:id` and overflow | reports list, report detail |
-| `wire-ia.jsx` | information architecture reference | none |
-| `wire-data-arch.jsx` | data architecture reference | none |
+| Wire file                         | Production route(s)                      | First-pass primitives                                                                            |
+| --------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `wire-overview.jsx`               | layout reference only                    | `AppShell`, `Sidebar`, `TopBar`, `PageContainer`                                                 |
+| `wire-primary.jsx`                | layout reference only                    | `AppShell`, `Sidebar`, `TopBar`                                                                  |
+| `wires-shared.jsx`                | (shared primitives source)               | `Card`, `Section`, `DataTable`, `KpiTile`, `ChartPlaceholder`, `EmptyState`, `Badge`             |
+| `wire-home.jsx`                   | `/`, `/dashboard`                        | `WatchlistCard`, `PortfolioSummaryCard`, `IndicatorStrip`, `EconomicEventsList`, `ActionPrompts` |
+| `wire-stock.jsx`                  | `/stocks/:symbol` (header + chart area)  | `StockHeader`, `PriceBlock`, `ChartPlaceholder`                                                  |
+| `wire-stock-tabs-a.jsx`           | `/stocks/:symbol` (tabs A)               | `TabBar`, fundamentals tables                                                                    |
+| `wire-stock-tabs-b.jsx`           | `/stocks/:symbol` (tabs B)               | reports list, related items                                                                      |
+| `wire-portfolio.jsx`              | `/portfolio`                             | `HoldingsTable`, `TransactionsTable`, `PerformanceTile`                                          |
+| `wire-analysis.jsx`               | `/analysis`                              | screeners, comparison tables                                                                     |
+| `wire-masters-learn.jsx`          | `/masters`, `/learn`                     | manager cards, article list                                                                      |
+| `wire-mypage-admin.jsx`           | `/mypage`, `/admin`                      | settings forms, admin tables                                                                     |
+| `wire-screener-heatmap-login.jsx` | screener inside `/analysis`, login modal | heatmap grid, login form                                                                         |
+| `wire-modals.jsx`                 | modal layer (any route)                  | `Modal`, `ConfirmDialog`                                                                         |
+| `wire-remaining.jsx`              | `/reports`, `/reports/:id` and overflow  | reports list, report detail                                                                      |
+| `wire-ia.jsx`                     | information architecture reference       | none                                                                                             |
+| `wire-data-arch.jsx`              | data architecture reference              | none                                                                                             |
 
 ## Primitive Ownership
 

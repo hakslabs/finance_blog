@@ -16,17 +16,17 @@ Decision table for every external data domain Finance_lab depends on. Each row p
 
 ## Provider Matrix
 
-| Domain | Primary | Fallback | Reason for fallback | Used by |
-| --- | --- | --- | --- | --- |
-| US stock daily OHLCV | **Polygon.io** (`POLYGON_API_KEY`) | Alpha Vantage (`ALPHA_VANTAGE_API_KEY`) | Polygon outage; per-symbol top-ups | PR-10 |
-| KR stock daily OHLCV | **KRX OpenAPI** (`KRX_API_KEY`) | pykrx (no key) | KRX OpenAPI outage or schema change | PR-10 |
-| Universe membership (S&P500 / Nasdaq100 constituents) | Polygon reference endpoints + maintained static seed | manual update | Slow change cadence | PR-08 seed |
-| Universe membership (KOSPI200 constituents) | KRX OpenAPI constituent endpoint | manual update | Slow change cadence | PR-08 seed |
-| US macro indicators | FRED (`FRED_API_KEY`) | — | Canonical | post-MVP |
-| KR macro indicators | 한국은행 ECOS (`ECOS_API_KEY`) | — | Canonical | post-MVP |
-| US filings (10-K, 10-Q, 13F) | SEC EDGAR (no key; `SEC_USER_AGENT` required) | — | Public | post-MVP |
-| KR filings / financials | DART (`DART_API_KEY`) | — | Canonical | post-MVP |
-| Document parsing (PDFs, reports) | `docling` MCP | docling CLI | Long-running; see MCP-ROUTING | post-MVP |
+| Domain                                                | Primary                                              | Fallback                                | Reason for fallback                 | Used by    |
+| ----------------------------------------------------- | ---------------------------------------------------- | --------------------------------------- | ----------------------------------- | ---------- |
+| US stock daily OHLCV                                  | **Polygon.io** (`POLYGON_API_KEY`)                   | Alpha Vantage (`ALPHA_VANTAGE_API_KEY`) | Polygon outage; per-symbol top-ups  | PR-10      |
+| KR stock daily OHLCV                                  | **KRX OpenAPI** (`KRX_API_KEY`)                      | pykrx (no key)                          | KRX OpenAPI outage or schema change | PR-10      |
+| Universe membership (S&P500 / Nasdaq100 constituents) | Polygon reference endpoints + maintained static seed | manual update                           | Slow change cadence                 | PR-08 seed |
+| Universe membership (KOSPI200 constituents)           | KRX OpenAPI constituent endpoint                     | manual update                           | Slow change cadence                 | PR-08 seed |
+| US macro indicators                                   | FRED (`FRED_API_KEY`)                                | —                                       | Canonical                           | post-MVP   |
+| KR macro indicators                                   | 한국은행 ECOS (`ECOS_API_KEY`)                       | —                                       | Canonical                           | post-MVP   |
+| US filings (10-K, 10-Q, 13F)                          | SEC EDGAR (no key; `SEC_USER_AGENT` required)        | —                                       | Public                              | post-MVP   |
+| KR filings / financials                               | DART (`DART_API_KEY`)                                | —                                       | Canonical                           | post-MVP   |
+| Document parsing (PDFs, reports)                      | `docling` MCP                                        | docling CLI                             | Long-running; see MCP-ROUTING       | post-MVP   |
 
 ## Per-Provider Notes
 

@@ -31,4 +31,3 @@ User-owned tables should include `user_id`. Public market/reference tables may n
 ## Portability Notes
 
 Avoid coupling business logic to Supabase-specific client calls. Keep the app-level data contract in FastAPI/service modules so the database can later move to self-hosted infrastructure.
-

@@ -25,4 +25,3 @@ Finance_lab will handle personal portfolio data, watchlists, investment notes, p
 - High: portfolio transactions, holdings, thesis notes, review notes, user preferences.
 - Medium: watchlists and alerts.
 - Public or derived: market prices, economic indicators, public filings, public reports.
-

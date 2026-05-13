@@ -39,6 +39,15 @@ npm run lint
 npm run build
 ```
 
+언어별 lint와 포맷 검증은 루트에서 실행합니다.
+
+```bash
+npm run lint
+npm run lint:docs
+npm run lint:web
+npm run format:check
+```
+
 ## 사용 방식
 
 1. `design/`의 와이어프레임을 기준으로 프론트 화면을 구성합니다.

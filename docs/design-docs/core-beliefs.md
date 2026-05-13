@@ -22,4 +22,3 @@
 - Portfolio and watchlist flows must be checked with realistic user-owned records.
 - Data refresh jobs need timestamped evidence of the last successful run.
 - Report/RAG features must expose source provenance before their summaries are trusted.
-

@@ -53,4 +53,3 @@ Loading rule: clone once under a sibling path (e.g. `~/work/_skills/agent-skills
 - `/learn`
 - `/mypage`
 - `/admin`
-

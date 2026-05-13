@@ -10,4 +10,3 @@
 - `design/STOCKLAB Wireframes v3.html`
 - `design/design-canvas.jsx`
 - `design/wires-v3/`
-
