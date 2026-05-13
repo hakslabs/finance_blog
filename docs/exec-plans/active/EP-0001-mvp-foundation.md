@@ -40,11 +40,11 @@ Cross-cutting rules:
 
 ### PR-02 — Layout chrome and shared primitives
 
-- [ ] Scope: Extract layout shell (sidebar + top bar + page container) and the shared primitives used across wires: `Card`, `Section`, `DataTable`, `KpiTile`, `ChartPlaceholder`, `EmptyState`, `Badge`. Static styles only.
-- [ ] Required Reading: `docs/FRONTEND.md`, `docs/design-docs/core-beliefs.md`, `design/wires-v3/wire-overview.jsx`, `design/wires-v3/wire-primary.jsx`, `design/wires-v3/wires-shared.jsx`, `vercel-labs/agent-skills:react-best-practices`, `vercel-labs/agent-skills:composition-patterns`, `vercel-labs/agent-skills:web-design-guidelines`.
-- [ ] Files: `src/components/layout/*`, `src/components/primitives/*`, layout applied in `App.tsx`.
-- [ ] Acceptance: All routes render inside the shared layout; primitives are usable in isolation (storybook not required, but a `/_kitchen-sink` dev-only route is acceptable).
-- [ ] Out Of Scope: page-specific composition, real charts.
+- [x] Scope: Extract layout shell (sidebar + top bar + page container) and the shared primitives used across wires: `Card`, `Section`, `DataTable`, `KpiTile`, `ChartPlaceholder`, `EmptyState`, `Badge`. Static styles only.
+- [x] Required Reading: `docs/FRONTEND.md`, `docs/design-docs/core-beliefs.md`, `design/wires-v3/wire-overview.jsx`, `design/wires-v3/wire-primary.jsx`, `design/wires-v3/wires-shared.jsx`, `vercel-labs/agent-skills:react-best-practices`, `vercel-labs/agent-skills:composition-patterns`, `vercel-labs/agent-skills:web-design-guidelines`.
+- [x] Files: `src/components/layout/*`, `src/components/primitives/*`, layout applied in `App.tsx`.
+- [x] Acceptance: All routes render inside the shared layout; primitives are usable in isolation (storybook not required, but a `/_kitchen-sink` dev-only route is acceptable).
+- [x] Out Of Scope: page-specific composition, real charts.
 
 ### PR-03 — Dashboard page (static)
 
