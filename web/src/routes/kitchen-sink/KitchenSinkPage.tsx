@@ -9,6 +9,7 @@ import { EmptyState } from "../../components/primitives/EmptyState";
 import { KpiTile } from "../../components/primitives/KpiTile";
 import { Section } from "../../components/primitives/Section";
 import { PageContainer } from "../../components/layout/PageContainer";
+import styles from "./KitchenSinkPage.module.css";
 
 type SampleRow = {
   symbol: string;
@@ -40,16 +41,16 @@ export function KitchenSinkPage() {
       title="프리미티브 점검"
       description="공통 레이아웃과 재사용 UI의 분리 상태를 확인하는 개발용 화면입니다."
     >
-      <div className="kitchen-grid">
+      <div className={styles.grid}>
         <KpiTile label="Watchlist" value="12" detail="관심종목" />
         <KpiTile label="Thesis Locked" value="60%" detail="MVP 목표" />
         <KpiTile label="Alerts" value="3" detail="오늘 확인" />
       </div>
 
       <Section title="Shared Cards" eyebrow="Components">
-        <div className="kitchen-grid kitchen-grid--two">
+        <div className={styles.gridTwo}>
           <Card title="상태 배지" eyebrow="Badge">
-            <div className="badge-row">
+            <div className={styles.badgeRow}>
               <Badge>Neutral</Badge>
               <Badge tone="accent">Accent</Badge>
               <Badge tone="positive">Positive</Badge>

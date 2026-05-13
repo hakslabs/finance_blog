@@ -1,18 +1,21 @@
 import { Link, useLocation } from "react-router-dom";
 import { getCurrentNavItem } from "./navigation";
+import styles from "./TopBar.module.css";
 
 export function TopBar() {
   const { pathname } = useLocation();
   const current = getCurrentNavItem(pathname);
 
   return (
-    <header className="top-bar">
-      <div className="top-bar__title">
-        <span>{current.label}</span>
-        <span translate="no">{current.labelEn}</span>
+    <header className={styles.bar}>
+      <div className={styles.title}>
+        <span className={styles.titleKo}>{current.label}</span>
+        <span className={styles.titleEn} translate="no">
+          {current.labelEn}
+        </span>
       </div>
 
-      <label className="top-bar__search">
+      <label className={styles.search}>
         <span className="sr-only">종목 또는 티커 검색</span>
         <span aria-hidden="true">⌕</span>
         <input
@@ -21,23 +24,24 @@ export function TopBar() {
           placeholder="종목 / 티커 검색…"
           autoComplete="off"
           spellCheck={false}
+          className={styles.searchInput}
         />
       </label>
 
-      <div className="top-bar__actions">
-        <span className="currency-chip" translate="no">
+      <div className={styles.actions}>
+        <span className={styles.chip} translate="no">
           KRW
         </span>
         <Link
           to="/stocks"
-          className="icon-button"
+          className={styles.iconButton}
           aria-label="관심종목과 북마크 열기"
           title="관심종목 · 팔로우 · 북마크"
         >
           <span aria-hidden="true">★</span>
         </Link>
         <button
-          className="icon-button icon-button--notice"
+          className={styles.iconButtonNotice}
           type="button"
           aria-label="알림 열기"
           title="알림"
@@ -46,7 +50,7 @@ export function TopBar() {
         </button>
         <Link
           to="/mypage"
-          className="avatar-button"
+          className={styles.avatar}
           aria-label="마이페이지로 이동"
           title="마이페이지"
         />

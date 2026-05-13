@@ -1,3 +1,5 @@
+import styles from "./ChartPlaceholder.module.css";
+
 type ChartPlaceholderProps = {
   label: string;
   height?: number;
@@ -8,7 +10,7 @@ export function ChartPlaceholder({
   height = 240,
 }: ChartPlaceholderProps) {
   return (
-    <div className="chart-placeholder" style={{ minHeight: height }}>
+    <div className={styles.placeholder} style={{ minHeight: height }}>
       <span>{label}</span>
     </div>
   );

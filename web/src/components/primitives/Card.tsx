@@ -1,4 +1,5 @@
 import type { PropsWithChildren, ReactNode } from "react";
+import styles from "./Card.module.css";
 
 type CardProps = PropsWithChildren<{
   title?: string;
@@ -14,17 +15,17 @@ export function Card({
   className,
   children,
 }: CardProps) {
-  const classes = ["ui-card", className].filter(Boolean).join(" ");
+  const classes = [styles.card, className].filter(Boolean).join(" ");
 
   return (
     <article className={classes}>
       {title || eyebrow || actions ? (
-        <div className="ui-card__header">
+        <div className={styles.header}>
           <div>
-            {eyebrow ? <p className="ui-eyebrow">{eyebrow}</p> : null}
-            {title ? <h2>{title}</h2> : null}
+            {eyebrow ? <p className={styles.eyebrow}>{eyebrow}</p> : null}
+            {title ? <h2 className={styles.title}>{title}</h2> : null}
           </div>
-          {actions ? <div className="ui-card__actions">{actions}</div> : null}
+          {actions ? <div className={styles.actions}>{actions}</div> : null}
         </div>
       ) : null}
       {children}

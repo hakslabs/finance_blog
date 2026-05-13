@@ -1,4 +1,5 @@
-import type { PropsWithChildren, ReactNode } from "react";
+import { useId, type PropsWithChildren, type ReactNode } from "react";
+import styles from "./Section.module.css";
 
 type SectionProps = PropsWithChildren<{
   title: string;
@@ -14,15 +15,21 @@ export function Section({
   actions,
   children,
 }: SectionProps) {
+  const titleId = useId();
+
   return (
-    <section className="ui-section" aria-labelledby={`${title}-section-title`}>
-      <div className="ui-section__header">
+    <section className={styles.section} aria-labelledby={titleId}>
+      <div className={styles.header}>
         <div>
-          {eyebrow ? <p className="ui-eyebrow">{eyebrow}</p> : null}
-          <h2 id={`${title}-section-title`}>{title}</h2>
-          {description ? <p>{description}</p> : null}
+          {eyebrow ? <p className={styles.eyebrow}>{eyebrow}</p> : null}
+          <h2 id={titleId} className={styles.title}>
+            {title}
+          </h2>
+          {description ? (
+            <p className={styles.description}>{description}</p>
+          ) : null}
         </div>
-        {actions ? <div className="ui-section__actions">{actions}</div> : null}
+        {actions ? <div className={styles.actions}>{actions}</div> : null}
       </div>
       {children}
     </section>

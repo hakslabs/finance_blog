@@ -1,22 +1,23 @@
 import { Link, useLocation } from "react-router-dom";
 import { isNavActive, primaryNavItems, utilityNavItems } from "./navigation";
+import styles from "./Sidebar.module.css";
 
 export function Sidebar() {
   const { pathname } = useLocation();
 
   return (
-    <aside className="app-sidebar" aria-label="주요 메뉴">
-      <Link to="/" className="brand-mark" aria-label="Finance_lab 홈">
-        <span className="brand-mark__symbol" aria-hidden="true" />
+    <aside className={styles.aside} aria-label="주요 메뉴">
+      <Link to="/" className={styles.brand} aria-label="Finance_lab 홈">
+        <span className={styles.brandSymbol} aria-hidden="true" />
         <span>
-          <span className="brand-mark__name" translate="no">
+          <span className={styles.brandName} translate="no">
             Finance_lab
           </span>
-          <span className="brand-mark__meta">Investing workspace</span>
+          <span className={styles.brandMeta}>Investing workspace</span>
         </span>
       </Link>
 
-      <nav className="sidebar-nav" aria-label="제품 메뉴">
+      <nav className={styles.nav} aria-label="제품 메뉴">
         {primaryNavItems.map((item) => {
           const active = isNavActive(pathname, item);
 
@@ -24,19 +25,19 @@ export function Sidebar() {
             <Link
               key={item.path}
               to={item.path}
-              className={
-                active ? "sidebar-nav__link is-active" : "sidebar-nav__link"
-              }
+              className={active ? styles.linkActive : styles.link}
               aria-current={active ? "page" : undefined}
             >
-              <span>{item.label}</span>
-              <span translate="no">{item.labelEn}</span>
+              <span className={styles.linkLabel}>{item.label}</span>
+              <span className={styles.linkLabelEn} translate="no">
+                {item.labelEn}
+              </span>
             </Link>
           );
         })}
       </nav>
 
-      <nav className="sidebar-nav sidebar-nav--utility" aria-label="설정 메뉴">
+      <nav className={styles.navUtility} aria-label="설정 메뉴">
         {utilityNavItems.map((item) => {
           const active = isNavActive(pathname, item);
 
@@ -44,13 +45,13 @@ export function Sidebar() {
             <Link
               key={item.path}
               to={item.path}
-              className={
-                active ? "sidebar-nav__link is-active" : "sidebar-nav__link"
-              }
+              className={active ? styles.linkActive : styles.link}
               aria-current={active ? "page" : undefined}
             >
-              <span>{item.label}</span>
-              <span translate="no">{item.labelEn}</span>
+              <span className={styles.linkLabel}>{item.label}</span>
+              <span className={styles.linkLabelEn} translate="no">
+                {item.labelEn}
+              </span>
             </Link>
           );
         })}

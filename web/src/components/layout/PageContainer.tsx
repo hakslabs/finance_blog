@@ -1,4 +1,5 @@
-import type { PropsWithChildren, ReactNode } from "react";
+import { useId, type PropsWithChildren, type ReactNode } from "react";
+import styles from "./PageContainer.module.css";
 
 type PageContainerProps = PropsWithChildren<{
   eyebrow?: string;
@@ -14,17 +15,21 @@ export function PageContainer({
   actions,
   children,
 }: PageContainerProps) {
+  const titleId = useId();
+
   return (
-    <section className="page-container" aria-labelledby="page-title">
-      <div className="page-header">
-        <div className="page-header__copy">
-          {eyebrow ? <p className="page-eyebrow">{eyebrow}</p> : null}
-          <h1 id="page-title">{title}</h1>
-          {description ? <p>{description}</p> : null}
+    <section className={styles.container} aria-labelledby={titleId}>
+      <div className={styles.header}>
+        <div className={styles.copy}>
+          {eyebrow ? <p className={styles.eyebrow}>{eyebrow}</p> : null}
+          <h1 id={titleId} className={styles.title}>
+            {title}
+          </h1>
+          {description ? <p className={styles.description}>{description}</p> : null}
         </div>
-        {actions ? <div className="page-header__actions">{actions}</div> : null}
+        {actions ? <div className={styles.actions}>{actions}</div> : null}
       </div>
-      {children ? <div className="page-body">{children}</div> : null}
+      {children ? <div className={styles.body}>{children}</div> : null}
     </section>
   );
 }

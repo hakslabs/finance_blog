@@ -1,0 +1,128 @@
+.aside {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  height: 100vh;
+  padding: 18px 14px;
+  overflow-y: auto;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 4px 6px;
+}
+
+.brandSymbol {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border: 2px solid var(--ink);
+  transform: rotate(45deg);
+}
+
+.brandName {
+  display: block;
+  overflow: hidden;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brandMeta {
+  display: block;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.navUtility {
+  composes: nav;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--hairline);
+}
+
+.link {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 34px;
+  padding: 7px 8px;
+  color: var(--muted);
+  border: 1px solid transparent;
+}
+
+.link:hover {
+  color: var(--ink);
+  background: var(--surface-muted);
+}
+
+.linkActive {
+  composes: link;
+  color: var(--ink);
+  font-weight: 700;
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+.linkLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.linkLabelEn {
+  flex: 0 0 auto;
+  color: var(--faint);
+  font-size: 0.625rem;
+}
+
+@media (max-width: 900px) {
+  .aside {
+    position: static;
+    height: auto;
+    padding: 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .nav {
+    flex-direction: row;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .navUtility {
+    display: none;
+  }
+
+  .link {
+    flex: 0 0 auto;
+    min-height: 32px;
+  }
+
+  .linkLabelEn {
+    display: none;
+  }
+}

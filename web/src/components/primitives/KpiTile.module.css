@@ -1,0 +1,33 @@
+.tile {
+  min-height: 116px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.label {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.value {
+  margin-top: 10px;
+  font-family: var(--mono);
+  font-size: 1.625rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}

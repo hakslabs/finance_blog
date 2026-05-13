@@ -1,0 +1,19 @@
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  text-align: center;
+  background-color: var(--surface-muted);
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent 0,
+    transparent 8px,
+    var(--hairline) 8px,
+    var(--hairline) 9px
+  );
+  border: 1px dashed var(--faint);
+}

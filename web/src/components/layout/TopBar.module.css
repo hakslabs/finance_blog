@@ -1,0 +1,139 @@
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(220px, 360px) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 56px;
+  padding: 0 20px;
+  background: rgb(247 247 244 / 94%);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(12px);
+}
+
+.title {
+  min-width: 0;
+}
+
+.titleKo {
+  display: block;
+  overflow: hidden;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.titleEn {
+  color: var(--muted);
+  font-size: 0.6875rem;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+}
+
+.search:focus-within {
+  border-color: var(--line);
+}
+
+.searchInput {
+  min-width: 0;
+  width: 100%;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+}
+
+.searchInput:focus-visible {
+  outline: 0;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  min-width: 42px;
+  padding: 0 9px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+}
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  cursor: pointer;
+}
+
+.iconButton:hover {
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+.iconButtonNotice {
+  composes: iconButton;
+  position: relative;
+}
+
+.iconButtonNotice::after {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  width: 6px;
+  height: 6px;
+  content: "";
+  background: var(--negative);
+  border-radius: 999px;
+}
+
+.avatar {
+  composes: iconButton;
+  border-radius: 50%;
+}
+
+@media (max-width: 900px) {
+  .bar {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .search {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-bottom: 10px;
+  }
+}
+
+@media (max-width: 680px) {
+  .bar {
+    padding: 10px 14px 0;
+  }
+
+  .chip {
+    display: none;
+  }
+}

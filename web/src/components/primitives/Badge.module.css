@@ -1,0 +1,36 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 8px;
+  color: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.2;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+}
+
+.accent {
+  composes: badge;
+  color: var(--accent);
+  border-color: rgb(42 111 219 / 50%);
+}
+
+.positive {
+  composes: badge;
+  color: var(--positive);
+  border-color: rgb(31 122 85 / 45%);
+}
+
+.negative {
+  composes: badge;
+  color: var(--negative);
+  border-color: rgb(200 59 59 / 45%);
+}
+
+.warning {
+  composes: badge;
+  color: var(--warning);
+  border-color: rgb(154 106 22 / 45%);
+}

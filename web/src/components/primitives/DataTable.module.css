@@ -1,0 +1,40 @@
+.wrapper {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.th,
+.td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.th {
+  color: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.td {
+  font-variant-numeric: tabular-nums;
+}
+
+.right {
+  text-align: right;
+}
+
+.empty {
+  padding: 18px;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  text-align: center;
+  border: 1px dashed var(--faint);
+}

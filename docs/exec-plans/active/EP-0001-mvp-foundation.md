@@ -45,6 +45,10 @@ Cross-cutting rules:
 - [x] Files: `src/components/layout/*`, `src/components/primitives/*`, layout applied in `App.tsx`.
 - [x] Acceptance: All routes render inside the shared layout; primitives are usable in isolation (storybook not required, but a `/_kitchen-sink` dev-only route is acceptable).
 - [x] Out Of Scope: page-specific composition, real charts.
+- [x] Conventions established in this PR (apply to all later UI PRs):
+  - CSS is split per component as co-located `*.module.css` (CSS Modules). Only `src/styles/tokens.css` (variables) and `src/styles/base.css` (reset, `sr-only`, `skip-link`) are global. No new globals without a reason.
+  - Components that emit a labelled landmark (`PageContainer`, `Section`, …) must generate their `aria-labelledby` id via `useId()`. Never derive ids from user-facing strings.
+  - Only `Card` / `Section` headers may render `<h2>`. Other primitives (e.g. `EmptyState`) use a styled `<p>` so the page heading hierarchy stays h1 → h2.
 
 ### PR-03 — Dashboard page (static)
 

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import styles from "./KpiTile.module.css";
 
 type KpiTileProps = {
   label: string;
@@ -9,10 +10,10 @@ type KpiTileProps = {
 
 export function KpiTile({ label, value, detail, trend }: KpiTileProps) {
   return (
-    <div className="kpi-tile">
-      <div className="kpi-tile__label">{label}</div>
-      <div className="kpi-tile__value">{value}</div>
-      <div className="kpi-tile__footer">
+    <div className={styles.tile}>
+      <div className={styles.label}>{label}</div>
+      <div className={styles.value}>{value}</div>
+      <div className={styles.footer}>
         {detail ? <span>{detail}</span> : <span />}
         {trend ? <span>{trend}</span> : null}
       </div>
