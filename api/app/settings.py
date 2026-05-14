@@ -1,12 +1,20 @@
 from functools import lru_cache
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import List, Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 ROOT_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
+
+
+def _api_version() -> str:
+    try:
+        return version("finance-lab-api")
+    except PackageNotFoundError:
+        return "0.0.0"
 
 
 class Settings(BaseSettings):
@@ -21,11 +29,21 @@ class Settings(BaseSettings):
         "info",
         alias="LOG_LEVEL",
     )
-    api_version: str = "0.1.0"
-    cors_origins: List[str] = [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ]
+    api_version: str = Field(default_factory=_api_version)
+    cors_origins: List[str] = Field(
+        default=[
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+        ],
+        alias="CORS_ORIGINS",
+    )
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _split_cors_origins(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return value
 
 
 @lru_cache
