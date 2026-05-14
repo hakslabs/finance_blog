@@ -199,6 +199,8 @@ export function StockDetailPage() {
         </span>
       }
     >
+      <Link to="/stocks" className={styles.backLink}>← 종목 목록으로</Link>
+
       <KeyStatsStrip detail={detail} />
 
       <div className={styles.layout}>

@@ -61,6 +61,8 @@ export function MasterDetailPage() {
       description={`${master.firm} · ${master.style}`}
       actions={<button className={styles.followButton} type="button">팔로우</button>}
     >
+      <Link to="/masters" className={styles.backLink}>← 거장 목록으로</Link>
+
       <div className={styles.kpiGrid}>
         <KpiTile label="운용자산" value={master.aum} detail={master.firm} />
         <KpiTile label="보유 종목" value={`${master.holdingsCount}`} detail="최근 13F 기준" />

@@ -31,6 +31,8 @@ export function ReportDetailPage() {
       title={report.title}
       description={`${report.source} · ${report.department} · ${report.date} 발간 · ${report.pages}페이지 · ${report.language.toUpperCase()}`}
     >
+      <Link to="/reports" className={styles.backLink}>← 리포트 목록으로</Link>
+
       <ReportDetailHeader report={report} />
       <ReportSummary report={report} />
 

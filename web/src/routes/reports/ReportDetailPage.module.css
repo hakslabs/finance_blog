@@ -1,3 +1,14 @@
+.backLink {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.backLink:hover {
+  color: var(--ink);
+}
+
 .layout {
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr) 280px;
