@@ -53,12 +53,12 @@ Cross-cutting rules:
 
 ### PR-03 — Dashboard page (static)
 
-- [ ] Scope: Implement `/` and `/dashboard` from `wire-home.jsx`: `WatchlistCard`, `PortfolioSummaryCard`, `IndicatorStrip`, `EconomicEventsList`, `ActionPrompts`. Hardcoded fixtures imported from `src/fixtures/dashboard.ts`.
-- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `docs/design-docs/wires-inventory.md`, `design/wires-v3/wire-home.jsx`, `design/wires-v3/wires-shared.jsx`, `vercel-labs/agent-skills:react-best-practices`, `vercel-labs/agent-skills:web-design-guidelines`.
-- [ ] Files: `src/routes/dashboard/*`, `src/fixtures/dashboard.ts`.
-- [ ] Acceptance: Dashboard visually matches the wire at the section level; no network calls; fixtures typed; `FRONTEND.md` PR Review Checklist passes.
-- [ ] Out Of Scope: stock detail, portfolio internals, any API call.
-- [ ] Conventions established in this PR (apply to all later UI PRs):
+- [x] Scope: Implement `/` and `/dashboard` from `wire-home.jsx`: `WatchlistCard`, `PortfolioSummaryCard`, `IndicatorStrip`, `EconomicEventsList`, `ActionPrompts`. Hardcoded fixtures imported from `src/fixtures/dashboard.ts`.
+- [x] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `docs/design-docs/wires-inventory.md`, `design/wires-v3/wire-home.jsx`, `design/wires-v3/wires-shared.jsx`, `vercel-labs/agent-skills:react-best-practices`, `vercel-labs/agent-skills:web-design-guidelines`.
+- [x] Files: `src/routes/dashboard/*`, `src/fixtures/dashboard.ts`.
+- [x] Acceptance: Dashboard visually matches the wire at the section level; no network calls; fixtures typed; `FRONTEND.md` PR Review Checklist passes.
+- [x] Out Of Scope: stock detail, portfolio internals, any API call.
+- [x] Conventions established in this PR (apply to all later UI PRs):
   - Page-sized routes split into `routes/{route}/sections/*` with one co-located `*.module.css` per section. The page file itself is composition only.
   - Fixtures use one type per concept (no `A & { ...B fields }` intersections). List-item types include `id: string` for stable React keys.
   - Pure helpers whose inputs are static (path strings, gauge arcs, etc.) are hoisted to module scope; per-instance deterministic helpers use `useMemo`.
