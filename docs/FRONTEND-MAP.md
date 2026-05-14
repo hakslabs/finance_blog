@@ -139,6 +139,30 @@ All list-item types carry an `id: string` for stable React keys.
 
 All list-item types carry an `id: string` for stable React keys.
 
+### `fixtures/analysis.ts`
+
+**Constants** (all typed):
+
+- `ANALYSIS_TABS` — readonly tuple of 8 tab names: `시장 한눈에 | 시장 심리 | 기술적 분석 | 재무 분석 | 퀀트 팩터 | 적정주가 계산 | 섹터 흐름 | 신호 알림`. Exported as `AnalysisTab` type.
+- `MARKET_INDICES: MarketIndex[]` — 3 items (S&P 500, KOSPI, VIX).
+- `SECTOR_ROTATION: SectorReturn[]` — 7 sectors, 1M returns.
+- `STYLE_ROTATION: StyleCell[]` — 4 cells (대형/소형 × 그로스/밸류).
+- `ANALYSIS_TOOLS: AnalysisTool[]` — 8 tool cards.
+- `RECENT_SIGNALS: RecentSignal[]` — 5 signals.
+- `SAVED_SCREENS: SavedScreen[]` — 4 screens.
+- `SENTIMENT_INDICATORS: SentimentIndicator[]` — 9 indicators across US/KR/Global.
+- `INDICATOR_GLOSSARY: IndicatorGlossary[]` — 9 terms.
+- `TECHNICAL_INDICATORS: TechnicalIndicator[]` — 6 indicator/symbol pairs.
+- `FINANCIAL_SCORES: FinancialScore[]` — 5 symbols with PER/PBR/ROE/margin/debt and A-D grade.
+- `QUANT_FACTORS: QuantFactor[]` — 5 factors (Value, Momentum, Quality, Size, LowVol).
+- `DCF_ASSUMPTIONS: DcfAssumption[]` — 4 KPI items (growth, terminal, WACC, fair value).
+- `SIGNAL_ALERTS: SignalAlert[]` — 7 alerts.
+- `SECTOR_MOMENTUM: SectorMomentum[]` — 6 sectors with 1M/3M/6M and trend.
+
+**Types** (one per concept): `MarketIndex`, `SectorReturn`, `StyleCell`, `AnalysisTool`, `RecentSignal`, `SavedScreen`, `SentimentIndicator`, `SentimentStatus` (`"calm" | "stable" | "neutral" | "caution" | "stress" | "panic"`), `IndicatorGlossary`, `TechnicalIndicator`, `TechnicalSignalKind` (`"buy" | "sell" | "hold"`), `FinancialScore`, `FinancialGrade` (`"A" | "B" | "C" | "D"`), `QuantFactor`, `DcfAssumption`, `SignalAlert`, `SignalDirection` (`"up" | "down" | "neutral"`), `SectorMomentum`, `SectorMomentumTrend` (`"improving" | "deteriorating" | "stable"`).
+
+All list-item types carry an `id: string` for stable React keys.
+
 ### `fixtures/stocks.ts`
 
 **Constants** (all typed):
@@ -224,9 +248,27 @@ Static portfolio page composed from `routes/portfolio/sections/*` and `fixtures/
 - `TransactionsTable({ transactions })` — Card-wrapped `DataTable<Transaction>` (density `compact`) with columns: date, type/Badge, symbol, qty, price, amount, currency, note. Renders `EmptyState` inside the Card when `transactions.length === 0`. Transaction type mapped to Badge tone via `Record<TransactionType, BadgeTone>`.
 - `PerformanceSummary({ benchmarks, metrics })` — Card with benchmark legend (portfolio/KOSPI/S&P returns) and 3 metric tiles (max drawdown, Sharpe, beta) in a grid. Class variants for positive/negative/neutral sentiment.
 
+### `analysis/AnalysisPage` (path: `/analysis`)
+
+Static analysis hub composed from `routes/analysis/sections/*` and `fixtures/analysis.ts`. Top-level structure: `PageContainer(eyebrow="Analysis", title="분석", description=…)` → `<nav>` tab bar (8 tabs) → `<section>` containing the active tab's section component. Tab state held by `useState<AnalysisTab>`; tab `<button>` pattern reused from `/stocks/:symbol`. Fixture-only, no API calls.
+
+**File**: `routes/analysis/AnalysisPage.tsx`, co-located `AnalysisPage.module.css`.
+
+**Sections** (`routes/analysis/sections/`):
+
+- `MarketOverviewSection()` — 시장 한눈에. 3-col top grid (`Card`: 시장 개요 with `ChartPlaceholder` + index row · `Card` with `DataTable<SectorReturn>` for sector rotation · `Card` with style rotation grid). 4-col tools grid as `Card`s. 2-col bottom grid: `Card` with recent signal list + `Card` with `DataTable<SavedScreen>`. Badge in card action slot.
+- `SentimentSection()` — 시장 심리. Banner `Card`, then one `Card`+`DataTable<SentimentIndicator>` per region (US/KR/Global). Status mapped to `Badge` tone via `Record<SentimentStatus, BadgeTone>`. Composite history `Card` with `ChartPlaceholder` and legend. Glossary `Card` with `DataTable<IndicatorGlossary>`. No SVG gauges — `DataTable` + `Badge` per C-11 (gauge primitive would require a separate promotion PR).
+- `TechnicalSection()` — 기술적 분석. `Card`+`ChartPlaceholder` for chart, `Card`+`DataTable<TechnicalIndicator>` with buy/sell/hold `Badge`.
+- `FinancialAnalysisSection()` — 재무 분석. `Card`+`ChartPlaceholder`, `Card`+`DataTable<FinancialScore>` with A-D grade `Badge`.
+- `QuantFactorSection()` — 퀀트 팩터. `Card`+`ChartPlaceholder`, `Card`+`DataTable<QuantFactor>` with spread color class.
+- `DcfSection()` — 적정주가 계산. `Card` with `KpiTile` grid (4 assumptions) + `Card`+`ChartPlaceholder` for scenario matrix.
+- `SectorFlowSection()` — 섹터 흐름. `Card`+`ChartPlaceholder`, `Card`+`DataTable<SectorMomentum>` with trend `Badge`.
+- `SignalsSection()` — 신호 알림. `Card`+`DataTable<SignalAlert>` with direction `Badge`.
+
 ### Pending routes
 
-- `analysis/AnalysisPage`, `masters/MastersPage`, `reports/ReportsPage`, `reports/ReportDetailPage`, `learn/LearnPage`, `mypage/MyPage`, `admin/AdminPage` — PR-06.
+- `masters/MastersPage`, `masters/MasterDetailPage`, `reports/ReportsPage`, `reports/ReportDetailPage`, `learn/LearnPage`, `mypage/MyPage` — PR-06b..d.
+- `admin/AdminPage` — deferred out of MVP (see EP-0001 PR-06 split note).
 
 ### `kitchen-sink/KitchenSinkPage` (path: `/_kitchen-sink`)
 

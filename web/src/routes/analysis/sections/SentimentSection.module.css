@@ -1,0 +1,71 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.banner {
+  margin: 0;
+  font-size: 0.6875rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.bannerMeta {
+  color: var(--faint);
+  margin-left: 4px;
+}
+
+.cellLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.labelName {
+  font-weight: 600;
+}
+
+.labelDesc {
+  font-size: 0.625rem;
+  color: var(--muted);
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+.legendRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 8px;
+  font-size: 0.625rem;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legendSwatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+}
+
+.swatchUp {
+  background: var(--positive);
+  opacity: 0.3;
+}
+
+.swatchDown {
+  background: var(--negative);
+  opacity: 0.3;
+}
+
+.swatchNeutral {
+  background: var(--muted);
+  opacity: 0.3;
+}

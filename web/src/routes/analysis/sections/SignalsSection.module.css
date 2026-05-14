@@ -1,0 +1,15 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+.timeCell {
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  color: var(--faint);
+}

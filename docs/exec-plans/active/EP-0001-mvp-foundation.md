@@ -93,13 +93,13 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 
 ### PR-06a — `/analysis` (static, 8-tab hub)
 
-- [ ] Scope: `/analysis` from `design/wires-v3/wire-analysis.jsx`. Eight tabs: 시장 한눈에 / 시장 심리 / 기술적 분석 / 재무 분석 / 퀀트 팩터 / 적정주가 계산 / 섹터 흐름 / 신호 알림. Tab UI uses the same `<button>` + `Record<Tab, …>` pattern as `/stocks/:symbol`.
-- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-analysis.jsx`, `web/src/routes/stocks/StockDetailPage.tsx` (tab pattern reference), `vercel-labs/agent-skills:react-best-practices`.
-- [ ] Required Reuse (C-11): `PageContainer`, `Card`, `Section`, `DataTable` (섹터 로테이션 표, 신호 알림 표), `KpiTile` (시장 지표 strip), `Badge` (시그널 강도/방향, 섹터 라벨), `ChartPlaceholder` (`AreaChart`/`Gauge` placeholders), `EmptyState`. F&G-style gauges may reuse the dashboard `IndicatorStrip` gauge primitive — do not hand-roll new SVG arcs without checking that first.
-- [ ] Files: `web/src/routes/analysis/AnalysisPage.tsx`, `web/src/routes/analysis/AnalysisPage.module.css`, `web/src/routes/analysis/sections/*` (one section per tab body), `web/src/fixtures/analysis.ts`.
-- [ ] Skeleton vs full per tab: 시장 한눈에 / 기술적 분석 / 재무 분석 / 신호 알림 = **full** (wire is dense). 시장 심리 / 퀀트 팩터 / 적정주가 / 섹터 흐름 = **skeleton OK** (single Card + ChartPlaceholder + 2–3 KPI rows from fixture). Each skeleton tab must still emit real fixture data, not placeholder text.
-- [ ] Acceptance: All 8 tabs render from `fixtures/analysis.ts`; tab state preserved via `useState`; `FRONTEND.md` PR Review Checklist passes including items 14–16 (primitive reuse).
-- [ ] Out Of Scope: real chart implementations, signal alert subscription wiring.
+- [x] Scope: `/analysis` from `design/wires-v3/wire-analysis.jsx`. Eight tabs: 시장 한눈에 / 시장 심리 / 기술적 분석 / 재무 분석 / 퀀트 팩터 / 적정주가 계산 / 섹터 흐름 / 신호 알림. Tab UI uses the same `<button>` + `Record<Tab, …>` pattern as `/stocks/:symbol`.
+- [x] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-analysis.jsx`, `web/src/routes/stocks/StockDetailPage.tsx` (tab pattern reference), `vercel-labs/agent-skills:react-best-practices`.
+- [x] Required Reuse (C-11): `PageContainer`, `Card`, `DataTable` (섹터 로테이션 표, 기술적 지표, 재무 점수, 퀀트 팩터, 섹터 모멘텀, 신호 알림 표, 심리 지표 표, 용어 해설 표, 저장한 스크린 표), `KpiTile` (DCF 4-tile strip), `Badge` (시그널 강도/방향, 섹터 라벨, A-D 등급, 심리 상태, 추세). `ChartPlaceholder` (AreaChart/Heatmap/Matrix placeholders). 시장 심리는 plan 옵션대로 DataTable+Badge skeleton로 처리 — SVG gauge 신규 작성 없음 (gauge promote는 별도 PR 필요).
+- [x] Files: `web/src/routes/analysis/AnalysisPage.tsx`, `web/src/routes/analysis/AnalysisPage.module.css`, `web/src/routes/analysis/sections/*` (8 section components, one per tab), `web/src/fixtures/analysis.ts`.
+- [x] Skeleton vs full per tab: 시장 한눈에 = full (3-col top grid + tools + bottom grid). 시장 심리 = full content via DataTable rows (3 regions + glossary + history placeholder). 기술적 분석 / 재무 분석 / 퀀트 팩터 / 섹터 흐름 / 신호 알림 = chart placeholder + DataTable with fixture rows. 적정주가 계산 = KpiTile grid + chart placeholder.
+- [x] Acceptance: All 8 tabs render from `fixtures/analysis.ts`; tab state preserved via `useState`; `FRONTEND.md` PR Review Checklist passes including items 14–16 (primitive reuse).
+- [x] Out Of Scope: real chart implementations, signal alert subscription wiring.
 
 ### PR-06b — `/reports` list and `/reports/:id` detail (static)
 
