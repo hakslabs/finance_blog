@@ -176,6 +176,60 @@ All list-item types carry an `id: string` for stable React keys.
 
 All list-item types carry an `id: string` for stable React keys.
 
+### `fixtures/reports.ts`
+
+**Constants** (all typed):
+
+- `REPORTS: ReportListItem[]` — 8 report rows across BOK, SEC EDGAR, IMF, KDI, BlackRock, DART, OECD, KPMG. Each has `id`, source, region, category, subtype, title, date, page count, language, summary, tags, status, views, bookmarks.
+- `REPORT_KPIS: ReportKpi[]` — 4 KPI tiles (total reports, weekly new, active sources, AI processed).
+- `REPORT_DETAIL: ReportDetail` — detail fixture for `bok-monetary-2025-09` with AI summary, key points, table of contents, body excerpts, inflation table, related tickers/reports, memo prompt.
+- `getReport(id: string | undefined): ReportDetail | undefined` — route-param lookup. Returns detail data for known report ids and `undefined` for unknown ids.
+
+**Types** (one per concept): `ReportRegion` (`"KR" | "US" | "GLOBAL"`), `ReportCategory`, `ReportStatus` (`"complete" | "processing"`), `ReportListItem`, `ReportKpi`, `ReportTocItem`, `ReportKeyPoint`, `ReportBodySection`, `InflationRow`, `RelatedTicker`, `RelatedReport`, `ReportDetail`.
+
+All list-item types carry an `id: string` for stable React keys.
+
+### `fixtures/masters.ts`
+
+**Constants** (all typed):
+
+- `MASTERS: MasterListItem[]` — 7 investor rows for the `/masters` list.
+- `MASTER_DETAILS: MasterDetail[]` — detail fixtures for Warren Buffett and Ray Dalio.
+- `getMaster(id: string | undefined): MasterDetail | undefined` — route-param lookup for `/masters/:id`.
+
+**Types**: `MasterStrategy`, `HoldingChange`, `MasterListItem`, `MasterHolding`, `MasterQuarterChange`, `MasterDetail`.
+
+All list-item types carry an `id: string` for stable React keys.
+
+### `fixtures/learn.ts`
+
+**Constants** (all typed):
+
+- `LEARN_TABS` — readonly tuple: `입문서·칼럼 | 용어 사전 | 리포트 라이브러리`. Exported as `LearnTab` type.
+- `LEARN_CATEGORIES: LearnCategory[]` — 6 guide categories.
+- `GUIDE_ARTICLES: GuideArticle[]` — 4 recommended guide rows.
+- `GLOSSARY_TERMS: GlossaryTerm[]` — 6 glossary terms rendered through `DataTable`.
+
+**Types**: `LearnTab`, `LearnCategory`, `GuideArticle`, `GlossaryTerm`.
+
+All list-item types carry an `id: string` for stable React keys.
+
+### `fixtures/mypage.ts`
+
+**Constants** (all typed):
+
+- `MYPAGE_KPIS: MyPageKpi[]` — 6 summary KPI tiles.
+- `MY_TODOS: TodoItem[]` — dashboard-synced action list.
+- `WATCHLIST_SUMMARIES: WatchlistSummary[]` — compact watchlist summaries.
+- `ACTIVITY_LOGS: ActivityLog[]` — recent user activity rows.
+- `POSITION_THESES: PositionThesis[]` — locked thesis and reaction memo examples.
+- `TRANSACTION_HISTORY: TransactionHistory[]` — transaction rows.
+- `SETTING_ROWS: SettingRow[]` — static account/settings summary rows.
+
+**Types**: `MyPageKpi`, `TodoItem`, `WatchlistSummary`, `ActivityLog`, `PositionThesis`, `TransactionHistory`, `SettingRow`.
+
+All list-item types carry an `id: string` for stable React keys.
+
 ## Routes (`routes/`)
 
 ### `RoutePlaceholder({ title, eyebrow, description })`
@@ -265,9 +319,58 @@ Static analysis hub composed from `routes/analysis/sections/*` and `fixtures/ana
 - `SectorFlowSection()` — 섹터 흐름. `Card`+`ChartPlaceholder`, `Card`+`DataTable<SectorMomentum>` with trend `Badge`.
 - `SignalsSection()` — 신호 알림. `Card`+`DataTable<SignalAlert>` with direction `Badge`.
 
+### `reports/ReportsPage` (path: `/reports`)
+
+Static report library page from `wire-masters-learn.jsx` (`WireReports`). Top-level structure: `PageContainer(eyebrow="Reports", title="리포트", description=…, actions=last updated)` → `ReportFilters` → `ReportKpiStrip` → `ReportsTable`. Fixture-only, no API calls.
+
+**File**: `routes/reports/ReportsPage.tsx`, co-located `ReportsPage.module.css`.
+
+**Sections** (`routes/reports/sections/`):
+
+- `ReportFilters()` — static search/sort/category/region/period controls rendered as non-interactive filter chips.
+- `ReportKpiStrip({ kpis })` — 4-column KPI grid using `KpiTile`.
+- `ReportsTable({ reports })` — `Card` + `DataTable<ReportListItem>` (density `compact`) with title/summary link, region/category `Badge`s, status `Badge`, tags, date. Empty list renders `EmptyState`.
+
+### `reports/ReportDetailPage` (path: `/reports/:id`)
+
+Route-param-driven report detail page. Uses `useParams` to read `id`, calls `getReport(id)` for fixture lookup. Unknown ids render `PageContainer` + `EmptyState` + link back to `/reports`. Known ids render header, AI summary, sticky TOC, Docling-style body excerpt, and right rail.
+
+**File**: `routes/reports/ReportDetailPage.tsx`, co-located `ReportDetailPage.module.css`.
+
+**Sections** (`routes/reports/sections/`):
+
+- `ReportDetailHeader({ report })` — cover placeholder, region/category/status `Badge`s, metadata, static action buttons.
+- `ReportSummary({ report })` — AI summary `Card`, 3 `KpiTile`s, key point list.
+- `ReportToc({ items })` — sticky table-of-contents `Card`.
+- `ReportBody({ report })` — body excerpt `Card` with reading-mode badges and `DataTable<InflationRow>` for the embedded inflation table.
+- `ReportSideRail({ report })` — related tickers, tags, related reports, memo prompt cards.
+
+### `masters/MastersPage` (path: `/masters`)
+
+Static masters list from `wire-masters-learn.jsx` (`WireMasters`). Renders `PageContainer` + `Card` + `DataTable<MasterListItem>` with route links to `/masters/:id`, strategy `Badge`s, AUM, holdings count, latest filing, CAGR.
+
+**File**: `routes/masters/MastersPage.tsx`, co-located `MastersPage.module.css`.
+
+### `masters/MasterDetailPage` (path: `/masters/:id`)
+
+Route-param-driven master detail page. Uses `getMaster(id)` fixture lookup. Unknown ids render `EmptyState` with a link back to `/masters`. Known ids render KPI summary tiles, holdings table, `ChartPlaceholder` for sector/performance, 13F quarterly changes table, principles, and recent changes.
+
+**File**: `routes/masters/MasterDetailPage.tsx`, co-located `MasterDetailPage.module.css`.
+
+### `learn/LearnPage` (path: `/learn`)
+
+Static learning page from `wire-masters-learn.jsx` (`WireLearn`) with three tabs: `입문서·칼럼`, `용어 사전`, `리포트 라이브러리`. Tab state is local `useState<LearnTab>`. Guides use `Card`; glossary and report library use `DataTable`.
+
+**File**: `routes/learn/LearnPage.tsx`, co-located `LearnPage.module.css`.
+
+### `mypage/MyPage` (path: `/mypage`)
+
+Static mypage from `wire-mypage-admin.jsx` (`WireMyPageAll`, excluding admin). Renders identity strip, KPI tiles, todos, watchlist summaries, activity log, locked thesis/reaction memo cards, transaction table, and settings summary table. Form-like settings stay static with no submission state.
+
+**File**: `routes/mypage/MyPage.tsx`, co-located `MyPage.module.css`.
+
 ### Pending routes
 
-- `masters/MastersPage`, `masters/MasterDetailPage`, `reports/ReportsPage`, `reports/ReportDetailPage`, `learn/LearnPage`, `mypage/MyPage` — PR-06b..d.
 - `admin/AdminPage` — deferred out of MVP (see EP-0001 PR-06 split note).
 
 ### `kitchen-sink/KitchenSinkPage` (path: `/_kitchen-sink`)

@@ -1,0 +1,123 @@
+.filterCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.filterTop {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.searchBox {
+  min-width: min(320px, 100%);
+  flex: 1 1 280px;
+  padding: 8px 10px;
+  border: 1px solid var(--hairline);
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.filterLabel {
+  color: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.pillGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid var(--hairline);
+}
+
+.pill {
+  padding: 4px 8px;
+  border: 1px solid var(--hairline);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.6875rem;
+}
+
+.pillActive {
+  background: var(--surface-muted);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .kpiGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .kpiGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.trendPositive {
+  color: var(--positive);
+  font-family: var(--mono);
+}
+
+.titleLink {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.titleLink:hover {
+  color: var(--accent);
+}
+
+.titleText {
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.summary {
+  color: var(--muted);
+  font-size: 0.6875rem;
+  line-height: 1.45;
+}
+
+.meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 0.625rem;
+}
+
+.tagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tag {
+  color: var(--accent);
+  font-size: 0.625rem;
+}
+
+.date {
+  color: var(--muted);
+  font-family: var(--mono);
+}

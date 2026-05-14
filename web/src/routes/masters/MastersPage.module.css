@@ -1,0 +1,30 @@
+.masterLink {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.masterLink:hover {
+  color: var(--accent);
+}
+
+.name {
+  font-weight: 700;
+}
+
+.firm {
+  color: var(--muted);
+  font-size: 0.6875rem;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.mono {
+  font-family: var(--mono);
+}

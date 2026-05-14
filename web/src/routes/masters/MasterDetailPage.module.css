@@ -1,0 +1,67 @@
+.followButton {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+}
+
+.kpiGrid,
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.detailGrid {
+  grid-template-columns: 1fr 1fr;
+}
+
+.monoStrong {
+  font-family: var(--mono);
+  font-weight: 700;
+}
+
+.list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  line-height: 1.8;
+}
+
+.changeList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.changeRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 0.8125rem;
+}
+
+.changeRow:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+@media (max-width: 900px) {
+  .kpiGrid,
+  .detailGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .kpiGrid,
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -128,14 +128,9 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 - [ ] Acceptance: `/mypage` renders all wire sections from fixture; no interactive form state; checklist passes including items 14–16.
 - [ ] Out Of Scope: form submission, account deletion, password change, real subscription/billing wiring.
 
-### PR-06e — `/analysis` hub v2 page-level structure + leftover `wire-remaining.jsx` static content
+### PR-06e — removed after re-evaluation
 
-- [ ] Scope: Only the **non-mobile, non-admin** pieces of `wire-remaining.jsx` that complement PR-06a — primarily `WireEmptyAndError` patterns and `WireApiBudget`/`WireApiBudgetTable` (if those promote to a `/mypage` or `/admin` sub-section, fold into PR-06d/admin instead — re-evaluate before starting). If after PR-06a..d there is nothing meaningful left, **delete this PR entry** rather than padding it.
-- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-remaining.jsx`, prior PR-06a..d outputs.
-- [ ] Required Reuse (C-11): `EmptyState`, `Card`, `DataTable`, `Badge`, `KpiTile` as applicable. If a new generic empty/error pattern repeats, **promote to a primitive** rather than copying it into each route.
-- [ ] Files: TBD — depends on what survives the re-evaluation gate.
-- [ ] Acceptance: Either a concrete deliverable from the re-evaluation, or this PR is removed from the plan. Don't ship a filler PR.
-- [ ] Out Of Scope: `WireMobileHome`, `WireMobileStock` (mobile-specific, defer until mobile is in scope), `WireAnalysisHubV2` (if it duplicates PR-06a, drop it).
+`wire-remaining.jsx` was re-evaluated after PR-06a..d. `WireAnalysisHubV2` duplicates the implemented `/analysis` hub, `WireMobileHome` and `WireMobileStock` are mobile-specific and remain deferred, and `WireApiBudget` is admin/operations-oriented while `/admin` is deferred out of MVP. `WireEmptyAndError` is a state-pattern reference rather than a product route; the reusable primitive already exists as `EmptyState`. Per the PR-06e gate, this entry is removed rather than shipping a filler route.
 
 ### Deferred from MVP: `/admin`
 

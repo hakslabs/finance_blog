@@ -3,6 +3,7 @@ import { AppShell } from "./components/layout/AppShell";
 import { AnalysisPage } from "./routes/analysis/AnalysisPage";
 import { DashboardPage } from "./routes/dashboard/DashboardPage";
 import { LearnPage } from "./routes/learn/LearnPage";
+import { MasterDetailPage } from "./routes/masters/MasterDetailPage";
 import { MastersPage } from "./routes/masters/MastersPage";
 import { AdminPage } from "./routes/admin/AdminPage";
 import { KitchenSinkPage } from "./routes/kitchen-sink/KitchenSinkPage";
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="/analysis" element={<AnalysisPage />} />
         <Route path="/masters" element={<MastersPage />} />
+        <Route path="/masters/:id" element={<MasterDetailPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/reports/:id" element={<ReportDetailPage />} />
         <Route path="/learn" element={<LearnPage />} />
