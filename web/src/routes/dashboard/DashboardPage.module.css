@@ -1,0 +1,17 @@
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 860px) {
+  .pair {
+    grid-template-columns: 1fr;
+  }
+}

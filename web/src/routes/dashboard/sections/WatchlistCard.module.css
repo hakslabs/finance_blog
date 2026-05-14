@@ -1,0 +1,203 @@
+.card {
+  min-width: 0;
+  padding: 0;
+  overflow-x: auto;
+}
+
+.header {
+  composes: headerRowBordered from "./_card.module.css";
+}
+
+.headerLeft {
+  composes: headerLeft from "./_card.module.css";
+}
+
+.title {
+  composes: title from "./_card.module.css";
+}
+
+.count {
+  composes: subtitle from "./_card.module.css";
+}
+
+.legend {
+  font-size: 0.5625rem;
+  color: var(--faint);
+}
+
+.legendDotUp {
+  color: var(--positive);
+}
+
+.legendDotDown {
+  color: var(--negative);
+}
+
+.tableHead {
+  composes: tableHead from "./_table.module.css";
+}
+
+.thGrow {
+  composes: thGrow from "./_table.module.css";
+}
+
+.thFixed {
+  composes: thFixed from "./_table.module.css";
+}
+
+.thSymbol { width: 52px; }
+.thPrice { width: 56px; text-align: right; }
+.thChange { width: 46px; text-align: right; }
+.thMa { width: 24px; text-align: center; }
+.thRsi { width: 44px; text-align: center; }
+.thMemo { width: 56px; text-align: center; }
+.thEvent { width: 76px; }
+
+.row {
+  composes: row from "./_table.module.css";
+}
+
+.symbol {
+  composes: symbol from "./_table.module.css";
+}
+
+.symbolCode {
+  composes: symbolCode from "./_table.module.css";
+}
+
+.symbolName {
+  composes: symbolName from "./_table.module.css";
+}
+
+.sparkUp {
+  stroke: var(--positive);
+}
+
+.sparkDown {
+  stroke: var(--negative);
+}
+
+.cellPrice {
+  composes: cellPrice from "./_table.module.css";
+}
+
+.cellChangePos {
+  composes: cellChangePos from "./_table.module.css";
+}
+
+.cellChangeNeg {
+  composes: cellChangeNeg from "./_table.module.css";
+}
+
+.cellMa {
+  font-size: 0.6875rem;
+  text-align: center;
+  width: 24px;
+  flex-shrink: 0;
+}
+
+.maUp {
+  composes: cellMa;
+  color: var(--positive);
+  font-weight: 700;
+}
+
+.maDown {
+  composes: cellMa;
+  color: var(--negative);
+  font-weight: 700;
+}
+
+.maNeutral {
+  composes: cellMa;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.cellRsi {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 3px;
+  width: 44px;
+  flex-shrink: 0;
+}
+
+.rsiOverbought {
+  composes: cellRsi;
+  color: var(--negative);
+}
+
+.rsiOversold {
+  composes: cellRsi;
+  color: var(--positive);
+}
+
+.rsiNeutral {
+  composes: cellRsi;
+  color: var(--faint);
+}
+
+.rsiDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  flex-shrink: 0;
+}
+
+.rsiDotActive {
+  composes: rsiDot;
+  background: currentColor;
+}
+
+.rsiValue {
+  font-size: 0.59375rem;
+  font-weight: 400;
+}
+
+.rsiValueActive {
+  composes: rsiValue;
+  font-weight: 600;
+}
+
+.cellMemo {
+  font-size: 0.625rem;
+  text-align: center;
+  width: 56px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.memoHasCount {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.memoAdd {
+  color: var(--faint);
+}
+
+.cellEvent {
+  font-size: 0.59375rem;
+  color: var(--faint);
+  width: 76px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.footer {
+  composes: footerRowBordered from "./_card.module.css";
+}
+
+@media (max-width: 520px) {
+  .tableHead {
+    display: none;
+  }
+
+  .row {
+    flex-wrap: wrap;
+  }
+}

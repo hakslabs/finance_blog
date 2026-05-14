@@ -1,0 +1,84 @@
+/* Shared table scaffolding for WatchlistCard + TopMoversCard. */
+/* Compose via `composes: x from "./_table.module.css"`. Section-specific */
+/* column widths stay in the section's own module. */
+
+.tableHead {
+  display: flex;
+  align-items: center;
+  padding: 4px 12px;
+  background: var(--surface-muted);
+  font-size: 0.5625rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.thGrow {
+  flex: 1;
+  min-width: 0;
+}
+
+.thFixed {
+  flex-shrink: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.symbol {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.symbolCode {
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  min-width: 52px;
+  flex-shrink: 0;
+}
+
+.symbolName {
+  font-size: 0.625rem;
+  color: var(--faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cellPrice {
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  text-align: right;
+  width: 56px;
+  flex-shrink: 0;
+}
+
+.cellChange {
+  font-family: var(--mono);
+  font-size: 0.625rem;
+  text-align: right;
+  width: 46px;
+  flex-shrink: 0;
+}
+
+.cellChangePos {
+  composes: cellChange;
+  color: var(--positive);
+}
+
+.cellChangeNeg {
+  composes: cellChange;
+  color: var(--negative);
+}

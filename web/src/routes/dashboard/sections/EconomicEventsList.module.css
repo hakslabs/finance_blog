@@ -1,0 +1,141 @@
+.card {
+  min-width: 0;
+  padding: 0;
+}
+
+.header {
+  composes: headerRowBordered from "./_card.module.css";
+}
+
+.titleBlock {
+  composes: titleBlock from "./_card.module.css";
+}
+
+.title {
+  composes: title from "./_card.module.css";
+}
+
+.subtitle {
+  composes: subtitle from "./_card.module.css";
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.dateBox {
+  width: 34px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.dayName {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.5rem;
+  color: var(--muted);
+  line-height: 1;
+}
+
+.dayNum {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.divider {
+  width: 1px;
+  height: 24px;
+  background: var(--hairline);
+  flex-shrink: 0;
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-size: 0.6875rem;
+  line-height: 1.3;
+  color: var(--ink);
+}
+
+.tags {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 1px;
+  flex-wrap: wrap;
+}
+
+.typeBadge {
+  font-size: 0.53125rem;
+  padding: 0 4px;
+  border: 1px solid;
+  border-radius: 1px;
+}
+
+.typeEarnings {
+  composes: typeBadge;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.typeDividend {
+  composes: typeBadge;
+  color: #7aa84a;
+  border-color: #7aa84a;
+}
+
+.typeMacro {
+  composes: typeBadge;
+  color: var(--faint);
+  border-color: var(--faint);
+}
+
+.importance {
+  display: flex;
+  gap: 1px;
+}
+
+.bar {
+  width: 3px;
+  height: 7px;
+  background: var(--hairline);
+}
+
+.barActive {
+  composes: bar;
+  background: var(--ink);
+}
+
+.holdInfo {
+  font-size: 0.59375rem;
+  color: var(--faint);
+}
+
+.holdInfoStrong {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.memoLink {
+  font-size: 0.59375rem;
+  color: var(--accent);
+}
+
+.checklist {
+  font-size: 0.59375rem;
+  color: var(--negative);
+}

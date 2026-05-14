@@ -9,10 +9,15 @@ Always:
 3. `docs/exec-plans/active/EP-0001-mvp-foundation.md`
 4. `docs/design-docs/core-beliefs.md`
 5. `docs/FRONTEND.md`
-6. `docs/SECURITY.md`
-7. `docs/API.md`
-8. `docs/ENV.md`
-9. `docs/MCP-ROUTING.md`
+6. `docs/FRONTEND-MAP.md` (when editing `web/src/`)
+7. `docs/SECURITY.md`
+8. `docs/API.md`
+9. `docs/ENV.md`
+10. `docs/MCP-ROUTING.md`
+
+Folder-local entry points (read these first when entering that folder):
+
+- `web/AGENTS.md` — short rules + pointer to FRONTEND.md / FRONTEND-MAP.md.
 
 Per PR, load only what that PR's `Required Reading` lists. In particular:
 

@@ -4,7 +4,7 @@ import styles from "./PageContainer.module.css";
 type PageContainerProps = PropsWithChildren<{
   eyebrow?: string;
   title: string;
-  description?: string;
+  description?: ReactNode;
   actions?: ReactNode;
 }>;
 

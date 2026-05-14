@@ -1,0 +1,150 @@
+.card {
+  min-width: 0;
+  padding: 0;
+}
+
+.header {
+  composes: headerRowBordered from "./_card.module.css";
+}
+
+.titleBlock {
+  composes: titleBlock from "./_card.module.css";
+}
+
+.title {
+  composes: title from "./_card.module.css";
+}
+
+.subtitle {
+  composes: subtitle from "./_card.module.css";
+}
+
+.item {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+.top {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.catBadge {
+  padding: 1px 5px;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  border: 1px solid;
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  text-align: center;
+}
+
+.catKr {
+  composes: catBadge;
+  color: #2c6fa5;
+  border-color: #2c6fa5;
+}
+
+.catUs {
+  composes: catBadge;
+  color: #a55b2c;
+  border-color: #a55b2c;
+}
+
+.catMacro {
+  composes: catBadge;
+  color: var(--faint);
+  border-color: var(--faint);
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+}
+
+.newsTitle {
+  font-size: 0.71875rem;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+.meta {
+  margin-top: 1px;
+  font-size: 0.59375rem;
+  color: var(--faint);
+}
+
+.bottom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  padding-left: 50px;
+  flex-wrap: wrap;
+}
+
+.relatedLabel {
+  font-size: 0.59375rem;
+  color: var(--faint);
+}
+
+.relatedTicker {
+  font-family: var(--mono);
+  font-size: 0.59375rem;
+  padding: 0 4px;
+  border: 1px solid var(--hairline);
+  color: var(--muted);
+}
+
+.impact {
+  font-size: 0.59375rem;
+  color: var(--faint);
+  margin-left: 4px;
+}
+
+.impactValue {
+  font-weight: 700;
+  color: var(--positive);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.action {
+  font-size: 0.59375rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.actionHasNote {
+  composes: action;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.actionAddNote {
+  composes: action;
+  color: var(--faint);
+}
+
+.actionSave {
+  composes: action;
+  color: var(--faint);
+}
+
+.footer {
+  composes: footerRowBordered from "./_card.module.css";
+}
+
+@media (max-width: 860px) {
+  .bottom {
+    padding-left: 0;
+  }
+}

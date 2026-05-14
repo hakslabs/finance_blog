@@ -1,0 +1,196 @@
+.card {
+  min-width: 0;
+  padding: 10px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.title {
+  composes: title from "./_card.module.css";
+}
+
+.subtitle {
+  composes: subtitle from "./_card.module.css";
+}
+
+.rule {
+  height: 1px;
+  background: var(--hairline);
+  margin-bottom: 6px;
+}
+
+.layout {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.donutWrap {
+  position: relative;
+  width: 130px;
+  height: 130px;
+  flex-shrink: 0;
+}
+
+.donutHole {
+  fill: var(--bg);
+}
+
+.donutCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.donutCenterLabel {
+  font-size: 0.5625rem;
+  color: var(--faint);
+}
+
+.donutCenterValue {
+  font-family: var(--mono);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.compositionLegend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.legendRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.65625rem;
+}
+
+.legendSwatch {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+}
+
+.legendRowLabel {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legendPercent {
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+.legendAmount {
+  font-family: var(--mono);
+  color: var(--faint);
+  width: 50px;
+  text-align: right;
+}
+
+.holdingsSection {
+  margin-top: 4px;
+}
+
+.holdingsHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.holdingsTitle {
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.holdingsSubtitle {
+  font-size: 0.5625rem;
+  color: var(--faint);
+}
+
+.holdingRow {
+  display: flex;
+  gap: 6px;
+  font-size: 0.65625rem;
+  padding: 3px 0;
+  align-items: center;
+}
+
+.holdingSymbol {
+  font-family: var(--mono);
+  min-width: 48px;
+  font-weight: 600;
+}
+
+.holdingName {
+  flex: 1;
+  color: var(--faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.weightBarOuter {
+  width: 60px;
+  height: 6px;
+  background: var(--hairline);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.weightBarInner {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: var(--ink);
+}
+
+.holdingWeight {
+  font-family: var(--mono);
+  width: 36px;
+  text-align: right;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.holdingChange {
+  font-family: var(--mono);
+  width: 48px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.holdingChangePos {
+  composes: holdingChange;
+  color: var(--positive);
+}
+
+.holdingChangeNeg {
+  composes: holdingChange;
+  color: var(--negative);
+}
+
+@media (max-width: 860px) {
+  .layout {
+    flex-direction: column;
+    align-items: center;
+  }
+}

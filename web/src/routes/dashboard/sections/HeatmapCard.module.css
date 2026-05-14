@@ -1,0 +1,53 @@
+.card {
+  min-width: 0;
+  padding: 10px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.title {
+  composes: title from "./_card.module.css";
+}
+
+.sub {
+  composes: subtitle from "./_card.module.css";
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  grid-auto-rows: 16px;
+  gap: 1px;
+}
+
+.cell {
+  min-height: 0;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 0.5625rem;
+  color: var(--faint);
+}
+
+.legendUp {
+  color: var(--positive);
+}
+
+.legendDown {
+  color: var(--negative);
+  margin-left: 8px;
+}
+
+.viewAll {
+  font-size: 0.625rem;
+  cursor: pointer;
+}

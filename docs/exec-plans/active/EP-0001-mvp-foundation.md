@@ -23,6 +23,7 @@ Per-PR conventions:
 
 Cross-cutting rules:
 
+- Any UI PR (touching `web/src/`) must load `docs/FRONTEND.md` and `docs/FRONTEND-MAP.md`, and its acceptance includes passing the **PR Review Checklist** in `docs/FRONTEND.md`. Update `docs/FRONTEND-MAP.md` in the same PR for any added/renamed/removed file under `web/src/`.
 - Frontend-only PRs use seeded fixtures inline; no API calls.
 - Backend PRs return typed responses with example payloads; no UI changes.
 - Data-path PRs touch one endpoint at a time and must show real values on screen.
@@ -53,33 +54,43 @@ Cross-cutting rules:
 ### PR-03 — Dashboard page (static)
 
 - [ ] Scope: Implement `/` and `/dashboard` from `wire-home.jsx`: `WatchlistCard`, `PortfolioSummaryCard`, `IndicatorStrip`, `EconomicEventsList`, `ActionPrompts`. Hardcoded fixtures imported from `src/fixtures/dashboard.ts`.
-- [ ] Required Reading: `docs/design-docs/wires-inventory.md`, `design/wires-v3/wire-home.jsx`, `design/wires-v3/wires-shared.jsx`, `vercel-labs/agent-skills:react-best-practices`, `vercel-labs/agent-skills:web-design-guidelines`.
+- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `docs/design-docs/wires-inventory.md`, `design/wires-v3/wire-home.jsx`, `design/wires-v3/wires-shared.jsx`, `vercel-labs/agent-skills:react-best-practices`, `vercel-labs/agent-skills:web-design-guidelines`.
 - [ ] Files: `src/routes/dashboard/*`, `src/fixtures/dashboard.ts`.
-- [ ] Acceptance: Dashboard visually matches the wire at the section level; no network calls; fixtures typed.
+- [ ] Acceptance: Dashboard visually matches the wire at the section level; no network calls; fixtures typed; `FRONTEND.md` PR Review Checklist passes.
 - [ ] Out Of Scope: stock detail, portfolio internals, any API call.
+- [ ] Conventions established in this PR (apply to all later UI PRs):
+  - Page-sized routes split into `routes/{route}/sections/*` with one co-located `*.module.css` per section. The page file itself is composition only.
+  - Fixtures use one type per concept (no `A & { ...B fields }` intersections). List-item types include `id: string` for stable React keys.
+  - Pure helpers whose inputs are static (path strings, gauge arcs, etc.) are hoisted to module scope; per-instance deterministic helpers use `useMemo`.
+  - When 3+ sections share byte-identical CSS, lift the class into a `_shared.module.css` under that route's `sections/` and consume via `composes: x from "./_shared.module.css"`. Section-specific tweaks stay local. Current shared modules: `routes/dashboard/sections/_card.module.css`, `_table.module.css`.
+
+#### Watch list (deferred work surfaced by PR-03)
+
+- **Card primitive header expansion** — `Card` only takes `title: string`. Dashboard sections render custom headers inside Card children (h2 + count/badge/description). If the same pattern repeats in PR-04/05/06, promote to a small PR that adds `title: ReactNode`, `description: ReactNode`, `meta: ReactNode` slots to `Card` and migrates existing usages. Do **not** do this preemptively — only when a third+ page shows the same duplication.
 
 ### PR-04 — Stocks list and Stock detail (static)
 
+- [ ] Prerequisite: extend `DataTable` with a `density?: "comfortable" | "compact"` prop (default `"comfortable"`). Compact density: 6px 12px padding, 0.6875rem font, hairline rows. This unblocks reuse from PR-04 onward; dashboard tables (PR-03) stay hand-built since they have non-tabular cells (sparkline, RSI dot, MA arrow). Do this as the first commit of the PR; verify by replacing the stocks list table with `DataTable`.
 - [ ] Scope: `/stocks` list + `/stocks/:symbol` detail using `wire-stock.jsx`, `wire-stock-tabs-a.jsx`, `wire-stock-tabs-b.jsx`. Tabs render with fixture data. Chart area uses `ChartPlaceholder`.
-- [ ] Required Reading: `design/wires-v3/wire-stock.jsx`, `design/wires-v3/wire-stock-tabs-a.jsx`, `design/wires-v3/wire-stock-tabs-b.jsx`, `vercel-labs/agent-skills:react-best-practices`.
+- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-stock.jsx`, `design/wires-v3/wire-stock-tabs-a.jsx`, `design/wires-v3/wire-stock-tabs-b.jsx`, `vercel-labs/agent-skills:react-best-practices`.
 - [ ] Files: `src/routes/stocks/*`, `src/fixtures/stocks.ts`.
-- [ ] Acceptance: `/stocks/AAPL` renders all tabs from fixtures; route param drives the title and fixture lookup.
+- [ ] Acceptance: `/stocks/AAPL` renders all tabs from fixtures; route param drives the title and fixture lookup; `FRONTEND.md` PR Review Checklist passes.
 - [ ] Out Of Scope: real prices, screener/heatmap (PR-06b territory).
 
 ### PR-05 — Portfolio page (static)
 
 - [ ] Scope: `/portfolio` from `wire-portfolio.jsx`: holdings table, transactions table, basic performance summary tile. Fixtures only.
-- [ ] Required Reading: `design/wires-v3/wire-portfolio.jsx`, `vercel-labs/agent-skills:react-best-practices`.
+- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-portfolio.jsx`, `vercel-labs/agent-skills:react-best-practices`.
 - [ ] Files: `src/routes/portfolio/*`, `src/fixtures/portfolio.ts`.
-- [ ] Acceptance: Holdings and transactions render from fixtures; empty state covered.
+- [ ] Acceptance: Holdings and transactions render from fixtures; empty state covered; `FRONTEND.md` PR Review Checklist passes.
 - [ ] Out Of Scope: thesis notes editor, write paths.
 
 ### PR-06 — Remaining static pages
 
 - [ ] Scope: `/analysis`, `/masters`, `/reports`, `/reports/:id`, `/learn`, `/mypage`, `/admin` static implementations from the matching wires. Skeletons are acceptable where the wire is sparse.
-- [ ] Required Reading: `design/wires-v3/wire-analysis.jsx`, `design/wires-v3/wire-masters-learn.jsx`, `design/wires-v3/wire-mypage-admin.jsx`, `design/wires-v3/wire-remaining.jsx`, `vercel-labs/agent-skills:react-best-practices`, `vercel-labs/agent-skills:web-design-guidelines`.
+- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-analysis.jsx`, `design/wires-v3/wire-masters-learn.jsx`, `design/wires-v3/wire-mypage-admin.jsx`, `design/wires-v3/wire-remaining.jsx`, `vercel-labs/agent-skills:react-best-practices`, `vercel-labs/agent-skills:web-design-guidelines`.
 - [ ] Files: route folders for each, fixtures per route.
-- [ ] Acceptance: Every route from `FRONTEND.md` has a non-placeholder page.
+- [ ] Acceptance: Every route from `FRONTEND.md` has a non-placeholder page; `FRONTEND.md` PR Review Checklist passes.
 - [ ] Out Of Scope: screener/heatmap interactivity, login flow (defer).
 
 ### PR-07 — FastAPI scaffold

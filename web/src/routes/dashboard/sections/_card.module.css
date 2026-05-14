@@ -1,0 +1,45 @@
+/* Shared card header pieces consumed via `composes: x from "./_card.module.css"`. */
+/* Only classes whose declarations are byte-identical across 3+ sections live here. */
+/* Section-specific variations stay in the section's own module. */
+
+.title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.subtitle {
+  font-size: 0.625rem;
+  color: var(--faint);
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.headerRowBordered {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.footerRowBordered {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 12px;
+  font-size: 0.625rem;
+  color: var(--faint);
+  border-top: 1px solid var(--hairline);
+  cursor: pointer;
+}

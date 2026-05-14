@@ -1,0 +1,215 @@
+.card {
+  min-width: 0;
+  padding: 10px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.title {
+  composes: title from "./_card.module.css";
+}
+
+.periods {
+  display: flex;
+  gap: 3px;
+}
+
+.periodPill {
+  font-size: 0.625rem;
+  padding: 1px 7px;
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+  color: var(--muted);
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.periodPillActive {
+  composes: periodPill;
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+.rule {
+  height: 1px;
+  background: var(--hairline);
+  margin-bottom: 6px;
+}
+
+.chartArea {
+  position: relative;
+  width: 100%;
+  height: 130px;
+  overflow: hidden;
+}
+
+.svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.gridLine {
+  stroke: var(--hairline);
+  stroke-width: 0.5;
+  stroke-dasharray: 2 3;
+}
+
+.portfolioArea {
+  fill: rgb(42 111 219 / 8%);
+}
+
+.portfolioLine {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.4;
+}
+
+.kospiLine {
+  fill: none;
+  stroke: #2c6fa5;
+  stroke-width: 1.2;
+}
+
+.spxLine {
+  fill: none;
+  stroke: #a55b2c;
+  stroke-width: 1.2;
+}
+
+.legend {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+  font-size: 0.625rem;
+  flex-wrap: wrap;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.legendSwatch {
+  width: 12px;
+  height: 2px;
+  flex-shrink: 0;
+}
+
+.swatchPortfolio {
+  composes: legendSwatch;
+  background: var(--accent);
+}
+
+.swatchKospi {
+  composes: legendSwatch;
+  background: #2c6fa5;
+}
+
+.swatchSpx {
+  composes: legendSwatch;
+  background: #a55b2c;
+}
+
+.legendLabel {
+  color: var(--muted);
+}
+
+.legendValuePos {
+  font-weight: 700;
+  color: var(--positive);
+  margin-left: 3px;
+}
+
+.legendValue {
+  margin-left: 3px;
+}
+
+.contribHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.contribHeading {
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.contribAction {
+  font-size: 0.5625rem;
+  cursor: pointer;
+  color: var(--accent);
+}
+
+.contribRow {
+  display: flex;
+  gap: 6px;
+  font-size: 0.65625rem;
+  padding: 2px 0;
+  align-items: center;
+}
+
+.contribSymbol {
+  font-family: var(--mono);
+  width: 56px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.contribName {
+  width: 60px;
+  color: var(--faint);
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contribReason {
+  flex: 1;
+  font-size: 0.625rem;
+  color: var(--muted);
+  min-width: 0;
+}
+
+.contribValue {
+  font-family: var(--mono);
+  width: 50px;
+  text-align: right;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.contribValuePos {
+  composes: contribValue;
+  color: var(--positive);
+}
+
+.contribValueNeg {
+  composes: contribValue;
+  color: var(--negative);
+}
+
+.learning {
+  margin-top: 6px;
+  padding: 6px 8px;
+  font-size: 0.625rem;
+  line-height: 1.45;
+  background: var(--surface-muted);
+  color: var(--muted);
+}
+
+.learningStrong {
+  color: var(--ink);
+  font-weight: 700;
+}

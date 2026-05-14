@@ -1,0 +1,99 @@
+.card {
+  min-width: 0;
+  padding: 0;
+  overflow-x: auto;
+}
+
+.header {
+  composes: headerRowBordered from "./_card.module.css";
+}
+
+.headerLeft {
+  composes: headerLeft from "./_card.module.css";
+}
+
+.title {
+  composes: title from "./_card.module.css";
+}
+
+.headerRight {
+  composes: subtitle from "./_card.module.css";
+}
+
+.tableHead {
+  composes: tableHead from "./_table.module.css";
+}
+
+.thRank {
+  width: 14px;
+  flex-shrink: 0;
+}
+
+.thGrow {
+  composes: thGrow from "./_table.module.css";
+}
+
+.thFixed {
+  composes: thFixed from "./_table.module.css";
+}
+
+.thPrice { width: 56px; text-align: right; }
+.thChange { width: 46px; text-align: right; }
+.thVol { width: 44px; text-align: right; }
+
+.row {
+  composes: row from "./_table.module.css";
+}
+
+.rank {
+  width: 14px;
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 0.625rem;
+}
+
+.symbol {
+  composes: symbol from "./_table.module.css";
+}
+
+.symbolCode {
+  composes: symbolCode from "./_table.module.css";
+}
+
+.symbolName {
+  composes: symbolName from "./_table.module.css";
+}
+
+.cellPrice {
+  composes: cellPrice from "./_table.module.css";
+}
+
+.cellChangePos {
+  composes: cellChangePos from "./_table.module.css";
+}
+
+.cellChangeNeg {
+  composes: cellChangeNeg from "./_table.module.css";
+}
+
+.cellVol {
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  text-align: right;
+  width: 44px;
+  color: var(--faint);
+  flex-shrink: 0;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 12px;
+  font-size: 0.625rem;
+  color: var(--faint);
+  border-top: 1px solid var(--hairline);
+}
+
+.footerAction {
+  cursor: pointer;
+}

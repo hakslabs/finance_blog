@@ -1,0 +1,251 @@
+.fgCard {
+  min-width: 0;
+  padding: 10px;
+}
+
+.fgHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.fgHeaderTitle {
+  margin: 0;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.fgHeaderMeta {
+  font-size: 0.5625rem;
+  color: var(--faint);
+}
+
+.fgGauges {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.fgHalf {
+  flex: 1;
+  padding: 4px 6px;
+}
+
+.fgHalfFirst {
+  composes: fgHalf;
+  border-right: 1px solid var(--hairline);
+}
+
+.fgSubtext {
+  margin-top: 4px;
+  font-size: 0.59375rem;
+  line-height: 1.4;
+  color: var(--faint);
+  text-align: center;
+}
+
+/* ── SVG gauge ─────────────────────────────────────────────────── */
+
+.gaugeWrap {
+  position: relative;
+  width: 200px;
+  height: 116px;
+}
+
+.gaugeSvg {
+  display: block;
+}
+
+.gaugeValue {
+  position: absolute;
+  bottom: 6px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  pointer-events: none;
+}
+
+.gaugeNumber {
+  font-family: var(--mono);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.gaugeLabel {
+  font-size: 0.625rem;
+  font-weight: 600;
+}
+
+.gaugeMarketLabel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  font-size: 0.625rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.needle {
+  stroke: var(--ink);
+  stroke-width: 1.6;
+}
+
+.needleHub {
+  fill: var(--ink);
+}
+
+/* ── Macro indicator grid ──────────────────────────────────────── */
+
+.macroCard {
+  min-width: 0;
+  padding: 0;
+}
+
+.macroHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.macroHeaderTitle {
+  margin: 0;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.macroHeaderTime {
+  font-size: 0.5625rem;
+  color: var(--faint);
+}
+
+.macroGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.macroCell {
+  padding: 8px 12px;
+  border-right: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.macroCell:nth-child(3n) {
+  border-right: none;
+}
+
+.macroCell:nth-child(n + 4) {
+  border-bottom: none;
+}
+
+.macroCellTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.macroCellLabel {
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.macroCellLocalName {
+  font-size: 0.5625rem;
+  color: var(--muted);
+}
+
+.macroCellValue {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.macroValueNum {
+  font-family: var(--mono);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.macroChangePos {
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  color: var(--positive);
+}
+
+.macroChangeNeg {
+  composes: macroChangePos;
+  color: var(--negative);
+}
+
+.macroSpark {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.sparkUp {
+  stroke: var(--positive);
+}
+
+.sparkDown {
+  stroke: var(--negative);
+}
+
+@media (max-width: 860px) {
+  .macroGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .macroCell:nth-child(3n) {
+    border-right: 1px solid var(--hairline);
+  }
+
+  .macroCell:nth-child(2n) {
+    border-right: none;
+  }
+
+  .macroCell:nth-child(n + 4) {
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .macroCell:nth-last-child(-n + 2) {
+    border-bottom: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .fgGauges {
+    flex-direction: column;
+  }
+
+  .fgHalf,
+  .fgHalfFirst {
+    width: 100%;
+  }
+
+  .fgHalfFirst {
+    border-right: 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .gaugeWrap {
+    margin: 0 auto;
+  }
+
+  .macroGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .macroCell {
+    border-right: none;
+  }
+}
