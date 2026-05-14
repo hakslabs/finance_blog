@@ -103,30 +103,30 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 
 ### PR-06b — `/reports` list and `/reports/:id` detail (static)
 
-- [ ] Scope: `/reports` list and `/reports/:id` detail from `wire-masters-learn.jsx` (the `WireReports` and `WireReportDetail` functions). Mirror the `/stocks` ↔ `/stocks/:symbol` PR-04 structure: list page is a `DataTable`, detail page is route-param-driven with `getReport(id)` fixture lookup.
-- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-masters-learn.jsx` (WireReports + WireReportDetail only), `web/src/routes/stocks/` (list+detail reference), `vercel-labs/agent-skills:react-best-practices`.
-- [ ] Required Reuse (C-11): `PageContainer`, `Card`, `DataTable` (report list, with cell renderers for date/badge/title), `Badge` (report type/status), `EmptyState` (unknown id on detail; empty list state), `KpiTile` if the detail summary uses label/value tiles.
-- [ ] Files: `web/src/routes/reports/ReportsPage.tsx`, `web/src/routes/reports/ReportDetailPage.tsx`, co-located `*.module.css`, `web/src/routes/reports/sections/*`, `web/src/fixtures/reports.ts`.
-- [ ] Acceptance: `/reports` renders fixture list via `DataTable`; `/reports/:id` resolves fixture or shows `EmptyState` with back link; checklist passes including items 14–16.
-- [ ] Out Of Scope: write paths (creating/editing reports), markdown rendering pipeline.
+- [x] Scope: `/reports` list and `/reports/:id` detail from `wire-masters-learn.jsx` (the `WireReports` and `WireReportDetail` functions). Mirror the `/stocks` ↔ `/stocks/:symbol` PR-04 structure: list page is a `DataTable`, detail page is route-param-driven with `getReport(id)` fixture lookup.
+- [x] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-masters-learn.jsx` (WireReports + WireReportDetail only), `web/src/routes/stocks/` (list+detail reference), `vercel-labs/agent-skills:react-best-practices`.
+- [x] Required Reuse (C-11): `PageContainer`, `Card`, `DataTable` (report list, with cell renderers for date/badge/title), `Badge` (report type/status), `EmptyState` (unknown id on detail; empty list state), `KpiTile` if the detail summary uses label/value tiles.
+- [x] Files: `web/src/routes/reports/ReportsPage.tsx`, `web/src/routes/reports/ReportDetailPage.tsx`, co-located `*.module.css`, `web/src/routes/reports/sections/*`, `web/src/fixtures/reports.ts`.
+- [x] Acceptance: `/reports` renders fixture list via `DataTable`; `/reports/:id` resolves fixture or shows `EmptyState` with back link; checklist passes including items 14–16.
+- [x] Out Of Scope: write paths (creating/editing reports), markdown rendering pipeline.
 
 ### PR-06c — `/masters` list, `/masters/:id` detail, `/learn` (static)
 
-- [ ] Scope: `/masters` (거장 목록), `/masters/:id` (거장 상세: 포트폴리오, 철학, 13F 분기 변화), `/learn` (용어사전 + 가이드 + 리포트 라이브러리) from `wire-masters-learn.jsx` (`WireMasters`, `WireLearn`, and the masters-detail body).
-- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-masters-learn.jsx` (excluding WireReports/WireReportDetail which are PR-06b), `web/src/routes/stocks/StockDetailPage.tsx` (sticky-sidebar + tab pattern), `vercel-labs/agent-skills:react-best-practices`.
-- [ ] Required Reuse (C-11): `PageContainer`, `Card`, `Section`, `DataTable` (masters list, 13F holdings table, glossary terms list), `Badge` (master strategy tags, content type), `EmptyState`, `KpiTile` (masters detail summary stats), `ChartPlaceholder` (portfolio composition placeholder).
-- [ ] Files: `web/src/routes/masters/MastersPage.tsx`, `web/src/routes/masters/MasterDetailPage.tsx`, `web/src/routes/learn/LearnPage.tsx`, co-located `*.module.css`, `web/src/routes/{masters,learn}/sections/*`, `web/src/fixtures/masters.ts`, `web/src/fixtures/learn.ts`.
-- [ ] Acceptance: `/masters` renders fixture list via `DataTable`; `/masters/:id` resolves fixture (at least Warren Buffett + Ray Dalio with detail) or shows `EmptyState`; `/learn` renders glossary + guides + report library sections from fixture; checklist passes including items 14–16.
-- [ ] Out Of Scope: real 13F filings pipeline, learning progress tracking, search across glossary.
+- [x] Scope: `/masters` (거장 목록), `/masters/:id` (거장 상세: 포트폴리오, 철학, 13F 분기 변화), `/learn` (용어사전 + 가이드 + 리포트 라이브러리) from `wire-masters-learn.jsx` (`WireMasters`, `WireLearn`, and the masters-detail body).
+- [x] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-masters-learn.jsx` (excluding WireReports/WireReportDetail which are PR-06b), `web/src/routes/stocks/StockDetailPage.tsx` (sticky-sidebar + tab pattern), `vercel-labs/agent-skills:react-best-practices`.
+- [x] Required Reuse (C-11): `PageContainer`, `Card`, `Section`, `DataTable` (masters list, 13F holdings table, glossary terms list), `Badge` (master strategy tags, content type), `EmptyState`, `KpiTile` (masters detail summary stats), `ChartPlaceholder` (portfolio composition placeholder).
+- [x] Files: `web/src/routes/masters/MastersPage.tsx`, `web/src/routes/masters/MasterDetailPage.tsx`, `web/src/routes/learn/LearnPage.tsx`, co-located `*.module.css`, `web/src/routes/{masters,learn}/sections/*`, `web/src/fixtures/masters.ts`, `web/src/fixtures/learn.ts`.
+- [x] Acceptance: `/masters` renders fixture list via `DataTable`; `/masters/:id` resolves fixture (at least Warren Buffett + Ray Dalio with detail) or shows `EmptyState`; `/learn` renders glossary + guides + report library sections from fixture; checklist passes including items 14–16.
+- [x] Out Of Scope: real 13F filings pipeline, learning progress tracking, search across glossary.
 
 ### PR-06d — `/mypage` (static)
 
-- [ ] Scope: `/mypage` from `wire-mypage-admin.jsx` (the `WireMyPageAll` body only — exclude admin). Profile summary, settings sections, subscription/usage panel as fixture-driven static UI.
-- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-mypage-admin.jsx` (mypage body only, lines 284+), `vercel-labs/agent-skills:react-best-practices`, `vercel-labs/agent-skills:web-design-guidelines`.
-- [ ] Required Reuse (C-11): `PageContainer`, `Card`, `Section`, `DataTable` (활동 로그 / 연결된 계정 등 리스트 패턴), `KpiTile` (사용량/구독 요약), `Badge` (연결 상태, 구독 등급), `EmptyState`. Form inputs stay non-interactive in this PR — render as styled `<input>` / `<button>` without state, since wiring belongs to a later PR.
-- [ ] Files: `web/src/routes/mypage/MyPage.tsx`, co-located `*.module.css`, `web/src/routes/mypage/sections/*`, `web/src/fixtures/mypage.ts`.
-- [ ] Acceptance: `/mypage` renders all wire sections from fixture; no interactive form state; checklist passes including items 14–16.
-- [ ] Out Of Scope: form submission, account deletion, password change, real subscription/billing wiring.
+- [x] Scope: `/mypage` from `wire-mypage-admin.jsx` (the `WireMyPageAll` body only — exclude admin). Profile summary, settings sections, subscription/usage panel as fixture-driven static UI.
+- [x] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-mypage-admin.jsx` (mypage body only, lines 284+), `vercel-labs/agent-skills:react-best-practices`, `vercel-labs/agent-skills:web-design-guidelines`.
+- [x] Required Reuse (C-11): `PageContainer`, `Card`, `Section`, `DataTable` (활동 로그 / 연결된 계정 등 리스트 패턴), `KpiTile` (사용량/구독 요약), `Badge` (연결 상태, 구독 등급), `EmptyState`. Form inputs stay non-interactive in this PR — render as styled `<input>` / `<button>` without state, since wiring belongs to a later PR.
+- [x] Files: `web/src/routes/mypage/MyPage.tsx`, co-located `*.module.css`, `web/src/routes/mypage/sections/*`, `web/src/fixtures/mypage.ts`.
+- [x] Acceptance: `/mypage` renders all wire sections from fixture; no interactive form state; checklist passes including items 14–16.
+- [x] Out Of Scope: form submission, account deletion, password change, real subscription/billing wiring.
 
 ### PR-06e — removed after re-evaluation
 
@@ -138,11 +138,11 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 
 ### PR-07 — FastAPI scaffold
 
-- [ ] Scope: `api/` folder with FastAPI app, `/health`, one typed example endpoint (`/v1/dashboard/example`), CORS for local dev, settings via env, request/response models in Pydantic, local run instructions.
-- [ ] Required Reading: `ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/API.md`, `docs/design-docs/repo-layout.md`, `docs/references/fastapi-llms.txt`.
-- [ ] Files: `api/app/main.py`, `api/app/models/*`, `api/.env.example`, `api/README.md`.
-- [ ] Acceptance: `uvicorn` boots; `/health` returns 200; example endpoint returns typed sample.
-- [ ] Out Of Scope: any DB connection, any real data source.
+- [x] Scope: `api/` folder with FastAPI app, `/health`, one typed example endpoint (`/v1/dashboard/example`), CORS for local dev, settings via env, request/response models in Pydantic, local run instructions.
+- [x] Required Reading: `ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/API.md`, `docs/design-docs/repo-layout.md`, `docs/references/fastapi-llms.txt`.
+- [x] Files: `api/app/main.py`, `api/app/models/*`, `api/.env.example`, `api/README.md`.
+- [x] Acceptance: `uvicorn` boots; `/health` returns 200; example endpoint returns typed sample.
+- [x] Out Of Scope: any DB connection, any real data source.
 
 ### PR-08 — Supabase minimum schema and RLS
 

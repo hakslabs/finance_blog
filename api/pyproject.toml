@@ -1,0 +1,20 @@
+[project]
+name = "finance-lab-api"
+version = "0.1.0"
+description = "FastAPI backend for Finance_lab."
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi>=0.124.0",
+  "pydantic-settings>=2.12.0",
+  "uvicorn[standard]>=0.38.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.28.0",
+  "pytest>=9.0.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["app/tests"]

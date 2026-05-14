@@ -67,6 +67,49 @@ Endpoints that serve cached external data may return `stale: true` alongside the
 - Purpose: liveness check, used by deploy and uptime probes.
 - 200 response: `{ "status": "ok", "version": "0.1.0" }`.
 
+### `GET /v1/dashboard/example` _(PR-07)_
+
+- Auth: none.
+- Purpose: typed sample payload for frontend/backend contract checks before Supabase or real market data is wired.
+- Query params: none.
+
+200 response:
+
+```json
+{
+  "as_of": "2026-05-14T00:00:00Z",
+  "portfolio": {
+    "total_value": 125430.5,
+    "currency": "USD",
+    "day_change": 842.31,
+    "day_change_pct": 0.68
+  },
+  "watchlist": [
+    {
+      "symbol": "AAPL",
+      "name": "Apple Inc.",
+      "exchange": "NASDAQ",
+      "last_price": 187.42,
+      "change_pct": 0.66
+    }
+  ],
+  "events": [
+    {
+      "id": "fomc-minutes",
+      "title": "FOMC minutes",
+      "starts_at": "2026-05-14T18:00:00Z",
+      "region": "US",
+      "importance": "high"
+    }
+  ]
+}
+```
+
+Notes:
+
+- This endpoint is an integration stub only. It is replaced by resource-specific authenticated endpoints from PR-09 onward.
+- The shape intentionally mirrors dashboard concepts without becoming the long-term dashboard endpoint.
+
 ### `GET /v1/watchlists/me` _(PR-09)_
 
 - Auth: required.
