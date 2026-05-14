@@ -70,12 +70,12 @@ Cross-cutting rules:
 
 ### PR-04 — Stocks list and Stock detail (static)
 
-- [ ] Prerequisite: extend `DataTable` with a `density?: "comfortable" | "compact"` prop (default `"comfortable"`). Compact density: 6px 12px padding, 0.6875rem font, hairline rows. This unblocks reuse from PR-04 onward; dashboard tables (PR-03) stay hand-built since they have non-tabular cells (sparkline, RSI dot, MA arrow). Do this as the first commit of the PR; verify by replacing the stocks list table with `DataTable`.
-- [ ] Scope: `/stocks` list + `/stocks/:symbol` detail using `wire-stock.jsx`, `wire-stock-tabs-a.jsx`, `wire-stock-tabs-b.jsx`. Tabs render with fixture data. Chart area uses `ChartPlaceholder`.
-- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-stock.jsx`, `design/wires-v3/wire-stock-tabs-a.jsx`, `design/wires-v3/wire-stock-tabs-b.jsx`, `vercel-labs/agent-skills:react-best-practices`.
-- [ ] Files: `src/routes/stocks/*`, `src/fixtures/stocks.ts`.
-- [ ] Acceptance: `/stocks/AAPL` renders all tabs from fixtures; route param drives the title and fixture lookup; `FRONTEND.md` PR Review Checklist passes.
-- [ ] Out Of Scope: real prices, screener/heatmap (PR-06b territory).
+- [x] Prerequisite: extend `DataTable` with a `density?: "comfortable" | "compact"` prop (default `"comfortable"`). Compact density: 6px 12px padding, 0.6875rem font, hairline rows. This unblocks reuse from PR-04 onward; dashboard tables (PR-03) stay hand-built since they have non-tabular cells (sparkline, RSI dot, MA arrow). Do this as the first commit of the PR; verify by replacing the stocks list table with `DataTable`.
+- [x] Scope: `/stocks` list + `/stocks/:symbol` detail using `wire-stock.jsx`, `wire-stock-tabs-a.jsx`, `wire-stock-tabs-b.jsx`. Tabs render with fixture data. Chart area uses `ChartPlaceholder`.
+- [x] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-stock.jsx`, `design/wires-v3/wire-stock-tabs-a.jsx`, `design/wires-v3/wire-stock-tabs-b.jsx`, `vercel-labs/agent-skills:react-best-practices`.
+- [x] Files: `src/routes/stocks/*`, `src/fixtures/stocks.ts`.
+- [x] Acceptance: `/stocks/AAPL` renders all tabs from fixtures; route param drives the title and fixture lookup; `FRONTEND.md` PR Review Checklist passes.
+- [x] Out Of Scope: real prices, screener/heatmap (PR-06b territory).
 
 ### PR-05 — Portfolio page (static)
 
