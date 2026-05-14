@@ -79,11 +79,11 @@ Cross-cutting rules:
 
 ### PR-05 — Portfolio page (static)
 
-- [ ] Scope: `/portfolio` from `wire-portfolio.jsx`: holdings table, transactions table, basic performance summary tile. Fixtures only.
-- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-portfolio.jsx`, `vercel-labs/agent-skills:react-best-practices`.
-- [ ] Files: `src/routes/portfolio/*`, `src/fixtures/portfolio.ts`.
-- [ ] Acceptance: Holdings and transactions render from fixtures; empty state covered; `FRONTEND.md` PR Review Checklist passes.
-- [ ] Out Of Scope: thesis notes editor, write paths.
+- [x] Scope: `/portfolio` from `wire-portfolio.jsx`: holdings table, transactions table, basic performance summary tile. Fixtures only.
+- [x] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-portfolio.jsx`, `vercel-labs/agent-skills:react-best-practices`.
+- [x] Files: `src/routes/portfolio/*`, `src/fixtures/portfolio.ts`.
+- [x] Acceptance: Holdings and transactions render from fixtures; empty state covered; `FRONTEND.md` PR Review Checklist passes.
+- [x] Out Of Scope: thesis notes editor, write paths.
 
 ### PR-06 — Remaining static pages
 
