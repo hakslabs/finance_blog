@@ -1,4 +1,5 @@
 import { Card } from "../../../components/primitives/Card";
+import { Section } from "../../../components/primitives/Section";
 import { ChartPlaceholder } from "../../../components/primitives/ChartPlaceholder";
 import {
   DataTable,
@@ -30,6 +31,9 @@ const DIR_DOT_CLASS: Record<RecentSignal["direction"], string> = {
   neutral: styles.dotNeutral,
 };
 
+const STYLE_GROWTH = STYLE_ROTATION.filter((c) => c.style === "그로스");
+const STYLE_VALUE = STYLE_ROTATION.filter((c) => c.style === "밸류");
+
 const sectorColumns: DataTableColumn<SectorReturn>[] = [
   { key: "sector", header: "섹터", render: (r) => r.sector },
   {
@@ -42,6 +46,29 @@ const sectorColumns: DataTableColumn<SectorReturn>[] = [
         {r.return}%
       </span>
     ),
+  },
+];
+
+const signalColumns: DataTableColumn<RecentSignal>[] = [
+  {
+    key: "ticker",
+    header: "종목",
+    render: (r) => (
+      <span className={styles.signalTickerCell}>
+        <span
+          className={`${styles.dot} ${DIR_DOT_CLASS[r.direction]}`}
+          aria-hidden="true"
+        />
+        <span className={styles.signalTicker}>{r.ticker}</span>
+      </span>
+    ),
+  },
+  { key: "signal", header: "신호", render: (r) => r.signal },
+  {
+    key: "time",
+    header: "시각",
+    align: "right",
+    render: (r) => <span className={styles.signalTime}>{r.time}</span>,
   },
 ];
 
@@ -100,64 +127,54 @@ export function MarketOverviewSection() {
             <span className={styles.styleHeader}>대형</span>
             <span className={styles.styleHeader}>소형</span>
             <span className={styles.styleHeader}>그로스</span>
-            {STYLE_ROTATION.filter((c) => c.style === "그로스")
-              .sort((a) => (a.size === "대형" ? -1 : 1))
-              .map((c) => (
-                <span
-                  key={c.id}
-                  className={`${styles.styleCell} ${c.up ? styles.styleCellPos : styles.styleCellNeg}`}
-                >
-                  {c.value}
-                </span>
-              ))}
+            {STYLE_GROWTH.map((c) => (
+              <span
+                key={c.id}
+                className={`${styles.styleCell} ${c.up ? styles.styleCellPos : styles.styleCellNeg}`}
+              >
+                {c.value}
+              </span>
+            ))}
             <span className={styles.styleHeader}>밸류</span>
-            {STYLE_ROTATION.filter((c) => c.style === "밸류")
-              .sort((a) => (a.size === "대형" ? -1 : 1))
-              .map((c) => (
-                <span
-                  key={c.id}
-                  className={`${styles.styleCell} ${c.up ? styles.styleCellPos : styles.styleCellNeg}`}
-                >
-                  {c.value}
-                </span>
-              ))}
+            {STYLE_VALUE.map((c) => (
+              <span
+                key={c.id}
+                className={`${styles.styleCell} ${c.up ? styles.styleCellPos : styles.styleCellNeg}`}
+              >
+                {c.value}
+              </span>
+            ))}
           </div>
           <p className={styles.styleNote}>이번 분기 대형 그로스 우위</p>
         </Card>
       </div>
 
-      <h2 className={styles.toolsHeading}>분석 도구</h2>
-      <div className={styles.toolsGrid}>
-        {ANALYSIS_TOOLS.map((tool) => (
-          <Card key={tool.id} className={styles.toolCard}>
-            <div className={styles.toolIcon} aria-hidden="true">
-              {tool.icon}
-            </div>
-            <div className={styles.toolTitle}>{tool.title}</div>
-            <div className={styles.toolDesc}>{tool.description}</div>
-            <div className={styles.toolOpen}>열기 →</div>
-          </Card>
-        ))}
-      </div>
+      <Section title="분석 도구">
+        <div className={styles.toolsGrid}>
+          {ANALYSIS_TOOLS.map((tool) => (
+            <Card key={tool.id} className={styles.toolCard}>
+              <div className={styles.toolIcon} aria-hidden="true">
+                {tool.icon}
+              </div>
+              <div className={styles.toolTitle}>{tool.title}</div>
+              <div className={styles.toolDesc}>{tool.description}</div>
+              <div className={styles.toolOpen}>열기 →</div>
+            </Card>
+          ))}
+        </div>
+      </Section>
 
       <div className={styles.bottomGrid}>
         <Card
           title="최근 기술적 신호"
           actions={<Badge tone="neutral">관심종목 + 보유종목</Badge>}
         >
-          <ul className={styles.signalList}>
-            {RECENT_SIGNALS.map((s) => (
-              <li key={s.id} className={styles.signalRow}>
-                <span
-                  className={`${styles.dot} ${DIR_DOT_CLASS[s.direction]}`}
-                  aria-hidden="true"
-                />
-                <span className={styles.signalTicker}>{s.ticker}</span>
-                <span className={styles.signalText}>{s.signal}</span>
-                <span className={styles.signalTime}>{s.time}</span>
-              </li>
-            ))}
-          </ul>
+          <DataTable<RecentSignal>
+            columns={signalColumns}
+            rows={RECENT_SIGNALS}
+            getRowKey={(r) => r.id}
+            density="compact"
+          />
         </Card>
 
         <Card title="저장한 스크린">

@@ -71,23 +71,17 @@
 }
 
 .styleCellPos {
-  background: rgba(31, 138, 91, 0.08);
+  background: color-mix(in srgb, var(--positive) 8%, transparent);
 }
 
 .styleCellNeg {
-  background: rgba(211, 65, 65, 0.08);
+  background: color-mix(in srgb, var(--negative) 8%, transparent);
 }
 
 .styleNote {
   font-size: 0.625rem;
   color: var(--faint);
   margin: 8px 0 0;
-}
-
-.toolsHeading {
-  margin: 4px 0 0;
-  font-size: 0.8125rem;
-  font-weight: 600;
 }
 
 .toolsGrid {
@@ -153,20 +147,10 @@
   }
 }
 
-.signalList {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 0.6875rem;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.signalRow {
-  display: flex;
+.signalTickerCell {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .dot {
@@ -191,17 +175,11 @@
 
 .signalTicker {
   font-family: var(--mono);
-  width: 70px;
   font-weight: 600;
-}
-
-.signalText {
-  flex: 1;
 }
 
 .signalTime {
   font-family: var(--mono);
-  font-size: 0.625rem;
   color: var(--faint);
 }
 
