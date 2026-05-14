@@ -85,13 +85,61 @@ Cross-cutting rules:
 - [x] Acceptance: Holdings and transactions render from fixtures; empty state covered; `FRONTEND.md` PR Review Checklist passes.
 - [x] Out Of Scope: thesis notes editor, write paths.
 
-### PR-06 — Remaining static pages
+### PR-06 — Remaining static pages (split into PR-06a..e)
 
-- [ ] Scope: `/analysis`, `/masters`, `/reports`, `/reports/:id`, `/learn`, `/mypage`, `/admin` static implementations from the matching wires. Skeletons are acceptable where the wire is sparse.
-- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-analysis.jsx`, `design/wires-v3/wire-masters-learn.jsx`, `design/wires-v3/wire-mypage-admin.jsx`, `design/wires-v3/wire-remaining.jsx`, `vercel-labs/agent-skills:react-best-practices`, `vercel-labs/agent-skills:web-design-guidelines`.
-- [ ] Files: route folders for each, fixtures per route.
-- [ ] Acceptance: Every route from `FRONTEND.md` has a non-placeholder page; `FRONTEND.md` PR Review Checklist passes.
-- [ ] Out Of Scope: screener/heatmap interactivity, login flow (defer).
+The original PR-06 lumped 7 routes from 4 wire files (~2,730 lines) into one PR. That is unreviewable and is the exact volume at which rule C-11 (reuse-first) breaks down — too many tables/cards/badges spread across too many routes. PR-06 is therefore split into five sub-PRs by route group, each sized comparably to PR-04 or PR-05. Admin is deferred from MVP (see note after PR-06e).
+
+Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primitive requires documenting the structural-capability blocker in the PR description before implementation.
+
+### PR-06a — `/analysis` (static, 8-tab hub)
+
+- [ ] Scope: `/analysis` from `design/wires-v3/wire-analysis.jsx`. Eight tabs: 시장 한눈에 / 시장 심리 / 기술적 분석 / 재무 분석 / 퀀트 팩터 / 적정주가 계산 / 섹터 흐름 / 신호 알림. Tab UI uses the same `<button>` + `Record<Tab, …>` pattern as `/stocks/:symbol`.
+- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-analysis.jsx`, `web/src/routes/stocks/StockDetailPage.tsx` (tab pattern reference), `vercel-labs/agent-skills:react-best-practices`.
+- [ ] Required Reuse (C-11): `PageContainer`, `Card`, `Section`, `DataTable` (섹터 로테이션 표, 신호 알림 표), `KpiTile` (시장 지표 strip), `Badge` (시그널 강도/방향, 섹터 라벨), `ChartPlaceholder` (`AreaChart`/`Gauge` placeholders), `EmptyState`. F&G-style gauges may reuse the dashboard `IndicatorStrip` gauge primitive — do not hand-roll new SVG arcs without checking that first.
+- [ ] Files: `web/src/routes/analysis/AnalysisPage.tsx`, `web/src/routes/analysis/AnalysisPage.module.css`, `web/src/routes/analysis/sections/*` (one section per tab body), `web/src/fixtures/analysis.ts`.
+- [ ] Skeleton vs full per tab: 시장 한눈에 / 기술적 분석 / 재무 분석 / 신호 알림 = **full** (wire is dense). 시장 심리 / 퀀트 팩터 / 적정주가 / 섹터 흐름 = **skeleton OK** (single Card + ChartPlaceholder + 2–3 KPI rows from fixture). Each skeleton tab must still emit real fixture data, not placeholder text.
+- [ ] Acceptance: All 8 tabs render from `fixtures/analysis.ts`; tab state preserved via `useState`; `FRONTEND.md` PR Review Checklist passes including items 14–16 (primitive reuse).
+- [ ] Out Of Scope: real chart implementations, signal alert subscription wiring.
+
+### PR-06b — `/reports` list and `/reports/:id` detail (static)
+
+- [ ] Scope: `/reports` list and `/reports/:id` detail from `wire-masters-learn.jsx` (the `WireReports` and `WireReportDetail` functions). Mirror the `/stocks` ↔ `/stocks/:symbol` PR-04 structure: list page is a `DataTable`, detail page is route-param-driven with `getReport(id)` fixture lookup.
+- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-masters-learn.jsx` (WireReports + WireReportDetail only), `web/src/routes/stocks/` (list+detail reference), `vercel-labs/agent-skills:react-best-practices`.
+- [ ] Required Reuse (C-11): `PageContainer`, `Card`, `DataTable` (report list, with cell renderers for date/badge/title), `Badge` (report type/status), `EmptyState` (unknown id on detail; empty list state), `KpiTile` if the detail summary uses label/value tiles.
+- [ ] Files: `web/src/routes/reports/ReportsPage.tsx`, `web/src/routes/reports/ReportDetailPage.tsx`, co-located `*.module.css`, `web/src/routes/reports/sections/*`, `web/src/fixtures/reports.ts`.
+- [ ] Acceptance: `/reports` renders fixture list via `DataTable`; `/reports/:id` resolves fixture or shows `EmptyState` with back link; checklist passes including items 14–16.
+- [ ] Out Of Scope: write paths (creating/editing reports), markdown rendering pipeline.
+
+### PR-06c — `/masters` list, `/masters/:id` detail, `/learn` (static)
+
+- [ ] Scope: `/masters` (거장 목록), `/masters/:id` (거장 상세: 포트폴리오, 철학, 13F 분기 변화), `/learn` (용어사전 + 가이드 + 리포트 라이브러리) from `wire-masters-learn.jsx` (`WireMasters`, `WireLearn`, and the masters-detail body).
+- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-masters-learn.jsx` (excluding WireReports/WireReportDetail which are PR-06b), `web/src/routes/stocks/StockDetailPage.tsx` (sticky-sidebar + tab pattern), `vercel-labs/agent-skills:react-best-practices`.
+- [ ] Required Reuse (C-11): `PageContainer`, `Card`, `Section`, `DataTable` (masters list, 13F holdings table, glossary terms list), `Badge` (master strategy tags, content type), `EmptyState`, `KpiTile` (masters detail summary stats), `ChartPlaceholder` (portfolio composition placeholder).
+- [ ] Files: `web/src/routes/masters/MastersPage.tsx`, `web/src/routes/masters/MasterDetailPage.tsx`, `web/src/routes/learn/LearnPage.tsx`, co-located `*.module.css`, `web/src/routes/{masters,learn}/sections/*`, `web/src/fixtures/masters.ts`, `web/src/fixtures/learn.ts`.
+- [ ] Acceptance: `/masters` renders fixture list via `DataTable`; `/masters/:id` resolves fixture (at least Warren Buffett + Ray Dalio with detail) or shows `EmptyState`; `/learn` renders glossary + guides + report library sections from fixture; checklist passes including items 14–16.
+- [ ] Out Of Scope: real 13F filings pipeline, learning progress tracking, search across glossary.
+
+### PR-06d — `/mypage` (static)
+
+- [ ] Scope: `/mypage` from `wire-mypage-admin.jsx` (the `WireMyPageAll` body only — exclude admin). Profile summary, settings sections, subscription/usage panel as fixture-driven static UI.
+- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-mypage-admin.jsx` (mypage body only, lines 284+), `vercel-labs/agent-skills:react-best-practices`, `vercel-labs/agent-skills:web-design-guidelines`.
+- [ ] Required Reuse (C-11): `PageContainer`, `Card`, `Section`, `DataTable` (활동 로그 / 연결된 계정 등 리스트 패턴), `KpiTile` (사용량/구독 요약), `Badge` (연결 상태, 구독 등급), `EmptyState`. Form inputs stay non-interactive in this PR — render as styled `<input>` / `<button>` without state, since wiring belongs to a later PR.
+- [ ] Files: `web/src/routes/mypage/MyPage.tsx`, co-located `*.module.css`, `web/src/routes/mypage/sections/*`, `web/src/fixtures/mypage.ts`.
+- [ ] Acceptance: `/mypage` renders all wire sections from fixture; no interactive form state; checklist passes including items 14–16.
+- [ ] Out Of Scope: form submission, account deletion, password change, real subscription/billing wiring.
+
+### PR-06e — `/analysis` hub v2 page-level structure + leftover `wire-remaining.jsx` static content
+
+- [ ] Scope: Only the **non-mobile, non-admin** pieces of `wire-remaining.jsx` that complement PR-06a — primarily `WireEmptyAndError` patterns and `WireApiBudget`/`WireApiBudgetTable` (if those promote to a `/mypage` or `/admin` sub-section, fold into PR-06d/admin instead — re-evaluate before starting). If after PR-06a..d there is nothing meaningful left, **delete this PR entry** rather than padding it.
+- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-remaining.jsx`, prior PR-06a..d outputs.
+- [ ] Required Reuse (C-11): `EmptyState`, `Card`, `DataTable`, `Badge`, `KpiTile` as applicable. If a new generic empty/error pattern repeats, **promote to a primitive** rather than copying it into each route.
+- [ ] Files: TBD — depends on what survives the re-evaluation gate.
+- [ ] Acceptance: Either a concrete deliverable from the re-evaluation, or this PR is removed from the plan. Don't ship a filler PR.
+- [ ] Out Of Scope: `WireMobileHome`, `WireMobileStock` (mobile-specific, defer until mobile is in scope), `WireAnalysisHubV2` (if it duplicates PR-06a, drop it).
+
+### Deferred from MVP: `/admin`
+
+`/admin` from `wire-mypage-admin.jsx` (~600 lines of the wire) is **deferred out of MVP**. Rationale: in the solo / pre-launch phase the user manages the system via Supabase Studio and CLI, so a custom admin UI has near-zero value while consuming a full PR's worth of build and review time. Revisit after launch when there are real operational needs (user moderation, content review, system flag toggling) that justify a UI.
 
 ### PR-07 — FastAPI scaffold
 

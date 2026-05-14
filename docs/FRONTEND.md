@@ -44,7 +44,8 @@ Loading rule: clone once under a sibling path (e.g. `~/work/_skills/agent-skills
 
 ## First Route Candidates
 
-- `/`, `/dashboard`, `/stocks`, `/stocks/:symbol`, `/portfolio`, `/analysis`, `/masters`, `/reports`, `/reports/:id`, `/learn`, `/mypage`, `/admin`
+- `/`, `/dashboard`, `/stocks`, `/stocks/:symbol`, `/portfolio`, `/analysis`, `/masters`, `/masters/:id`, `/reports`, `/reports/:id`, `/learn`, `/mypage`
+- `/admin` is deferred out of MVP (see EP-0001 PR-06 split note). Until launch, system management goes through Supabase Studio and CLI.
 
 ## Conventions
 
