@@ -1,0 +1,73 @@
+.card {
+  padding: 0;
+}
+
+.symbol {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.symbolIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  font-size: 0.625rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.symbolText {
+  display: inline-flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.symbolCode {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.symbolName {
+  font-size: 0.625rem;
+  color: var(--faint);
+}
+
+.pnlPos {
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--positive);
+}
+
+.pnlNeg {
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--negative);
+}
+
+.memoLocked {
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  color: var(--positive);
+  font-weight: 600;
+}
+
+.memoHas {
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.memoNone {
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  color: var(--faint);
+}

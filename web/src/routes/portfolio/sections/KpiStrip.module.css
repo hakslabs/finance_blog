@@ -1,0 +1,36 @@
+.strip {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.item {
+  border-right: 1px solid var(--hairline);
+}
+
+.item:last-child {
+  border-right: none;
+}
+
+.positive {
+  color: var(--positive);
+  font-weight: 700;
+}
+
+.negative {
+  color: var(--negative);
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .strip {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

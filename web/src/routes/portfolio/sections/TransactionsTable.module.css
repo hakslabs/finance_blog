@@ -1,0 +1,24 @@
+.card {
+  padding: 0;
+}
+
+.cellDate {
+  font-family: var(--mono);
+  color: var(--faint);
+  font-size: 0.6875rem;
+}
+
+.cellSymbol {
+  font-family: var(--mono);
+  font-weight: 500;
+}
+
+.cellCurrency {
+  font-size: 0.625rem;
+  color: var(--faint);
+}
+
+.cellNote {
+  font-size: 0.625rem;
+  color: var(--faint);
+}

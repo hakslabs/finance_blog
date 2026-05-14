@@ -91,7 +91,7 @@ Stub chart box for routes that don't yet have real chart implementations. `heigh
 Defaults — use these *before* writing route-local alternatives. See `docs/FRONTEND.md` rule C-11 for the full reasoning and blocker criteria.
 
 - **`DataTable<T>`** — Default for any tabular column/row data. Cell `render` functions accept arbitrary JSX, so colored values, symbols+name pairs, Badges, sparklines, and compact metadata inside cells are **not** reasons to hand-roll a `<table>`. Bypass only for structural needs `DataTable` does not support: row expansion, grouped/nested rows, pinned columns, non-table spatial layout.
-- **`KpiTile`** — Default for label / big value / optional detail / optional trend blocks. Compose a horizontal strip by wrapping multiple `KpiTile`s in a grid.
+- **`KpiTile`** — Default for label / big value / optional detail / optional trend blocks. Compose a horizontal strip by wrapping multiple `KpiTile`s in a grid (see `KpiStrip` in `routes/portfolio/sections/`).
 - **`EmptyState`** — Default for empty sections inside a `Card`. Render it conditionally when `rows.length === 0`; do not create empty fixture exports just to demonstrate it.
 - **`Badge`** — Default for small status/category chips. Map domain enums to `tone` via a `Record<State, BadgeTone>` constant.
 - **`ChartPlaceholder`** — Default for static chart areas until a real chart lands.
@@ -122,6 +122,20 @@ If you bypass a default, document the blocker in the PR description before imple
 - `TOP_HOLDINGS: TopHolding[]`
 
 **Types**: `PortfolioSummary`, `MarketStatus`, `Notice`, `TodoItem`, `TodoSource` (`"공통" | "알람" | "Thesis"`), `FearGreedData`, `MacroIndicator`, `WatchlistItem`, `TopMover`, `NewsItem`, `NewsCategory` (`"kr" | "us" | "macro"`), `EconomicEvent`, `EventType` (`"macro" | "earnings" | "dividend"`), `ReturnSeries`, `ReturnContributor`, `PortfolioAsset`, `TopHolding`.
+
+All list-item types carry an `id: string` for stable React keys.
+
+### `fixtures/portfolio.ts`
+
+**Constants** (all typed):
+
+- `PORTFOLIO_KPI: PortfolioKpi[]` — 6 KPI items (total value, principal, unrealized P&L, today P&L, realized YTD, CAGR).
+- `HOLDINGS: Holding[]` — 6 rows (AAPL, NVDA, MSFT, 005930, TSLA, 000660). Each has `id`, symbol, name, quantity, average/current price, market value, PnL%, up flag, weight %, memo status, counts, optional thesis.
+- `TRANSACTIONS: Transaction[]` — 8 rows (buy/sell/dividend/deposit). Each has `id`, date, type, symbol, nullable quantity/price, amount, currency, note.
+- `BENCHMARKS: Benchmark[]` — 3 items (portfolio +12.4%, KOSPI +4.1%, S&P +8.2%). Each has `id`, label, return.
+- `PERFORMANCE_METRICS: PerformanceMetric[]` — 3 items (max drawdown -8.2%, Sharpe 1.42, beta 1.06). Each has `id`, label, value, optional positive flag.
+
+**Types** (one per concept): `PortfolioKpi`, `Holding`, `HoldingMemoStatus` (`"locked" | "memo" | "none"`), `Transaction`, `TransactionType` (`"buy" | "sell" | "dividend" | "deposit"`), `Benchmark`, `PerformanceMetric`.
 
 All list-item types carry an `id: string` for stable React keys.
 
@@ -197,9 +211,21 @@ Route-param-driven stock detail page. Uses `useParams` to read `symbol`, calls `
 
 **File**: `routes/stocks/StockDetailPage.tsx`, co-located `StockDetailPage.module.css`.
 
+### `portfolio/PortfolioPage` (path: `/portfolio`)
+
+Static portfolio page composed from `routes/portfolio/sections/*` and `fixtures/portfolio.ts`. Top-level structure: `PageContainer(eyebrow="Portfolio", title="운용 / 포트폴리오", description=meta)` → `KpiStrip` → 2-col grid (`HoldingsTable` + `TransactionsTable`) → `PerformanceSummary`. Fixture-only, no API calls.
+
+**File**: `routes/portfolio/PortfolioPage.tsx`, co-located `PortfolioPage.module.css`.
+
+**Sections** (`routes/portfolio/sections/`):
+
+- `KpiStrip({ kpis })` — 6-column KPI strip using `KpiTile` primitives. Responsive: 6→3→2 columns. Uses class variants for positive/negative sentiment.
+- `HoldingsTable({ holdings })` — Card-wrapped `DataTable<Holding>` (density `compact`) with columns: symbol+name, qty, avg price, current price, market value, PnL%, weight, memo status. Renders `EmptyState` inside the Card when `holdings.length === 0`. Class variants for PnL color and memo status.
+- `TransactionsTable({ transactions })` — Card-wrapped `DataTable<Transaction>` (density `compact`) with columns: date, type/Badge, symbol, qty, price, amount, currency, note. Renders `EmptyState` inside the Card when `transactions.length === 0`. Transaction type mapped to Badge tone via `Record<TransactionType, BadgeTone>`.
+- `PerformanceSummary({ benchmarks, metrics })` — Card with benchmark legend (portfolio/KOSPI/S&P returns) and 3 metric tiles (max drawdown, Sharpe, beta) in a grid. Class variants for positive/negative/neutral sentiment.
+
 ### Pending routes
 
-- `portfolio/PortfolioPage` — PR-05.
 - `analysis/AnalysisPage`, `masters/MastersPage`, `reports/ReportsPage`, `reports/ReportDetailPage`, `learn/LearnPage`, `mypage/MyPage`, `admin/AdminPage` — PR-06.
 
 ### `kitchen-sink/KitchenSinkPage` (path: `/_kitchen-sink`)

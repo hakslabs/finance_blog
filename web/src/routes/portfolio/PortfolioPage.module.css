@@ -1,0 +1,16 @@
+.meta {
+  font-size: 0.6875rem;
+  color: var(--faint);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 760px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
