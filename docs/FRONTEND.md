@@ -100,6 +100,22 @@ These rules are invariant across all UI PRs. Each rule lists **Why** (failure mo
 - **Why** — Piggyback changes (e.g. a sidebar fix slipping into the dashboard PR) hide behind the headline diff and force reviewers to context-switch.
 - **How** — If a change is outside the PR's stated Files/Scope, split it into a sibling fixup commit and call it out in the PR description, or open a separate PR.
 
+### C-11. Reuse existing primitives before route-local replacements
+
+- **Why** — Rebuilding tables, KPI tiles, empty states, badges, or chart shells route-by-route creates drift and makes later changes expensive. PR-05 initially duplicated table markup that `DataTable` could already represent, and a similar drift risk applies to any new route.
+- **How** — Before adding route-local markup/CSS for a repeated UI pattern, check `docs/FRONTEND-MAP.md` for the existing primitive. Use it by default. If the primitive cannot represent the UI, **stop before implementing a replacement** and document the blocker in the PR description. Prefer extending the primitive in a scoped way over duplicating the pattern locally.
+
+  Default primitive choices:
+  - Tabular rows → `DataTable<T>`
+  - KPI label/value blocks → `KpiTile`
+  - Empty sections → `EmptyState`
+  - Status/category chips → `Badge`
+  - Chart placeholders → `ChartPlaceholder`
+  - Page shell → `PageContainer`
+  - Section/card containers → `Card` or `Section`
+
+  **Valid blockers** for bypassing a primitive are structural-capability gaps only: row expansion, grouped rows, pinned columns, nested rows, non-table spatial layout, or cases where the primitive's API would need to grow by more than a single prop. **Not valid blockers**: styling, color, icons-in-cells, compact metadata, or "I want a slightly different look" — `DataTable` cell renderers accept arbitrary JSX, and tones/density already exist.
+
 ## Anti-patterns
 
 Bad/good pairs that come up repeatedly in review. Each entry maps to a Convention rule above. Add to this section only when a new shape of failure appears that none of the existing entries already cover — duplicate examples make the list look longer than it is and dilute signal.
@@ -223,6 +239,42 @@ export const MARKET_STATUS: MarketStatus = { date: "5/06", krxOpen: true, … };
 <svg aria-hidden="true">…</svg>
 ```
 
+### AP-7. Route-local table duplicating `DataTable` (rule C-11)
+
+PR-05 initially rendered holdings and transactions as hand-rolled `<table>` markup with route-local CSS inside `PortfolioPage`, despite `DataTable<T>` being available and sufficient. Styling, color-coded cells, and Badges inside cells are **not** reasons to bypass `DataTable` — cell `render` functions return arbitrary JSX.
+
+```tsx
+// ❌ route-local table, duplicating DataTable's responsibilities
+<table className={styles.holdings}>
+  <thead>
+    <tr><th>종목</th><th>수량</th>…</tr>
+  </thead>
+  <tbody>
+    {holdings.map((h) => (
+      <tr key={h.id}>
+        <td>{h.symbol}</td>
+        <td className={h.up ? styles.pos : styles.neg}>{h.pnlPercent}</td>
+        …
+      </tr>
+    ))}
+  </tbody>
+</table>
+
+// ✅ DataTable with custom cell renderers
+const columns: DataTableColumn<Holding>[] = [
+  { key: "symbol", header: "종목", render: (r) => <SymbolCell row={r} /> },
+  { key: "pnl", header: "손익률", align: "right",
+    render: (r) => <span className={PNL_CLASS[r.up ? "up" : "down"]}>{r.pnlPercent}</span> },
+  …
+];
+<DataTable<Holding>
+  columns={columns}
+  rows={holdings}
+  getRowKey={(r) => r.id}
+  density="compact"
+/>
+```
+
 ## PR Review Checklist
 
 Run this list before opening any UI PR and again before merging. The reviewing agent uses the same list, so passing it locally avoids the round-trip.
@@ -240,6 +292,9 @@ Run this list before opening any UI PR and again before merging. The reviewing a
 11. Changed files match the PR's Files/Scope. Unrelated fixes go to a sibling commit with a one-line note in the description.
 12. `npm run lint` and `npm run build` pass.
 13. `docs/FRONTEND-MAP.md` is updated for any added/renamed/removed file under `web/src/`.
+14. Existing primitives were reused for repeated patterns (`DataTable`, `KpiTile`, `EmptyState`, `Badge`, `ChartPlaceholder`, `Card`, `Section`, `PageContainer`) — or a structural-capability blocker is documented in the PR description before custom markup/CSS was added.
+15. No route-local custom table/grid duplicates `DataTable` for ordinary column/row data. Styling, color, icons-in-cells, and Badges-in-cells are not valid reasons to bypass `DataTable`.
+16. No unused fixture exports were added only to demonstrate empty states — empty-state rendering is testable by passing `[]` to the component.
 
 ## Where To Find Things
 

@@ -86,6 +86,20 @@ Single KPI block — label, big value, optional detail line and trend node.
 
 Stub chart box for routes that don't yet have real chart implementations. `height` defaults to 240px.
 
+### Primitive Selection Rules
+
+Defaults — use these *before* writing route-local alternatives. See `docs/FRONTEND.md` rule C-11 for the full reasoning and blocker criteria.
+
+- **`DataTable<T>`** — Default for any tabular column/row data. Cell `render` functions accept arbitrary JSX, so colored values, symbols+name pairs, Badges, sparklines, and compact metadata inside cells are **not** reasons to hand-roll a `<table>`. Bypass only for structural needs `DataTable` does not support: row expansion, grouped/nested rows, pinned columns, non-table spatial layout.
+- **`KpiTile`** — Default for label / big value / optional detail / optional trend blocks. Compose a horizontal strip by wrapping multiple `KpiTile`s in a grid.
+- **`EmptyState`** — Default for empty sections inside a `Card`. Render it conditionally when `rows.length === 0`; do not create empty fixture exports just to demonstrate it.
+- **`Badge`** — Default for small status/category chips. Map domain enums to `tone` via a `Record<State, BadgeTone>` constant.
+- **`ChartPlaceholder`** — Default for static chart areas until a real chart lands.
+- **`PageContainer`** — Mandatory page shell (rule C-1). Not optional.
+- **`Card` / `Section`** — Default container for grouped content with a `<h2>` header. Custom inner header layouts go inside the `Card` body, not outside it.
+
+If you bypass a default, document the blocker in the PR description before implementing the replacement.
+
 ## Fixtures (`fixtures/`)
 
 ### `fixtures/dashboard.ts`
