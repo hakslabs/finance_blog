@@ -101,7 +101,10 @@
   .aside {
     position: static;
     height: auto;
+    min-width: 0;
+    max-width: 100vw;
     padding: 12px;
+    overflow-x: hidden;
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
@@ -109,6 +112,9 @@
   .nav {
     flex-direction: row;
     gap: 6px;
+    width: 100%;
+    min-width: 0;
+    max-width: calc(100vw - 24px);
     overflow-x: auto;
     padding-bottom: 2px;
   }
