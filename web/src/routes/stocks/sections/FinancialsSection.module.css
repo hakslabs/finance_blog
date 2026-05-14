@@ -1,0 +1,88 @@
+.subTabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.subTab {
+  padding: 4px 10px;
+  font-size: 0.6875rem;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: default;
+}
+
+.subTabActive {
+  background: var(--surface-muted);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.finGrid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 18px;
+}
+
+@media (max-width: 768px) {
+  .finGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.finTable {
+  width: 100%;
+  font-size: 0.75rem;
+  border-collapse: collapse;
+}
+
+.finTable th {
+  padding: 6px 10px;
+  text-align: left;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.finTable th:not(:first-child) {
+  text-align: right;
+}
+
+.finTable td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--hairline);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.finTable td:first-child {
+  font-family: inherit;
+  text-align: left;
+  font-weight: 500;
+}
+
+.finTable td:not(:first-child) {
+  text-align: right;
+}
+
+.finTable .boldRow {
+  font-weight: 600;
+}
+
+.hint {
+  font-size: 0.6875rem;
+  color: var(--faint);
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

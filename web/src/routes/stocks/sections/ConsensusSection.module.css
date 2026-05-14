@@ -1,0 +1,195 @@
+.consensusKpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 768px) {
+  .consensusKpiGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.conGrid {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 768px) {
+  .conGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.opinionList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.opinionRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.opinionHeader {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+}
+
+.opinionCount {
+  font-family: var(--mono);
+}
+
+.opinionBar {
+  height: 8px;
+  background: var(--surface-muted);
+  overflow: hidden;
+}
+
+.opinionFill {
+  height: 100%;
+  transition: width 0.2s ease;
+}
+
+.fillStrongBuy { width: 100%; background: var(--positive); }
+.fillBuy       { width: 46.43%; background: #7da874; }
+.fillHold      { width: 32.14%; background: var(--muted); }
+.fillSell      { width: 3.57%; background: #c08383; }
+.fillStrongSell{ width: 3.57%; background: var(--negative); }
+
+.reportTable {
+  width: 100%;
+  font-size: 0.72rem;
+  border-collapse: collapse;
+}
+
+.reportTable th {
+  padding: 6px 8px;
+  text-align: left;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 0.625rem;
+  font-weight: 800;
+}
+
+.reportTable th:not(:first-child),
+.reportTable td:not(:first-child) {
+  text-align: right;
+}
+
+.reportTable td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--hairline);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.7rem;
+}
+
+.reportTable td:first-child {
+  font-family: inherit;
+}
+
+.reportTable td:nth-child(3) {
+  font-size: 0.625rem;
+}
+
+.guruGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 768px) {
+  .guruGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.guruCard {
+  padding: 8px;
+}
+
+.guruName {
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.guruFirm {
+  font-size: 0.625rem;
+  color: var(--faint);
+}
+
+.guruFooter {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 0.7rem;
+}
+
+.opinionBadge {
+  font-size: 0.625rem;
+  border: 1px solid var(--hairline);
+  padding: 0 4px;
+  border-radius: 2px;
+}
+
+.positive { color: var(--positive); }
+.negative { color: var(--negative); }
+.neutral { color: var(--muted); }
+
+/* ── KPI cards ─────────────────────────────────────────── */
+
+.kpiLabel {
+  font-size: 0.6875rem;
+  margin: 0 0 4px;
+}
+
+.kpiValue {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.kpiDetail {
+  font-size: 0.6875rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* ── Target range ──────────────────────────────────────── */
+
+.targetRange {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 0.625rem;
+  color: var(--faint);
+}
+
+.targetCurrent {
+  font-family: var(--mono);
+  color: var(--ink);
+}
+
+/* ── Report table extras ───────────────────────────────── */
+
+.faintCell {
+  color: var(--faint);
+}
+
+.commentCell {
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

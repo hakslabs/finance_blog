@@ -38,3 +38,12 @@
   text-align: center;
   border: 1px dashed var(--faint);
 }
+
+.compact {
+  font-size: 0.6875rem;
+}
+
+.compact .th,
+.compact .td {
+  padding: 6px 12px;
+}

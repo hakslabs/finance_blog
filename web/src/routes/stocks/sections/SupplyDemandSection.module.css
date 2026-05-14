@@ -1,0 +1,129 @@
+.notice {
+  padding: 8px;
+  font-size: 0.7rem;
+  color: var(--muted);
+  background: var(--surface-muted);
+  margin-bottom: 12px;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 768px) {
+  .kpiGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.sdGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+@media (max-width: 768px) {
+  .sdGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.instTable {
+  width: 100%;
+  font-size: 0.72rem;
+  border-collapse: collapse;
+}
+
+.instTable th {
+  padding: 6px 8px;
+  text-align: left;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 0.625rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.instTable th:not(:first-child) {
+  text-align: right;
+}
+
+.instTable td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--hairline);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.7rem;
+}
+
+.instTable td:first-child {
+  font-family: inherit;
+  font-weight: 500;
+}
+
+.instTable td:not(:first-child) {
+  text-align: right;
+}
+
+.insiderList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.75rem;
+}
+
+.insiderRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.insiderRow:last-child {
+  border-bottom: none;
+}
+
+.positive { color: var(--positive); }
+.negative { color: var(--negative); }
+.neutral { color: var(--muted); }
+
+/* ── KPI cards ─────────────────────────────────────────── */
+
+.kpiLabel {
+  font-size: 0.6875rem;
+  margin: 0 0 4px;
+}
+
+.kpiValue {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.kpiDetail {
+  font-size: 0.6875rem;
+  margin: 0;
+}
+
+.trendNote {
+  font-size: 0.625rem;
+  color: var(--faint);
+  margin-top: 4px;
+}
+
+.monoCell {
+  font-family: var(--mono);
+}
+
+.activityCell {
+  font-size: 0.6875rem;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

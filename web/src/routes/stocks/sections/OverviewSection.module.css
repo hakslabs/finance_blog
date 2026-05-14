@@ -1,0 +1,104 @@
+.grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 18px;
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  font-size: 0.75rem;
+}
+
+.statItem {
+  padding: 6px 0;
+}
+
+.statLabel {
+  color: var(--muted);
+  font-size: 0.6875rem;
+  margin-bottom: 2px;
+}
+
+.statValue {
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+.signalList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.75rem;
+}
+
+.signalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.signalRow:last-child {
+  border-bottom: none;
+}
+
+.signalDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
+.dotPositive { background: var(--positive); }
+.dotNeutral { background: var(--muted); }
+.dotNegative { background: var(--negative); }
+
+.signalValue {
+  font-family: var(--mono);
+}
+
+.positive { color: var(--positive); }
+.negative { color: var(--negative); }
+.neutral { color: var(--muted); }
+
+.overviewText {
+  font-size: 0.75rem;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.overviewText strong {
+  color: var(--ink);
+}
+
+.positionList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.75rem;
+}
+
+.positionRow {
+  display: flex;
+  justify-content: space-between;
+}
+
+.positionValue {
+  font-family: var(--mono);
+}
+
+.rightCol {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

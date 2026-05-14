@@ -1,0 +1,41 @@
+.symbolLink {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 1px;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.symbolLink:hover {
+  color: var(--accent);
+}
+
+.symbolCode {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 0.8125rem;
+}
+
+.symbolName {
+  font-size: 0.6875rem;
+  color: var(--muted);
+}
+
+.changePos {
+  font-family: var(--mono);
+  color: var(--positive);
+}
+
+.changeNeg {
+  font-family: var(--mono);
+  color: var(--negative);
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+.sectorCell {
+  font-size: 0.75rem;
+  color: var(--muted);
+}

@@ -1,0 +1,190 @@
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Key stats strip ─────────────────────────────────── */
+
+.statsStrip {
+  padding: 0;
+}
+
+.statsRow {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.statCell {
+  padding: 8px 12px;
+  border-right: 1px solid var(--hairline);
+  min-width: 100px;
+}
+
+.statCell:last-child {
+  border-right: none;
+}
+
+.statLabel {
+  font-size: 0.625rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 2px;
+}
+
+.statValue {
+  font-family: var(--mono);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* ── Tab bar ───────────────────────────────────────────── */
+
+.tabBar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--hairline);
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.tab {
+  padding: 8px 14px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-weight: 400;
+  position: relative;
+  top: 1px;
+  transition: color 0.15s ease;
+}
+
+.tab:hover {
+  color: var(--ink);
+}
+
+.tabActive {
+  color: var(--ink);
+  font-weight: 600;
+  border-bottom-color: var(--ink);
+}
+
+/* ── Sidebar ─────────────────────────────────────────── */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 12px;
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    position: static;
+  }
+}
+
+.similarList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.7rem;
+}
+
+.similarRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.similarRow:last-child {
+  border-bottom: none;
+}
+
+.similarSector {
+  display: block;
+  font-size: 0.625rem;
+  color: var(--faint);
+}
+
+.sectorAvgList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.7rem;
+}
+
+.sectorAvgItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sectorAvgItem > div:first-child {
+  display: flex;
+  justify-content: space-between;
+}
+
+.sectorAvgLabel {
+  font-size: 0.625rem;
+  color: var(--faint);
+  text-align: right;
+}
+
+/* ── Shared change colors ───────────────────────────── */
+
+.changePos {
+  color: var(--positive);
+}
+
+.changeNeg {
+  color: var(--negative);
+}
+
+/* ── Description row ─────────────────────────────────── */
+
+.descriptionRow {
+  display: inline-flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.descriptionChange {
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+.descriptionTime {
+  color: var(--faint);
+  font-size: 0.75rem;
+}
+
+/* ── Similar stocks sidebar ──────────────────────────── */
+
+.similarSymbol {
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+.similarChange {
+  font-size: 0.7rem;
+}
+
+.sectorAvgValue {
+  font-family: var(--mono);
+}

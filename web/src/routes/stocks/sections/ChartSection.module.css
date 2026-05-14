@@ -1,0 +1,56 @@
+.sourceBar {
+  padding: 6px 10px;
+  background: var(--surface-muted);
+  font-size: 0.6875rem;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.periodGroup {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.periodPill {
+  padding: 4px 10px;
+  font-size: 0.6875rem;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: default;
+}
+
+.periodActive {
+  background: var(--surface-muted);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.divider {
+  width: 1px;
+  background: var(--hairline);
+  margin: 0 4px;
+  align-self: stretch;
+}
+
+.subPanel {
+  margin-top: 8px;
+}
+
+.subPanelHeader {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.subPanelValue {
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+}
+
+.subPositive { color: var(--positive); }
+.subNegative { color: var(--negative); }

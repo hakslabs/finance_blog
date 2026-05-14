@@ -68,9 +68,11 @@ Exports `NAV_ITEMS: { label, path, icon? }[]` consumed by `Sidebar`.
 
 `<span>` chip. `tone: "neutral" | "accent" | "positive" | "negative" | "warning"`. Default `"neutral"`.
 
-### `DataTable<T>({ columns, rows, getRowKey, emptyMessage? })`
+### `DataTable<T>({ columns, rows, getRowKey, emptyMessage?, density? })`
 
 Generic table. `columns: { key, header, render(row), align? }[]`. `getRowKey(row)` returns a stable id (use `row.id`). Shows `emptyMessage` when `rows.length === 0`. Prefer this over hand-built flex rows for tabular data.
+
+`density?: "comfortable" | "compact"` (default `"comfortable"`). Compact density: 6px 12px padding, 0.6875rem font, hairline rows. Exported as `TableDensity` type.
 
 ### `EmptyState({ title, description, action? })`
 
@@ -109,6 +111,19 @@ Stub chart box for routes that don't yet have real chart implementations. `heigh
 
 All list-item types carry an `id: string` for stable React keys.
 
+### `fixtures/stocks.ts`
+
+**Constants** (all typed):
+
+- `STOCK_LIST: StockListItem[]` — 12 rows (AAPL, NVDA, MSFT, TSLA, GOOGL, AMZN, META, 005930, 000660, 373220, AVGO, AMD). Each has `id`, `symbol`, `name`, `exchange`, `sector`, `price`, `change`, `up`, `marketCap`, `volume`.
+- `STOCK_TABS` — readonly tuple of 8 tab names: `개요 | 차트 | 재무 | 밸류에이션 | 공시·실적 | 뉴스 | 수급 | 컨센서스`. Exported as `StockTab` type.
+- `AAPL_DETAIL: StockDetail` — full detail fixture for Apple. Only symbol with detail data in PR-04.
+- `getStockDetail(symbol: string): StockDetail | undefined` — case-insensitive lookup. Returns undefined for unknown symbols.
+
+**Types** (one per concept): `StockListItem`, `StockKeyStats`, `CompanyOverview`, `SectorPosition`, `TechnicalSignal`, `FinancialRow`, `FinancialTable`, `PeerComparison`, `ValuationMetric`, `FairValueEstimate`, `FilingItem`, `EarningsEvent`, `NewsItem` (stock-domain, distinct from dashboard's `NewsItem`), `SupplyDemandKpi`, `InstitutionalHolder`, `InsiderTrade`, `ConsensusSummary`, `AnalystReport`, `GuruHolding`, `SimilarStock`, `StockDetail`.
+
+All list-item types carry an `id: string` for stable React keys.
+
 ## Routes (`routes/`)
 
 ### `RoutePlaceholder({ title, eyebrow, description })`
@@ -139,9 +154,37 @@ Composes the dashboard from `routes/dashboard/sections/*` and `fixtures/dashboar
 - `sections/_card.module.css` — shared card-header pieces consumed via `composes: x from "./_card.module.css"`. Exports class names `title`, `subtitle`, `titleBlock`, `headerLeft`, `headerRowBordered`, `footerRowBordered`. Add a class here only when its declarations are byte-identical across 3+ sections.
 - `sections/_table.module.css` — shared table scaffolding for row-based sections (Watchlist, TopMovers). Exports `tableHead`, `thGrow`, `thFixed`, `row` (with `:last-child` border reset), `symbol`, `symbolCode`, `symbolName`, `cellPrice`, `cellChange`, `cellChangePos`, `cellChangeNeg`. Section-specific column widths stay in the section module.
 
+### `stocks/StocksPage` (path: `/stocks`)
+
+Renders a `PageContainer(title="종목 목록")` with a `DataTable` using `density="compact"`. Rows are `STOCK_LIST` fixtures; each row's symbol links to `/stocks/${symbol}`. Columns: symbol+name, exchange (Badge), price, change (color-coded), marketCap, sector.
+
+**File**: `routes/stocks/StocksPage.tsx`, co-located `StocksPage.module.css`.
+
+### `stocks/StockDetailPage` (path: `/stocks/:symbol`)
+
+Route-param-driven stock detail page. Uses `useParams` to read `symbol`, calls `getStockDetail(symbol)` for fixture lookup. Unknown symbols render `PageContainer` + `EmptyState` + link back to `/stocks`. Known symbols render:
+
+- **Header**: PageContainer with eyebrow "리서치 / 종목", title = company name, description = Badges (symbol, exchange, sector) + price/change/lastUpdated.
+- **Key stats strip**: Card with 8 inline stats (marketCap, volume, 52W range, PER, PBR, ROE, dividendYield, beta).
+- **8 tabs** (state-driven via `useState`): 개요 / 차트 / 재무 / 밸류에이션 / 공시·실적 / 뉴스 / 수급 / 컨센서스. Tab bar uses `<button>` elements with class-variant active state.
+- **Right sidebar** (sticky): Similar stocks list (from fixture), sector average comparison cards.
+- **Tab content** delegated to section components under `routes/stocks/sections/`.
+
+**Sections** (`routes/stocks/sections/`):
+
+- `OverviewSection({ detail })` — grid: price chart placeholder (ChartPlaceholder) + key stats card + technical signals card + company overview card + sector position card.
+- `ChartSection({ detail })` — full chart area with period pills, type pills, indicator pills, main ChartPlaceholder, volume sub-panel, RSI sub-panel, MACD sub-panel.
+- `FinancialsSection({ incomeStatement, balanceSheet, cashFlow, keyRatios })` — sub-tabs (손익/재무/현금, 연간/분기), income statement table, balance sheet + cash flow grid, key ratios table. All from fixture tables.
+- `ValuationSection({ metrics, peers, fairValues })` — 4-column metric cards (PER/PBR/EV/DY), PER-PBR trend chart placeholder + fair value estimates list, peer comparison table with highlight row.
+- `FilingsSection({ filings, nextEarnings })` — earnings trend chart placeholder + next earnings card, filing timeline table with form-type badges and price impact colors.
+- `NewsSection({ news })` — filter pills, news grid (cards with time/source/title/summary), AI summary sidebar card.
+- `SupplyDemandSection({ kpis, holders, insiders })` — notice banner, 4 KPI cards, short interest chart + insider trades grid, institutional holders table (13F data).
+- `ConsensusSection({ consensus, reports, gurus })` — 4 KPI cards (rating/target/upside/analysts), target distribution + opinion distribution charts, analyst reports table, guru holdings grid.
+
+**File**: `routes/stocks/StockDetailPage.tsx`, co-located `StockDetailPage.module.css`.
+
 ### Pending routes
 
-- `stocks/StocksPage`, `stocks/StockDetailPage` — PR-04.
 - `portfolio/PortfolioPage` — PR-05.
 - `analysis/AnalysisPage`, `masters/MastersPage`, `reports/ReportsPage`, `reports/ReportDetailPage`, `learn/LearnPage`, `mypage/MyPage`, `admin/AdminPage` — PR-06.
 

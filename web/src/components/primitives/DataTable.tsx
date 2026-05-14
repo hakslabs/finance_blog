@@ -8,11 +8,14 @@ export type DataTableColumn<T> = {
   align?: "left" | "right";
 };
 
+export type TableDensity = "comfortable" | "compact";
+
 type DataTableProps<T> = {
   columns: DataTableColumn<T>[];
   rows: T[];
   getRowKey: (row: T) => string;
   emptyMessage?: string;
+  density?: TableDensity;
 };
 
 export function DataTable<T>({
@@ -20,14 +23,15 @@ export function DataTable<T>({
   rows,
   getRowKey,
   emptyMessage = "표시할 데이터가 없습니다.",
+  density = "comfortable",
 }: DataTableProps<T>) {
   if (rows.length === 0) {
     return <div className={styles.empty}>{emptyMessage}</div>;
   }
 
   return (
-    <div className={styles.wrapper} role="region" aria-label="데이터 표">
-      <table className={styles.table}>
+    <section className={styles.wrapper} aria-label="데이터 표">
+      <table className={`${styles.table} ${density === "compact" ? styles.compact : ""}`}>
         <thead>
           <tr>
             {columns.map((column) => {
@@ -61,6 +65,6 @@ export function DataTable<T>({
           ))}
         </tbody>
       </table>
-    </div>
+    </section>
   );
 }

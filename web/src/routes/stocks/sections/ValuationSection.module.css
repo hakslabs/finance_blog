@@ -1,0 +1,134 @@
+.metricCards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .metricCards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.valGrid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 18px;
+}
+
+@media (max-width: 768px) {
+  .valGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fvList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  font-size: 0.75rem;
+}
+
+.fvRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.fvRow:last-child {
+  border-bottom: none;
+}
+
+.fvMethod {
+  color: var(--muted);
+}
+
+.fvPrice {
+  font-family: var(--mono);
+}
+
+.fvPremium {
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  margin-left: 6px;
+}
+
+.peerTable {
+  width: 100%;
+  font-size: 0.75rem;
+  border-collapse: collapse;
+}
+
+.peerTable th {
+  padding: 6px 8px;
+  text-align: left;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: 800;
+}
+
+.peerTable th:not(:first-child) {
+  text-align: right;
+}
+
+.peerTable td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--hairline);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.7rem;
+}
+
+.peerTable td:first-child {
+  font-family: inherit;
+  font-weight: 500;
+}
+
+.peerTable td:not(:first-child) {
+  text-align: right;
+}
+
+.highlightRow {
+  background: var(--surface-muted);
+}
+
+.medianRow {
+  font-weight: 600;
+}
+
+.positive { color: var(--positive); }
+.negative { color: var(--negative); }
+.neutral { color: var(--muted); }
+
+/* ── Metric cards ──────────────────────────────────────── */
+
+.metricLabel {
+  font-size: 0.6875rem;
+  color: var(--muted);
+  margin: 0 0 4px;
+}
+
+.metricValue {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.metricContext {
+  font-size: 0.6875rem;
+  margin: 0;
+}
+
+.trendNote {
+  font-size: 0.625rem;
+  color: var(--faint);
+  margin-top: 4px;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
