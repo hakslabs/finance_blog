@@ -29,19 +29,21 @@
   margin-left: auto;
 }
 
-.quickLinks a {
+.quickLinks button {
   display: inline-flex;
   align-items: center;
   min-height: 30px;
   padding: 0 10px;
   color: var(--ink);
+  font: inherit;
   font-size: 0.75rem;
   font-weight: 800;
-  text-decoration: none;
+  background: var(--surface);
   border: 1px solid var(--hairline);
+  cursor: pointer;
 }
 
-.quickLinks a:hover {
+.quickLinks button:hover {
   border-color: var(--line);
   background: var(--bg);
 }
@@ -58,6 +60,44 @@
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
+}
+
+.tabBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+}
+
+.tab,
+.tabActive {
+  min-height: 34px;
+  padding: 0 12px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 800;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--ink);
+  border-color: var(--hairline);
+}
+
+.tabActive {
+  color: var(--ink);
+  background: var(--bg);
+  border-color: var(--line);
+}
+
+.stack {
+  display: grid;
+  gap: 12px;
 }
 
 .warning,
@@ -133,6 +173,21 @@
 .simpleList span:last-child {
   color: var(--positive);
   font-family: var(--mono);
+}
+
+.reportTitle {
+  display: grid;
+  gap: 3px;
+}
+
+.reportTitle strong {
+  font-size: 0.8125rem;
+}
+
+.reportTitle span {
+  color: var(--muted);
+  font-size: 0.6875rem;
+  line-height: 1.5;
 }
 
 .position {

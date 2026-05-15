@@ -209,7 +209,7 @@ export function TopBar() {
                 <Link
                   className={styles.accountItem}
                   role="menuitem"
-                  to="/portfolio"
+                  to="/mypage?tab=portfolio"
                   onClick={() => setAccountOpen(false)}
                 >
                   <BriefcaseBusiness size={15} aria-hidden="true" />
@@ -218,7 +218,7 @@ export function TopBar() {
                 <Link
                   className={styles.accountItem}
                   role="menuitem"
-                  to="/reports"
+                  to="/mypage?tab=saved"
                   onClick={() => setAccountOpen(false)}
                 >
                   <FileText size={15} aria-hidden="true" />

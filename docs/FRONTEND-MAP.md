@@ -409,7 +409,7 @@ Static learning page from `wire-masters-learn.jsx` (`WireLearn`) with three tabs
 
 ### `mypage/MyPage` (path: `/mypage`)
 
-Static mypage from `wire-mypage-admin.jsx` (`WireMyPageAll`, excluding admin). Renders identity strip with quick links to Portfolio/Reports/Dashboard, KPI tiles, todos, watchlist summaries, activity log, locked thesis/reaction memo cards, transaction table, and settings summary table. Form-like settings stay static with no submission state.
+Static mypage from `wire-mypage-admin.jsx` (`WireMyPageAll`, excluding admin). Renders identity strip with in-page quick tab switches, then mini-tabs for 개요 / 포트폴리오 / 관심글 / 활동 / 설정. The page acts as a user hub: saved reports, watchlist summaries, position thesis notes, transactions, activity, todos, and settings are reachable without bouncing to another route. Form-like settings stay static with no submission state.
 
 **File**: `routes/mypage/MyPage.tsx`, co-located `MyPage.module.css`.
 
