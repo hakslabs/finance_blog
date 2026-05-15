@@ -146,11 +146,11 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 
 ### PR-08 — Supabase minimum schema and RLS
 
-- [ ] Scope: Migration introducing only what PR-09 needs: `profiles`, `watchlists`, `watchlist_items`, `instruments`. RLS enabled on user-owned tables with owner-only policies. Seed a handful of instruments (AAPL, MSFT, SPY, plus a KR sample).
-- [ ] Required Reading: `docs/generated/db-schema.md`, `docs/SECURITY.md`, `docs/references/supabase-llms.txt`.
-- [ ] Files: `supabase/migrations/0001_*.sql`, seed script, schema notes update.
-- [ ] Acceptance: Migration applies clean on a fresh project; RLS verified via a manual two-user check or SQL test.
-- [ ] Out Of Scope: portfolio/transactions/positions/theses/13F/reports tables. Those land in later PRs only when an endpoint needs them.
+- [x] Scope: Migration introducing only what PR-09 needs: `profiles`, `watchlists`, `watchlist_items`, `instruments`. RLS enabled on user-owned tables with owner-only policies. Seed a handful of instruments (AAPL, MSFT, SPY, plus a KR sample).
+- [x] Required Reading: `docs/generated/db-schema.md`, `docs/SECURITY.md`, `docs/references/supabase-llms.txt`.
+- [x] Files: `supabase/migrations/0001_*.sql`, seed script, schema notes update.
+- [x] Acceptance: Migration applies clean on a fresh project; RLS verified via a manual two-user check or SQL test.
+- [x] Out Of Scope: portfolio/transactions/positions/theses/13F/reports tables. Those land in later PRs only when an endpoint needs them.
 
 ### PR-09 — First end-to-end path: dashboard watchlist
 
