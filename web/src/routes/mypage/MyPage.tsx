@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { PageContainer } from "../../components/layout/PageContainer";
 import { Badge } from "../../components/primitives/Badge";
 import { Card } from "../../components/primitives/Card";
@@ -67,9 +68,16 @@ export function MyPage() {
       <Card>
         <div className={styles.identity}>
           <div className={styles.avatar} aria-hidden="true" />
-          <strong>{displayName}</strong>
-          <span>{email} · 일반회원 · 가입일 {createdAt}</span>
-          <span>Google OAuth로 로그인됨</span>
+          <div className={styles.identityText}>
+            <strong>{displayName}</strong>
+            <span>{email} · 일반회원 · 가입일 {createdAt}</span>
+            <span>Google OAuth로 로그인됨</span>
+          </div>
+          <div className={styles.quickLinks} aria-label="계정 빠른 이동">
+            <Link to="/portfolio">포트폴리오</Link>
+            <Link to="/reports">관심 리포트</Link>
+            <Link to="/">대시보드</Link>
+          </div>
         </div>
       </Card>
 

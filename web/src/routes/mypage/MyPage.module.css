@@ -5,16 +5,45 @@
   align-items: center;
 }
 
-.identity span {
+.identityText {
+  display: grid;
+  gap: 2px;
+  min-width: min(280px, 100%);
+}
+
+.identityText span {
   color: var(--muted);
   font-size: 0.75rem;
 }
 
-.identity span:last-child {
-  margin-left: auto;
+.identityText span:last-child {
   color: var(--faint);
   font-family: var(--mono);
   font-size: 0.6875rem;
+}
+
+.quickLinks {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.quickLinks a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-decoration: none;
+  border: 1px solid var(--hairline);
+}
+
+.quickLinks a:hover {
+  border-color: var(--line);
+  background: var(--bg);
 }
 
 .avatar {

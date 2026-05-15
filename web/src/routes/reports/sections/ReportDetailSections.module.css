@@ -56,6 +56,9 @@
 }
 
 .actions button {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
   min-height: 30px;
   padding: 0 10px;
   border: 1px solid var(--line);
@@ -70,10 +73,22 @@
   background: var(--surface-muted);
 }
 
+.actions .actionActive {
+  color: var(--accent);
+  font-weight: 800;
+  border-color: var(--line);
+}
+
 .actions span {
   margin-left: auto;
   color: var(--faint);
   font-size: 0.6875rem;
+}
+
+.inlineNotice {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.75rem;
 }
 
 .summaryCard {

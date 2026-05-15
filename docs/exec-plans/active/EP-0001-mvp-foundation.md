@@ -208,6 +208,7 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 - [x] Files: `web/src/components/layout/{AuthGate,ProtectedRoute,TopBar}.*`, `web/src/lib/auth-*`, dashboard auth CTA, docs map updates.
 - [x] Acceptance: `/` loads without login; `/portfolio` and `/mypage` show a route-scoped login prompt when signed out; top-bar search submit navigates to a stock route; signed-in account menu shows name/email and logout; unavailable top-bar actions show a visible short message instead of doing nothing; `npm run lint` and `npm run build` pass.
 - [x] Out Of Scope: persistence for profile edits, watchlist add/delete, notification backend, full search autocomplete.
+- [x] Follow-up UX audit: PR-15 may include local-only affordances that remove dead clicks (icon buttons, notification read dot, report interest stars, MyPage quick links, loading skeletons). Anything requiring DB writes or real event delivery remains deferred: saved-report persistence, watchlist/report write endpoints, notification backend, and full cross-page saved-items surfaces.
 
 ## Done When
 

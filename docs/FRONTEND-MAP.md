@@ -39,7 +39,7 @@ Left navigation. Items come from `navigation.ts`. No props.
 
 ### `TopBar()`
 
-Top utility bar. Reads auth context for login/account state. Submits the symbol search box to `/stocks/:symbol`, opens the account menu for signed-in users, and shows short "planned feature" feedback for toolbar actions not wired yet.
+Top utility bar. Reads auth context for login/account state. Submits the symbol search box to `/stocks/:symbol`, opens the account menu for signed-in users, shows icon-based shortcuts, and keeps the notification dot tied to unread local UI state. Unavailable write-backed actions show short "planned feature" feedback instead of doing nothing.
 
 ### `AuthGate({ children })`
 
@@ -94,6 +94,10 @@ Single KPI block — label, big value, optional detail line and trend node.
 ### `ChartPlaceholder({ label, height? })`
 
 Stub chart box for routes that don't yet have real chart implementations. `height` defaults to 240px.
+
+### `Skeleton({ variant?, className?, label? })`
+
+Accessible shimmer placeholder for loading states. `variant: "text" | "title" | "block" | "circle"` (default `"text"`). Use only while a real data hook is loading; keep route-specific layout spacing in the route CSS module.
 
 ### `PriceChart({ bars, height?, ariaLabel })`
 
@@ -287,7 +291,7 @@ Composes the dashboard from `routes/dashboard/sections/*` and `fixtures/dashboar
 - `NoticeBanner({ notice })`.
 - `ActionPrompts({ todos })` — todo grid, 2-col → 1-col responsive.
 - `IndicatorStrip({ fearGreed, macros, marketTime })` — renders **two** sibling `<Card>`s (F&G gauges + macro grid); place inside a `.pair` wrapper in the page.
-- `WatchlistCard({ state })` — renders loading, error, empty, and ready states from `useWatchlist()`.
+- `WatchlistCard({ state })` — renders signed-out/config-error/loading/error/empty/ready states from `useWatchlist()`; loading uses the shared `Skeleton` primitive.
 - `TopMoversCard({ movers })`.
 - `NewsList({ items })`.
 - `EconomicEventsList({ events })`.
@@ -332,7 +336,7 @@ Route-param-driven stock detail page. Uses `useParams` to read `symbol`, calls `
 
 ### `portfolio/PortfolioPage` (path: `/portfolio`) — live data
 
-Live-data portfolio page. Reads `usePortfolio()` (PR-11) and composes the result via `routes/portfolio/sections/*`. Top-level structure: `PageContainer(eyebrow="Portfolio", title="운용 / 포트폴리오", description=updated_at + currency)` → loading/error fallback `Card` OR `KpiStrip` + 2-col grid (`HoldingsTable` + `TransactionsTable`).
+Live-data portfolio page. Reads `usePortfolio()` (PR-11) and composes the result via `routes/portfolio/sections/*`. Top-level structure: `PageContainer(eyebrow="Portfolio", title="운용 / 포트폴리오", description=updated_at + currency)` → loading fallback `Card` with `Skeleton` OR error fallback `Card` OR `KpiStrip` + 2-col grid (`HoldingsTable` + `TransactionsTable`).
 
 **File**: `routes/portfolio/PortfolioPage.tsx`, co-located `PortfolioPage.module.css`.
 
@@ -361,7 +365,7 @@ Static analysis hub composed from `routes/analysis/sections/*` and `fixtures/ana
 
 ### `reports/ReportsPage` (path: `/reports`)
 
-Static report library page from `wire-masters-learn.jsx` (`WireReports`). Top-level structure: `PageContainer(eyebrow="Reports", title="리포트", description=…, actions=last updated)` → `ReportFilters` → `ReportKpiStrip` → `ReportsTable`. Fixture-only, no API calls.
+Static report library page from `wire-masters-learn.jsx` (`WireReports`). Top-level structure: `PageContainer(eyebrow="Reports", title="리포트", description=…, actions=interest toggle + last updated)` → `ReportFilters` → `ReportKpiStrip` → `ReportsTable`. Interest state is local UI-only until the write-backed saved-report path lands.
 
 **File**: `routes/reports/ReportsPage.tsx`, co-located `ReportsPage.module.css`.
 
@@ -369,7 +373,7 @@ Static report library page from `wire-masters-learn.jsx` (`WireReports`). Top-le
 
 - `ReportFilters()` — static search/sort/category/region/period controls rendered as non-interactive filter chips.
 - `ReportKpiStrip({ kpis })` — 4-column KPI grid using `KpiTile`.
-- `ReportsTable({ reports })` — `Card` + `DataTable<ReportListItem>` (density `compact`) with title/summary link, region/category `Badge`s, status `Badge`, tags, date. Empty list renders `EmptyState`.
+- `ReportsTable({ reports, bookmarkedIds, onToggleBookmark })` — `Card` + `DataTable<ReportListItem>` (density `compact`) with local interest-star action, title/summary link, region/category `Badge`s, status `Badge`, tags, date. Empty list renders `EmptyState`.
 
 ### `reports/ReportDetailPage` (path: `/reports/:id`)
 
@@ -379,7 +383,7 @@ Route-param-driven report detail page. Uses `useParams` to read `id`, calls `get
 
 **Sections** (`routes/reports/sections/`):
 
-- `ReportDetailHeader({ report })` — cover placeholder, region/category/status `Badge`s, metadata, static action buttons.
+- `ReportDetailHeader({ report })` — cover placeholder, region/category/status `Badge`s, metadata, local interest toggle, and planned-action feedback for PDF/memo controls.
 - `ReportSummary({ report })` — AI summary `Card`, 3 `KpiTile`s, key point list.
 - `ReportToc({ items })` — sticky table-of-contents `Card`.
 - `ReportBody({ report })` — body excerpt `Card` with reading-mode badges and `DataTable<InflationRow>` for the embedded inflation table.
@@ -405,7 +409,7 @@ Static learning page from `wire-masters-learn.jsx` (`WireLearn`) with three tabs
 
 ### `mypage/MyPage` (path: `/mypage`)
 
-Static mypage from `wire-mypage-admin.jsx` (`WireMyPageAll`, excluding admin). Renders identity strip, KPI tiles, todos, watchlist summaries, activity log, locked thesis/reaction memo cards, transaction table, and settings summary table. Form-like settings stay static with no submission state.
+Static mypage from `wire-mypage-admin.jsx` (`WireMyPageAll`, excluding admin). Renders identity strip with quick links to Portfolio/Reports/Dashboard, KPI tiles, todos, watchlist summaries, activity log, locked thesis/reaction memo cards, transaction table, and settings summary table. Form-like settings stay static with no submission state.
 
 **File**: `routes/mypage/MyPage.tsx`, co-located `MyPage.module.css`.
 

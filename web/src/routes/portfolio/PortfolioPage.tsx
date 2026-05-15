@@ -1,5 +1,6 @@
 import { PageContainer } from "../../components/layout/PageContainer";
 import { Card } from "../../components/primitives/Card";
+import { Skeleton } from "../../components/primitives/Skeleton";
 import { usePortfolio } from "../../lib/usePortfolio";
 import type { Portfolio } from "../../lib/api-client";
 import { HoldingsTable } from "./sections/HoldingsTable";
@@ -46,7 +47,12 @@ export function PortfolioPage() {
     <PageContainer eyebrow="Portfolio" title="운용 / 포트폴리오" description={description}>
       {state.status === "loading" && (
         <Card title="포트폴리오">
-          <p className={styles.statusBody}>불러오는 중…</p>
+          <div className={styles.skeletonGrid} aria-hidden="true">
+            <Skeleton variant="title" />
+            <Skeleton />
+            <Skeleton />
+            <Skeleton variant="block" />
+          </div>
         </Card>
       )}
       {state.status === "error" && (

@@ -39,6 +39,19 @@
   color: var(--faint);
 }
 
+.skeletonStack {
+  display: grid;
+  gap: 10px;
+}
+
+.skeletonStack > :first-child {
+  max-width: 180px;
+}
+
+.skeletonStack > :not(:first-child) {
+  max-width: 100%;
+}
+
 .signInPrompt {
   display: flex;
   gap: 12px;

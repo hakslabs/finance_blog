@@ -1,4 +1,15 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  Bell,
+  Bookmark,
+  BriefcaseBusiness,
+  ChevronDown,
+  FileText,
+  Home,
+  LogOut,
+  Search,
+  User,
+} from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../lib/auth-state";
 import { getUserDisplayName, getUserEmail, getUserInitial } from "../../lib/auth-user";
@@ -6,6 +17,10 @@ import { getCurrentNavItem } from "./navigation";
 import styles from "./TopBar.module.css";
 
 const TRANSIENT_NOTICE_MS = 2400;
+const INITIAL_NOTIFICATIONS = [
+  "AAPL 배당락 전 포지션 점검",
+  "NVDA Thesis 조건 검토",
+] as const;
 
 export function TopBar() {
   const { pathname } = useLocation();
@@ -13,8 +28,13 @@ export function TopBar() {
   const current = getCurrentNavItem(pathname);
   const auth = useAuth();
   const [accountOpen, setAccountOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState<number>(
+    INITIAL_NOTIFICATIONS.length,
+  );
   const [notice, setNotice] = useState<string | null>(null);
   const accountRef = useRef<HTMLDivElement | null>(null);
+  const notificationsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!notice) return undefined;
@@ -24,16 +44,20 @@ export function TopBar() {
 
   useEffect(() => {
     function onPointerDown(event: PointerEvent) {
-      if (!accountRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (!accountRef.current?.contains(target)) {
         setAccountOpen(false);
+      }
+      if (!notificationsRef.current?.contains(target)) {
+        setNotificationsOpen(false);
       }
     }
 
-    if (accountOpen) {
+    if (accountOpen || notificationsOpen) {
       window.addEventListener("pointerdown", onPointerDown);
     }
     return () => window.removeEventListener("pointerdown", onPointerDown);
-  }, [accountOpen]);
+  }, [accountOpen, notificationsOpen]);
 
   function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -48,6 +72,11 @@ export function TopBar() {
 
   function showPlanned(message: string) {
     setNotice(message);
+  }
+
+  function toggleNotifications() {
+    setNotificationsOpen((open) => !open);
+    setUnreadNotifications(0);
   }
 
   async function handleTopBarSignIn() {
@@ -80,7 +109,7 @@ export function TopBar() {
 
       <form className={styles.search} onSubmit={handleSearch}>
         <span className="sr-only">종목 또는 티커 검색</span>
-        <span aria-hidden="true">⌕</span>
+        <Search size={15} aria-hidden="true" strokeWidth={1.8} />
         <input
           type="search"
           name="symbol-search"
@@ -102,17 +131,41 @@ export function TopBar() {
           title="북마크"
           onClick={() => showPlanned("북마크 패널은 PR-17 관심종목 쓰기 경로에서 연결됩니다.")}
         >
-          <span aria-hidden="true">★</span>
+          <Bookmark size={16} aria-hidden="true" strokeWidth={1.8} />
         </button>
-        <button
-          className={styles.iconButtonNotice}
-          type="button"
-          aria-label="알림 열기"
-          title="알림"
-          onClick={() => showPlanned("알림 패널은 신호 알림 저장 기능과 함께 연결됩니다.")}
-        >
-          <span aria-hidden="true">!</span>
-        </button>
+        <div className={styles.notifications} ref={notificationsRef}>
+          <button
+            className={styles.iconButtonNotice}
+            type="button"
+            aria-expanded={notificationsOpen}
+            aria-haspopup="menu"
+            aria-label={`알림 열기${unreadNotifications > 0 ? `, 새 알림 ${unreadNotifications}개` : ""}`}
+            title="알림"
+            data-unread={unreadNotifications > 0 ? "true" : "false"}
+            onClick={toggleNotifications}
+          >
+            <Bell size={16} aria-hidden="true" strokeWidth={1.8} />
+          </button>
+          {notificationsOpen ? (
+            <div className={styles.notificationMenu} role="menu">
+              <div className={styles.menuHeader}>
+                <span>알림</span>
+                <span>{unreadNotifications > 0 ? `${unreadNotifications}개 신규` : "모두 확인"}</span>
+              </div>
+              {INITIAL_NOTIFICATIONS.map((item) => (
+                <Link
+                  key={item}
+                  className={styles.notificationItem}
+                  role="menuitem"
+                  to="/mypage"
+                  onClick={() => setNotificationsOpen(false)}
+                >
+                  {item}
+                </Link>
+              ))}
+            </div>
+          ) : null}
+        </div>
         {auth.status === "signed-in" ? (
           <div className={styles.account} ref={accountRef}>
             <button
@@ -125,6 +178,7 @@ export function TopBar() {
               onClick={() => setAccountOpen((open) => !open)}
             >
               {getUserInitial(auth.user)}
+              <ChevronDown size={12} aria-hidden="true" strokeWidth={2} />
             </button>
             {accountOpen ? (
               <div className={styles.accountMenu} role="menu">
@@ -137,9 +191,19 @@ export function TopBar() {
                 <Link
                   className={styles.accountItem}
                   role="menuitem"
+                  to="/"
+                  onClick={() => setAccountOpen(false)}
+                >
+                  <Home size={15} aria-hidden="true" />
+                  홈
+                </Link>
+                <Link
+                  className={styles.accountItem}
+                  role="menuitem"
                   to="/mypage"
                   onClick={() => setAccountOpen(false)}
                 >
+                  <User size={15} aria-hidden="true" />
                   마이페이지
                 </Link>
                 <Link
@@ -148,7 +212,17 @@ export function TopBar() {
                   to="/portfolio"
                   onClick={() => setAccountOpen(false)}
                 >
+                  <BriefcaseBusiness size={15} aria-hidden="true" />
                   포트폴리오
+                </Link>
+                <Link
+                  className={styles.accountItem}
+                  role="menuitem"
+                  to="/reports"
+                  onClick={() => setAccountOpen(false)}
+                >
+                  <FileText size={15} aria-hidden="true" />
+                  관심 리포트
                 </Link>
                 <button
                   className={styles.accountItemButton}
@@ -156,6 +230,7 @@ export function TopBar() {
                   role="menuitem"
                   onClick={() => void handleSignOut()}
                 >
+                  <LogOut size={15} aria-hidden="true" />
                   로그아웃
                 </button>
               </div>

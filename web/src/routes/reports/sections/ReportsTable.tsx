@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Star } from "lucide-react";
 import { Badge } from "../../../components/primitives/Badge";
 import { Card } from "../../../components/primitives/Card";
 import { DataTable } from "../../../components/primitives/DataTable";
@@ -95,12 +96,43 @@ const columns = [
   },
 ];
 
-export function ReportsTable({ reports }: { reports: ReportListItem[] }) {
+type ReportsTableProps = {
+  reports: ReportListItem[];
+  bookmarkedIds: Set<string>;
+  onToggleBookmark: (id: string) => void;
+};
+
+export function ReportsTable({
+  reports,
+  bookmarkedIds,
+  onToggleBookmark,
+}: ReportsTableProps) {
+  const tableColumns = [
+    {
+      key: "bookmark",
+      header: "관심",
+      render: (row: ReportListItem) => {
+        const active = bookmarkedIds.has(row.id);
+        return (
+          <button
+            type="button"
+            className={active ? styles.bookmarkActive : styles.bookmarkButton}
+            aria-label={`${row.title} 관심글 ${active ? "해제" : "저장"}`}
+            onClick={() => onToggleBookmark(row.id)}
+          >
+            <Star size={15} aria-hidden="true" fill={active ? "currentColor" : "none"} />
+          </button>
+        );
+      },
+    },
+    ...columns,
+  ];
+
   return (
     <Card title="수집된 리포트" eyebrow="Library">
       {reports.length > 0 ? (
         <DataTable<ReportListItem>
-          columns={columns}
+          columns={tableColumns}
           rows={reports}
           getRowKey={(row) => row.id}
           density="compact"
@@ -109,7 +141,7 @@ export function ReportsTable({ reports }: { reports: ReportListItem[] }) {
       ) : (
         <EmptyState
           title="리포트가 없습니다"
-          description="수집된 리포트 fixture가 비어 있습니다."
+          description="조건에 맞는 리포트가 없습니다."
         />
       )}
     </Card>

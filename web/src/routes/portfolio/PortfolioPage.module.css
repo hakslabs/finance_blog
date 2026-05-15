@@ -9,6 +9,15 @@
   color: var(--faint);
 }
 
+.skeletonGrid {
+  display: grid;
+  gap: 12px;
+}
+
+.skeletonGrid > :first-child {
+  max-width: 220px;
+}
+
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

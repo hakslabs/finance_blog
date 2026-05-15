@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { Card } from "../../../components/primitives/Card";
+import { Skeleton } from "../../../components/primitives/Skeleton";
 import type { Watchlist, WatchlistItem } from "../../../lib/api-client";
 import { useAuth } from "../../../lib/auth-state";
 import type { WatchlistState } from "../../../lib/useWatchlist";
@@ -129,7 +130,16 @@ export function WatchlistCard({ state }: { state: WatchlistState }) {
     return <StatusCard>Supabase 브라우저 설정이 필요합니다.</StatusCard>;
   }
   if (state.status === "loading") {
-    return <StatusCard>불러오는 중…</StatusCard>;
+    return (
+      <StatusCard>
+        <div className={styles.skeletonStack} aria-hidden="true">
+          <Skeleton variant="title" />
+          <Skeleton />
+          <Skeleton />
+          <Skeleton />
+        </div>
+      </StatusCard>
+    );
   }
   if (state.status === "error") {
     return <StatusCard>관심종목을 불러오지 못했습니다. ({state.message})</StatusCard>;
