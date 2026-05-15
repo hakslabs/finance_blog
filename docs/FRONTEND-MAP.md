@@ -306,7 +306,7 @@ Composes the dashboard from `routes/dashboard/sections/*` and `fixtures/dashboar
 
 **Sections** (`routes/dashboard/sections/`):
 
-- `GreetingActions({ summary })` + `GreetingMeta({ currentTimeLabel, marketStatus })` — slotted into `PageContainer.actions` / `description`.
+- `GreetingActions({ summary, onOpenAssets?, onOpenTodayPnl?, onOpenTotalReturn? })` + `GreetingMeta({ currentTimeLabel, marketStatus })` — slotted into `PageContainer.actions` / `description`; asset/PnL KPIs route or open return detail instead of being static text.
 - `NoticeBanner({ notice, onOpen? })`.
 - `ActionPrompts({ todos, onOpenTodo?, onToggleTodo?, onOpenAll? })` — todo grid, 2-col → 1-col responsive; checkbox toggles local completion while row body opens detail.
 - `IndicatorStrip({ fearGreed, macros, marketTime, onOpenFearGreed?, onOpenMacro? })` — renders **two** sibling `<Card>`s (clickable F&G gauges + clickable macro grid); place inside a `.pair` wrapper in the page.

@@ -1,27 +1,37 @@
 import type { PortfolioSummary } from "../../../fixtures/dashboard";
 import styles from "./GreetingActions.module.css";
 
-type Props = { summary: PortfolioSummary };
+type Props = {
+  summary: PortfolioSummary;
+  onOpenAssets?: () => void;
+  onOpenTodayPnl?: () => void;
+  onOpenTotalReturn?: () => void;
+};
 
-export function GreetingActions({ summary }: Props) {
+export function GreetingActions({
+  summary,
+  onOpenAssets,
+  onOpenTodayPnl,
+  onOpenTotalReturn,
+}: Props) {
   return (
     <div className={styles.assetSummary}>
-      <div className={styles.kpi}>
+      <button type="button" className={styles.kpi} onClick={onOpenAssets}>
         <span className={styles.label}>내 자산</span>
         <span className={styles.value}>{summary.totalAssets}</span>
-      </div>
+      </button>
       <div className={styles.divider} />
-      <div className={styles.kpi}>
+      <button type="button" className={styles.kpi} onClick={onOpenTodayPnl}>
         <span className={styles.label}>오늘 손익</span>
         <span className={styles.valuePositive}>
           {summary.todayPnl} ({summary.todayPnlPercent})
         </span>
-      </div>
+      </button>
       <div className={styles.divider} />
-      <div className={styles.kpi}>
+      <button type="button" className={styles.kpi} onClick={onOpenTotalReturn}>
         <span className={styles.label}>총 수익률</span>
         <span className={styles.valuePositive}>{summary.totalReturn}</span>
-      </div>
+      </button>
     </div>
   );
 }

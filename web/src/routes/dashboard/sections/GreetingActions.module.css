@@ -13,6 +13,19 @@
   flex-direction: column;
   align-items: center;
   gap: 1px;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.kpi:hover .value,
+.kpi:hover .valuePositive,
+.kpi:focus-visible .value,
+.kpi:focus-visible .valuePositive {
+  color: var(--accent);
 }
 
 .label {

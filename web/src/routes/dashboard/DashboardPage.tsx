@@ -72,7 +72,14 @@ export function DashboardPage() {
           marketStatus={dashboardClock.sessions}
         />
       }
-      actions={<GreetingActions summary={PORTFOLIO_SUMMARY} />}
+      actions={
+        <GreetingActions
+          summary={PORTFOLIO_SUMMARY}
+          onOpenAssets={() => handleAction({ type: "route", to: "/mypage?tab=portfolio" })}
+          onOpenTodayPnl={() => handleAction({ type: "detail", detail: returnSeriesDetail(RETURN_DATA, "1D") })}
+          onOpenTotalReturn={() => handleAction({ type: "detail", detail: returnSeriesDetail(RETURN_DATA, "ALL") })}
+        />
+      }
     >
       <div className={styles.sections}>
         <NoticeBanner
