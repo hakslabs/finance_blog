@@ -1,18 +1,20 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
   "buildCommand": "cd web && npm install && npm run build",
   "outputDirectory": "web/dist",
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index/$1" },
-    { "source": "/((?!api/|assets/).*)", "destination": "/index.html" }
-  ],
-  "headers": [
+  "functions": {
+    "api/index.py": { "memory": 1024, "maxDuration": 30 }
+  },
+  "routes": [
+    { "src": "/api(/.*)?", "dest": "/api/index" },
     {
-      "source": "/assets/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
-      ]
-    }
+      "src": "/assets/(.*)",
+      "headers": { "cache-control": "public, max-age=31536000, immutable" },
+      "continue": true
+    },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ],
   "crons": [
     {

@@ -1,0 +1,13 @@
+# Test files must not be deployed as serverless functions.
+api/app/tests/
+
+# Python build artifacts
+api/.venv/
+**/__pycache__/
+**/*.pyc
+
+# Local-only docs / planning (not used at runtime)
+docs/
+design/
+scripts/
+supabase/
