@@ -292,7 +292,13 @@ Each migration ships with RLS policies, grants, indexes, and `updated_at` trigge
 - [x] Acceptance: Migration is idempotent (`create table if not exists`, `add column if not exists`, partial unique indexes). All six new tables (plus `instruments` column extensions) enable RLS with public-read policies + service-role writes, matching the `instruments` pattern. `npx supabase migration up --local` applies cleanly; `pg_tables` shows the new tables.
 - [x] Out Of Scope: seeding the new reference tables (lands when the related ingestion pipelines come online), market-data extension (migration 0006), fundamentals (0007).
 
-## Done When
+### PR-20 — Migration 0006: market-data extension (schema only)
+
+- [x] Scope: Third migration slice from PR-17 — lock the TIER-2 raw-ingest surface so analysis/dashboard widgets can wire against stable identifiers without waiting on the actual data pipelines. **No row collection here**; the user explicitly capped this PR at schema-only because of free-tier storage budget. The S&P 500 / NASDAQ / KOSPI 200 bars themselves come in a later ingestion PR.
+- [x] Required Reading: `docs/design-docs/schema-master-plan.md` §2 (TIER-2 row), `docs/design-docs/prices-ingestion-schema.md`, `design/wires-v3/wire-home.jsx` (지수/매크로 strip), `design/wires-v3/wire-analysis.jsx` (시장 심리·금리 경로).
+- [x] Files: `supabase/migrations/0006_market_data_extend.sql`.
+- [x] Acceptance: Migration is idempotent and adds (1) `price_bars_daily.adj_c`, (2) `corporate_actions`, (3) `fx_rates_daily`, (4) `macro_series` + `macro_observations`, (5) `fear_greed_daily`, (6) `index_bars_daily`. All tables enable RLS with public-read + service-role-write. Includes a small `indices` catalog seed (KOSPI/KOSPI200/KOSDAQ/SPX/NDX/IXIC/DJI) — guarded with `on conflict (code) do nothing` so reruns are safe. Applies cleanly to local *and* remote Supabase via `db push`.
+- [x] Out Of Scope: actual bar/observation row ingestion (later PR), adj_c recomputation job, KRX/Polygon vendor adapters, intraday bars.
 
 - PR-01 through PR-10 are merged.
 - The dashboard renders real watchlist data and `/stocks/AAPL` renders real market data through the backend path.
