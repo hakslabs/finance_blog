@@ -3,13 +3,10 @@ import { PageContainer } from "../../components/layout/PageContainer";
 import { ActionNotice } from "../../components/interaction/ActionNotice";
 import { DetailPanel } from "../../components/interaction/DetailPanel";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
-import { useAuth } from "../../lib/auth-state";
-import { getUserDisplayName } from "../../lib/auth-user";
 import { useWatchlist } from "../../lib/useWatchlist";
 import {
   ECONOMIC_EVENTS,
   FEAR_GREED,
-  GREETING_NAME,
   MACRO_INDICATORS,
   NEWS,
   NOTICE,
@@ -54,18 +51,15 @@ import {
 import { useDashboardClock } from "./useDashboardClock";
 
 export function DashboardPage() {
-  const auth = useAuth();
   const watchlistState = useWatchlist();
   const { detail, notice, handleAction, closeDetail } = useInteractionActions();
   const dashboardClock = useDashboardClock();
   const [todos, setTodos] = useState(TODOS);
   const [starredEventIds, setStarredEventIds] = useState(() => new Set<string>());
-  const greetingName =
-    auth.status === "signed-in" ? getUserDisplayName(auth.user) : GREETING_NAME;
 
   return (
     <PageContainer
-      title={`${dashboardClock.greeting}, ${greetingName} 님`}
+      title="오늘의 투자 상황판"
       description={
         <GreetingMeta
           currentTimeLabel={dashboardClock.currentTimeLabel}
