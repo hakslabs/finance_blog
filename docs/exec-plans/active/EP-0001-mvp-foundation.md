@@ -284,6 +284,14 @@ Each migration ships with RLS policies, grants, indexes, and `updated_at` trigge
   5. `price_bars_daily` enforces `h >= greatest(o,c,l)`, `l <= least(o,c,h)`, `v >= 0`.
 - [x] Out Of Scope: tier-1 reference enrichment (lands as migration 0005), `preferences jsonb` (already present in 0001), feature tables.
 
+### PR-19 — Migration 0005: reference enrichment
+
+- [x] Scope: Second migration slice from PR-17 — add the TIER-1 reference tables that back wireframe surfaces still reading from fixtures: sector taxonomy, indices + constituents, company profiles, instrument aliases, and the missing identifier columns on `instruments`.
+- [x] Required Reading: `docs/design-docs/schema-master-plan.md` §2 / §6, `design/wires-v3/wire-home.jsx` (지수 strip), `design/wires-v3/wire-analysis.jsx` (섹터 로테이션, 시장 한눈에 지수), `design/wires-v3/wire-stock.jsx` (섹터 내 위치, 회사 개요), existing `supabase/migrations/0001_*.sql`.
+- [x] Files: `supabase/migrations/0005_reference_enrich.sql`.
+- [x] Acceptance: Migration is idempotent (`create table if not exists`, `add column if not exists`, partial unique indexes). All six new tables (plus `instruments` column extensions) enable RLS with public-read policies + service-role writes, matching the `instruments` pattern. `npx supabase migration up --local` applies cleanly; `pg_tables` shows the new tables.
+- [x] Out Of Scope: seeding the new reference tables (lands when the related ingestion pipelines come online), market-data extension (migration 0006), fundamentals (0007).
+
 ## Done When
 
 - PR-01 through PR-10 are merged.
