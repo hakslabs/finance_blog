@@ -203,11 +203,11 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 
 ### PR-15 — Auth UX hardening
 
-- [ ] Scope: Keep public research routes browsable without login, protect only private account routes, return users to the requested page after OAuth, surface signed-in user identity consistently, and add visible feedback for top-bar controls that are not yet fully implemented.
-- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `docs/design-docs/auth.md`.
-- [ ] Files: `web/src/components/layout/{AuthGate,ProtectedRoute,TopBar}.*`, `web/src/lib/auth-*`, dashboard auth CTA, docs map updates.
-- [ ] Acceptance: `/` loads without login; `/portfolio` and `/mypage` show a route-scoped login prompt when signed out; top-bar search submit navigates to a stock route; signed-in account menu shows name/email and logout; unavailable top-bar actions show a visible short message instead of doing nothing; `npm run lint` and `npm run build` pass.
-- [ ] Out Of Scope: persistence for profile edits, watchlist add/delete, notification backend, full search autocomplete.
+- [x] Scope: Keep public research routes browsable without login, protect only private account routes, return users to the requested page after OAuth, surface signed-in user identity consistently, and add visible feedback for top-bar controls that are not yet fully implemented.
+- [x] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `docs/design-docs/auth.md`.
+- [x] Files: `web/src/components/layout/{AuthGate,ProtectedRoute,TopBar}.*`, `web/src/lib/auth-*`, dashboard auth CTA, docs map updates.
+- [x] Acceptance: `/` loads without login; `/portfolio` and `/mypage` show a route-scoped login prompt when signed out; top-bar search submit navigates to a stock route; signed-in account menu shows name/email and logout; unavailable top-bar actions show a visible short message instead of doing nothing; `npm run lint` and `npm run build` pass.
+- [x] Out Of Scope: persistence for profile edits, watchlist add/delete, notification backend, full search autocomplete.
 
 ## Done When
 
