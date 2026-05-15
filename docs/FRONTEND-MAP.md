@@ -36,19 +36,19 @@ Top-level chrome: collapsible sidebar + main area. Wraps `<Routes>` in `App.tsx`
 
 ### `Sidebar({ collapsed, onToggleCollapsed })`
 
-Left navigation. Items come from `navigation.ts`. Desktop sidebar can collapse to a compact lucide-icon rail; mobile keeps the horizontal nav pattern. The toggle uses a familiar menu/panel icon instead of text-only collapse affordances.
+Left navigation. Items come from `navigation.ts`. Desktop sidebar can collapse to a compact lucide-icon rail; mobile keeps the horizontal nav pattern. The toggle uses a familiar menu/panel icon instead of text-only collapse affordances. Admin-only nav items are hidden unless the signed-in user's email is listed in `VITE_ADMIN_EMAILS`.
 
 ### `TopBar()`
 
-Top utility bar. Reads auth context for login/account state. Global search covers menus, stocks, reports, and masters, then routes to the selected result. The currency chip toggles KRW/USD in local UI state, saved items route to `/mypage?tab=saved`, and the notification menu supports a local "모두 확인" action that clears the unread dot.
+Top utility bar. Reads auth context for login/account state. Global search covers menus, stocks, reports, and masters, then routes to the selected result. Admin-only menu results are included only for `VITE_ADMIN_EMAILS` users. The currency chip toggles KRW/USD in local UI state, saved items route to `/mypage?tab=saved`, and the notification menu supports a local "모두 확인" action that clears the unread dot.
 
-### `AuthGate({ children })`
+### `AuthGate({ children, requireAdmin? })`
 
-Route-level auth boundary used inside `ProtectedRoute`. It renders config/loading/login states inside the normal app chrome, then returns `children` once signed in.
+Route-level auth boundary used inside `ProtectedRoute`. It renders config/loading/login states inside the normal app chrome, returns `children` once signed in, and renders an access-denied panel when `requireAdmin` is true but the user is not listed in `VITE_ADMIN_EMAILS`.
 
-### `ProtectedRoute({ children })`
+### `ProtectedRoute({ children, requireAdmin? })`
 
-Small wrapper around `AuthGate` for private routes such as `/portfolio`, `/mypage`, and `/admin`.
+Small wrapper around `AuthGate` for private routes such as `/portfolio`, `/mypage`, and `/admin`. `/admin` passes `requireAdmin`.
 
 ### `PageContainer({ title, eyebrow?, description?, actions?, children? })`
 
@@ -62,7 +62,7 @@ Page-level landmark. Emits `<section aria-labelledby>` + `<h1>`. **Every route p
 
 ### `navigation.ts`
 
-Exports `primaryNavItems` and `utilityNavItems` with lucide icon components consumed by `Sidebar`, plus active-route helpers.
+Exports `primaryNavItems` and `utilityNavItems` with lucide icon components consumed by `Sidebar`, plus active-route helpers. `NavItem.adminOnly` marks hidden/admin routes; use `getVisibleNavItems(items, isAdmin)` before rendering utility nav or global-search menu results.
 
 ## Primitives (`components/primitives/`)
 

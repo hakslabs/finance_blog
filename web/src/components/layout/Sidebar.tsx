@@ -1,6 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
 import { Menu, PanelLeftOpen } from "lucide-react";
-import { isNavActive, primaryNavItems, utilityNavItems } from "./navigation";
+import { useAuth } from "../../lib/auth-state";
+import { isAdminUser } from "../../lib/auth-user";
+import { getVisibleNavItems, isNavActive, primaryNavItems, utilityNavItems } from "./navigation";
 import styles from "./Sidebar.module.css";
 
 type SidebarProps = {
@@ -10,6 +12,9 @@ type SidebarProps = {
 
 export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const { pathname } = useLocation();
+  const auth = useAuth();
+  const isAdmin = auth.status === "signed-in" && isAdminUser(auth.user);
+  const visibleUtilityNavItems = getVisibleNavItems(utilityNavItems, isAdmin);
 
   return (
     <aside
@@ -68,7 +73,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
       </nav>
 
       <nav className={styles.navUtility} aria-label="설정 메뉴">
-        {utilityNavItems.map((item) => {
+        {visibleUtilityNavItems.map((item) => {
           const active = isNavActive(pathname, item);
           const Icon = item.icon;
 

@@ -1,11 +1,15 @@
 import { useState, type PropsWithChildren } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { getUserDisplayName } from "../../lib/auth-user";
+import { getUserDisplayName, isAdminUser } from "../../lib/auth-user";
 import { useAuth } from "../../lib/auth-state";
 import { PageContainer } from "./PageContainer";
 import styles from "./AuthGate.module.css";
 
-export function AuthGate({ children }: PropsWithChildren) {
+type AuthGateProps = PropsWithChildren<{
+  requireAdmin?: boolean;
+}>;
+
+export function AuthGate({ children, requireAdmin = false }: AuthGateProps) {
   const auth = useAuth();
   const location = useLocation();
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +96,25 @@ export function AuthGate({ children }: PropsWithChildren) {
             </div>
           </div>
           {error ? <p className={styles.error}>{error}</p> : null}
+        </div>
+      </PageContainer>
+    );
+  }
+
+  if (requireAdmin && !isAdminUser(auth.user)) {
+    return (
+      <PageContainer
+        eyebrow="Admin"
+        title="접근 권한이 없습니다"
+        description="관리자 화면은 허용된 계정만 열 수 있습니다."
+      >
+        <div className={styles.panel}>
+          <p className={styles.body}>
+            현재 로그인한 계정은 관리자 목록에 없습니다. 일반 사용자 기능은 계속 사용할 수 있습니다.
+          </p>
+          <Link className={styles.secondaryLink} to="/">
+            홈으로 돌아가기
+          </Link>
         </div>
       </PageContainer>
     );

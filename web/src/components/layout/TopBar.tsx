@@ -16,8 +16,14 @@ import { MASTERS } from "../../fixtures/masters";
 import { REPORTS } from "../../fixtures/reports";
 import { STOCK_LIST } from "../../fixtures/stocks";
 import { useAuth } from "../../lib/auth-state";
-import { getUserDisplayName, getUserEmail, getUserInitial } from "../../lib/auth-user";
-import { getCurrentNavItem, primaryNavItems, utilityNavItems } from "./navigation";
+import { getUserDisplayName, getUserEmail, getUserInitial, isAdminUser } from "../../lib/auth-user";
+import {
+  getCurrentNavItem,
+  getVisibleNavItems,
+  primaryNavItems,
+  utilityNavItems,
+  type NavItem,
+} from "./navigation";
 import styles from "./TopBar.module.css";
 
 const TRANSIENT_NOTICE_MS = 2400;
@@ -35,13 +41,15 @@ type SearchResult = {
   to: string;
 };
 
-const NAV_SEARCH_ITEMS: SearchResult[] = [...primaryNavItems, ...utilityNavItems].map((item) => ({
-  id: `nav-${item.path}`,
-  group: "메뉴",
-  label: item.label,
-  meta: item.labelEn,
-  to: item.path,
-}));
+function navSearchItems(items: NavItem[]): SearchResult[] {
+  return items.map((item) => ({
+    id: `nav-${item.path}`,
+    group: "메뉴",
+    label: item.label,
+    meta: item.labelEn,
+    to: item.path,
+  }));
+}
 
 const STOCK_SEARCH_ITEMS: SearchResult[] = STOCK_LIST.map((stock) => ({
   id: `stock-${stock.id}`,
@@ -67,20 +75,26 @@ const MASTER_SEARCH_ITEMS: SearchResult[] = MASTERS.map((master) => ({
   to: `/masters/${encodeURIComponent(master.id)}`,
 }));
 
-const SEARCH_ITEMS = [
-  ...NAV_SEARCH_ITEMS,
+const NON_NAV_SEARCH_ITEMS = [
   ...STOCK_SEARCH_ITEMS,
   ...REPORT_SEARCH_ITEMS,
   ...MASTER_SEARCH_ITEMS,
 ];
 
-function getSearchResults(query: string): SearchResult[] {
+function getSearchResults(query: string, isAdmin: boolean): SearchResult[] {
   const normalized = query.trim().toLowerCase();
+  const searchItems = [
+    ...navSearchItems([
+      ...primaryNavItems,
+      ...getVisibleNavItems(utilityNavItems, isAdmin),
+    ]),
+    ...NON_NAV_SEARCH_ITEMS,
+  ];
   const base = normalized
-    ? SEARCH_ITEMS.filter((item) =>
+    ? searchItems.filter((item) =>
         `${item.group} ${item.label} ${item.meta}`.toLowerCase().includes(normalized),
       )
-    : SEARCH_ITEMS.filter((item) => item.group === "메뉴").slice(0, 7);
+    : searchItems.filter((item) => item.group === "메뉴").slice(0, 7);
   return base.slice(0, 8);
 }
 
@@ -89,6 +103,7 @@ export function TopBar() {
   const navigate = useNavigate();
   const current = getCurrentNavItem(pathname);
   const auth = useAuth();
+  const isAdmin = auth.status === "signed-in" && isAdminUser(auth.user);
   const [accountOpen, setAccountOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -101,7 +116,7 @@ export function TopBar() {
   const accountRef = useRef<HTMLDivElement | null>(null);
   const notificationsRef = useRef<HTMLDivElement | null>(null);
   const searchRef = useRef<HTMLFormElement | null>(null);
-  const searchResults = useMemo(() => getSearchResults(searchQuery), [searchQuery]);
+  const searchResults = useMemo(() => getSearchResults(searchQuery, isAdmin), [isAdmin, searchQuery]);
 
   useEffect(() => {
     if (!notice) return undefined;

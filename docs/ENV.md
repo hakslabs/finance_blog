@@ -34,6 +34,12 @@ If a new variable is introduced, add a row here in the same PR. If a row says "b
 | `VITE_SUPABASE_ANON_KEY`    | web                      | yes (anon is public) | Supabase Dashboard → Settings → API → anon                   | PR-08    | yes once browser uses Supabase directly | client init fails               |
 | `SUPABASE_JWT_SECRET`       | api                      | no                   | Supabase Dashboard → Settings → API → JWT Secret             | PR-14    | yes                                     | auth verification fails         |
 
+### Web authorization UI
+
+| Variable            | Used by | Browser-safe                | Source                                  | First PR | Required                    | Missing behavior                     |
+| ------------------- | ------- | --------------------------- | --------------------------------------- | -------- | --------------------------- | ------------------------------------ |
+| `VITE_ADMIN_EMAILS` | web     | yes (not a secret; UI only) | comma-separated owner/admin user emails | PR-16    | yes before exposing `/admin` | admin nav hidden; admin route denied |
+
 ### Auth
 
 Google OAuth client ID/secret are pasted into the **Supabase Dashboard**, not the app `.env`. No app variables for those.

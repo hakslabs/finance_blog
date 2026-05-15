@@ -17,6 +17,7 @@ export type NavItem = {
   path: string;
   icon: LucideIcon;
   aliases?: string[];
+  adminOnly?: boolean;
 };
 
 export const primaryNavItems: NavItem[] = [
@@ -31,8 +32,12 @@ export const primaryNavItems: NavItem[] = [
 
 export const utilityNavItems: NavItem[] = [
   { label: "마이페이지", labelEn: "My Page", path: "/mypage", icon: User },
-  { label: "관리자", labelEn: "Admin", path: "/admin", icon: Shield },
+  { label: "관리자", labelEn: "Admin", path: "/admin", icon: Shield, adminOnly: true },
 ];
+
+export function getVisibleNavItems(items: NavItem[], isAdmin: boolean): NavItem[] {
+  return items.filter((item) => !item.adminOnly || isAdmin);
+}
 
 export function isNavActive(pathname: string, item: NavItem) {
   if (item.path === "/") {

@@ -1,4 +1,12 @@
 import type { User } from "@supabase/supabase-js";
+import { env } from "./env";
+
+const adminEmails = new Set(
+  (env.adminEmails ?? "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean),
+);
 
 export function getUserDisplayName(user: User): string {
   const metadata = user.user_metadata;
@@ -13,4 +21,9 @@ export function getUserEmail(user: User): string {
 
 export function getUserInitial(user: User): string {
   return getUserDisplayName(user).charAt(0).toUpperCase();
+}
+
+export function isAdminUser(user: User | null): boolean {
+  if (!user?.email) return false;
+  return adminEmails.has(user.email.toLowerCase());
 }

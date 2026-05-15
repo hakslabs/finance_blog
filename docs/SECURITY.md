@@ -19,6 +19,7 @@ Finance_lab will handle personal portfolio data, watchlists, investment notes, p
 - External data provider keys belong in server-side environment variables.
 - Report ingestion and summarization should preserve source provenance.
 - Admin endpoints should require explicit authorization, not only hidden UI.
+- Browser-side admin checks such as `VITE_ADMIN_EMAILS` are only navigation/route affordances. They do not replace server-side authorization for future admin APIs.
 
 ## Data Sensitivity
 
