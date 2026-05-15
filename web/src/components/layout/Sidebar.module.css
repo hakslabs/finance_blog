@@ -71,32 +71,27 @@
 
 .collapseButton {
   display: inline-flex;
-  gap: 8px;
   align-items: center;
   justify-content: center;
-  min-height: 34px;
-  padding: 0 10px;
+  align-self: flex-end;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   color: var(--muted);
-  font: inherit;
-  font-size: 0.75rem;
-  font-weight: 800;
-  background: var(--surface);
+  background: transparent;
   border: 1px solid var(--hairline);
+  border-radius: 6px;
   cursor: pointer;
 }
 
 .collapseButton:hover {
   color: var(--ink);
+  background: var(--surface);
   border-color: var(--line);
 }
 
 .asideCollapsed .collapseButton {
-  width: 44px;
-  padding: 0;
-}
-
-.asideCollapsed .collapseButton span {
-  display: none;
+  align-self: center;
 }
 
 .nav {

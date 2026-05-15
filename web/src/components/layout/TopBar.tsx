@@ -7,6 +7,7 @@ import {
   CircleDollarSign,
   FileText,
   Home,
+  Languages,
   LogOut,
   Search,
   User,
@@ -17,6 +18,8 @@ import { REPORTS } from "../../fixtures/reports";
 import { STOCK_LIST } from "../../fixtures/stocks";
 import { useAuth } from "../../lib/auth-state";
 import { getUserDisplayName, getUserEmail, getUserInitial, isAdminUser } from "../../lib/auth-user";
+import { useCurrency } from "../../lib/currency";
+import { SHELL_LABELS, useLanguage } from "../../lib/language";
 import {
   getCurrentNavItem,
   getVisibleNavItems,
@@ -27,10 +30,25 @@ import {
 import styles from "./TopBar.module.css";
 
 const TRANSIENT_NOTICE_MS = 2400;
-const INITIAL_NOTIFICATIONS = [
-  "AAPL 배당락 전 포지션 점검",
-  "NVDA Thesis 조건 검토",
-] as const;
+const NOTIF_READ_STORAGE_KEY = "finance-lab:notif:read-at";
+const INITIAL_NOTIFICATIONS: { id: string; label: string; at: string }[] = [
+  { id: "aapl-dividend", label: "AAPL 배당락 전 포지션 점검", at: "2026-05-15T06:30:00Z" },
+  { id: "nvda-thesis", label: "NVDA Thesis 조건 검토", at: "2026-05-15T07:15:00Z" },
+];
+
+function readNotifReadAt(): number {
+  if (typeof window === "undefined") return 0;
+  const raw = window.localStorage.getItem(NOTIF_READ_STORAGE_KEY);
+  if (!raw) return 0;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function countUnread(readAtMs: number): number {
+  return INITIAL_NOTIFICATIONS.filter(
+    (item) => new Date(item.at).getTime() > readAtMs,
+  ).length;
+}
 
 const SEARCH_GROUPS = {
   menu: "메뉴",
@@ -40,7 +58,6 @@ const SEARCH_GROUPS = {
 } as const;
 type SearchGroup = (typeof SEARCH_GROUPS)[keyof typeof SEARCH_GROUPS];
 
-type Currency = "KRW" | "USD";
 type SearchResult = {
   id: string;
   group: SearchGroup;
@@ -112,14 +129,14 @@ export function TopBar() {
   const current = getCurrentNavItem(pathname);
   const auth = useAuth();
   const isAdmin = auth.status === "signed-in" && isAdminUser(auth.user);
+  const { currency, toggle: toggleCurrency } = useCurrency();
+  const { lang, toggle: toggleLang, pick } = useLanguage();
   const [accountOpen, setAccountOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [currency, setCurrency] = useState<Currency>("KRW");
-  const [unreadNotifications, setUnreadNotifications] = useState<number>(
-    INITIAL_NOTIFICATIONS.length,
-  );
+  const [notifReadAt, setNotifReadAt] = useState<number>(() => readNotifReadAt());
+  const unreadNotifications = useMemo(() => countUnread(notifReadAt), [notifReadAt]);
   const [notice, setNotice] = useState<string | null>(null);
   const accountRef = useRef<HTMLDivElement | null>(null);
   const notificationsRef = useRef<HTMLDivElement | null>(null);
@@ -187,12 +204,22 @@ export function TopBar() {
     }
   }
 
+  function handleMarkAllRead() {
+    const now = Date.now();
+    setNotifReadAt(now);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(NOTIF_READ_STORAGE_KEY, String(now));
+    }
+  }
+
   return (
     <header className={styles.bar}>
       <div className={styles.title}>
-        <span className={styles.titleKo}>{current.label}</span>
+        <span className={styles.titleKo}>
+          {lang === "en" ? current.labelEn : current.label}
+        </span>
         <span className={styles.titleEn} translate="no">
-          {current.labelEn}
+          {lang === "en" ? current.label : current.labelEn}
         </span>
       </div>
 
@@ -242,20 +269,30 @@ export function TopBar() {
           type="button"
           className={styles.chipButton}
           translate="no"
-          aria-label={`기준 통화 ${currency}, ${currency === "KRW" ? "USD" : "KRW"}로 변경`}
-          onClick={() => setCurrency((value) => (value === "KRW" ? "USD" : "KRW"))}
+          aria-label={`${pick(SHELL_LABELS.currencyToggleAria)} (${currency})`}
+          onClick={toggleCurrency}
         >
           <CircleDollarSign size={15} aria-hidden="true" strokeWidth={1.8} />
           <span>{currency}</span>
         </button>
+        <button
+          type="button"
+          className={styles.chipButton}
+          translate="no"
+          aria-label={`${pick(SHELL_LABELS.langToggleAria)} (${lang})`}
+          onClick={toggleLang}
+        >
+          <Languages size={15} aria-hidden="true" strokeWidth={1.8} />
+          <span>{lang === "ko" ? "한" : "EN"}</span>
+        </button>
         <Link
           className={styles.actionButton}
-          aria-label="저장한 항목 보기"
-          title="저장한 항목"
+          aria-label={pick(SHELL_LABELS.savedItems)}
+          title={pick(SHELL_LABELS.savedItems)}
           to="/mypage?tab=saved"
         >
           <Bookmark size={16} aria-hidden="true" strokeWidth={1.8} />
-          <span>저장</span>
+          <span>{pick(SHELL_LABELS.savedItems)}</span>
         </Link>
         <div className={styles.notifications} ref={notificationsRef}>
           <button
@@ -263,36 +300,36 @@ export function TopBar() {
             type="button"
             aria-expanded={notificationsOpen}
             aria-haspopup="menu"
-            aria-label={`알림 열기${unreadNotifications > 0 ? `, 새 알림 ${unreadNotifications}개` : ""}`}
-            title="알림"
+            aria-label={`${pick(SHELL_LABELS.notifications)}${unreadNotifications > 0 ? ` (${unreadNotifications})` : ""}`}
+            title={pick(SHELL_LABELS.notifications)}
             data-unread={unreadNotifications > 0 ? "true" : "false"}
             onClick={toggleNotifications}
           >
             <Bell size={16} aria-hidden="true" strokeWidth={1.8} />
-            <span>알림</span>
+            <span>{pick(SHELL_LABELS.notifications)}</span>
           </button>
           {notificationsOpen ? (
             <div className={styles.notificationMenu} role="menu">
               <div className={styles.menuHeader}>
-                <span>알림</span>
+                <span>{pick(SHELL_LABELS.notificationsHeader)}</span>
                 <button
                   type="button"
                   className={styles.markAllButton}
                   disabled={unreadNotifications === 0}
-                  onClick={() => setUnreadNotifications(0)}
+                  onClick={handleMarkAllRead}
                 >
-                  모두 확인
+                  {pick(SHELL_LABELS.markAllRead)}
                 </button>
               </div>
               {INITIAL_NOTIFICATIONS.map((item) => (
                 <Link
-                  key={item}
+                  key={item.id}
                   className={styles.notificationItem}
                   role="menuitem"
                   to="/mypage"
                   onClick={() => setNotificationsOpen(false)}
                 >
-                  {item}
+                  {item.label}
                 </Link>
               ))}
             </div>
@@ -305,7 +342,7 @@ export function TopBar() {
               className={styles.avatar}
               aria-expanded={accountOpen}
               aria-haspopup="menu"
-              aria-label="계정 메뉴 열기"
+              aria-label={pick(SHELL_LABELS.account)}
               title={getUserDisplayName(auth.user)}
               onClick={() => setAccountOpen((open) => !open)}
             >
@@ -327,7 +364,7 @@ export function TopBar() {
                   onClick={() => setAccountOpen(false)}
                 >
                   <Home size={15} aria-hidden="true" />
-                  홈
+                  {pick(SHELL_LABELS.home)}
                 </Link>
                 <Link
                   className={styles.accountItem}
@@ -336,7 +373,7 @@ export function TopBar() {
                   onClick={() => setAccountOpen(false)}
                 >
                   <User size={15} aria-hidden="true" />
-                  마이페이지
+                  {pick(SHELL_LABELS.mypage)}
                 </Link>
                 <Link
                   className={styles.accountItem}
@@ -345,7 +382,7 @@ export function TopBar() {
                   onClick={() => setAccountOpen(false)}
                 >
                   <BriefcaseBusiness size={15} aria-hidden="true" />
-                  포트폴리오
+                  {pick(SHELL_LABELS.portfolio)}
                 </Link>
                 <Link
                   className={styles.accountItem}
@@ -354,7 +391,7 @@ export function TopBar() {
                   onClick={() => setAccountOpen(false)}
                 >
                   <FileText size={15} aria-hidden="true" />
-                  관심 리포트
+                  {pick(SHELL_LABELS.savedReports)}
                 </Link>
                 <button
                   className={styles.accountItemButton}
@@ -363,7 +400,7 @@ export function TopBar() {
                   onClick={() => void handleSignOut()}
                 >
                   <LogOut size={15} aria-hidden="true" />
-                  로그아웃
+                  {pick(SHELL_LABELS.signOut)}
                 </button>
               </div>
             ) : null}
@@ -375,7 +412,9 @@ export function TopBar() {
             disabled={auth.status === "loading" || auth.status === "config-error"}
             onClick={() => void handleTopBarSignIn()}
           >
-            {auth.status === "loading" ? "확인 중" : "로그인"}
+            {auth.status === "loading"
+              ? pick(SHELL_LABELS.signingIn)
+              : pick(SHELL_LABELS.signIn)}
           </button>
         )}
       </div>

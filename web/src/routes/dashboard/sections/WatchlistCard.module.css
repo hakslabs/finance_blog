@@ -241,6 +241,108 @@
   composes: footerRowBordered from "./_card.module.css";
 }
 
+.removeButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  margin-left: 4px;
+  color: var(--faint);
+  background: transparent;
+  border: 1px solid var(--hairline);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.removeButton:hover,
+.removeButton:focus-visible {
+  color: var(--negative);
+  border-color: var(--negative);
+  outline: 0;
+}
+
+.thRemove {
+  width: 26px;
+  flex-shrink: 0;
+}
+
+.addRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--hairline);
+}
+
+.addButton {
+  align-self: flex-start;
+  padding: 4px 10px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  cursor: pointer;
+}
+
+.addButton:hover,
+.addButton:focus-visible {
+  color: var(--ink);
+  border-color: var(--line);
+  outline: 0;
+}
+
+.addForm {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.addInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+}
+
+.addInput:focus-visible {
+  border-color: var(--line);
+  outline: 0;
+}
+
+.addSubmit,
+.addCancel {
+  height: 28px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.addSubmit {
+  background: var(--ink);
+  color: var(--surface);
+  border-color: var(--ink);
+}
+
+.addError {
+  margin: 0;
+  color: var(--negative);
+  font-size: 0.6875rem;
+}
+
 @media (max-width: 520px) {
   .tableHead {
     display: none;

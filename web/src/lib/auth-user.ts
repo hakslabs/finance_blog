@@ -8,7 +8,23 @@ const adminEmails = new Set(
     .filter(Boolean),
 );
 
+export const DISPLAY_NAME_STORAGE_PREFIX = "finance-lab:display-name";
+
+export function displayNameStorageKey(userId: string): string {
+  return `${DISPLAY_NAME_STORAGE_PREFIX}:${userId}`;
+}
+
+function readDisplayNameOverride(userId: string): string | null {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(displayNameStorageKey(userId));
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  return trimmed ? trimmed : null;
+}
+
 export function getUserDisplayName(user: User): string {
+  const override = readDisplayNameOverride(user.id);
+  if (override) return override;
   const metadata = user.user_metadata;
   const name =
     metadata.full_name ?? metadata.name ?? metadata.preferred_username ?? user.email;

@@ -271,6 +271,19 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 
 Each migration ships with RLS policies, grants, indexes, and `updated_at` triggers in the same file. Do not start 0004 until the wireframe revision pass is complete and PR-16 has merged.
 
+### PR-18 — Migration 0004: schema bugfixes
+
+- [x] Scope: Execute the first migration slice locked in PR-17 — fix the five known schema bugs in one migration file, no new feature tables.
+- [x] Required Reading: `docs/design-docs/schema-master-plan.md` §8, `supabase/migrations/0001_mvp_foundation.sql`, `supabase/migrations/0002_portfolio.sql`, `supabase/migrations/0003_prices_ingestion.sql`.
+- [x] Files: `supabase/migrations/0004_schema_bugfixes.sql`.
+- [x] Acceptance: Migration is idempotent (`drop constraint if exists` before every `add`), keeps existing RLS policies/grants intact, and contains all five corrections from the schema-master-plan §8:
+  1. `watchlist_items_unique_position` rebuilt as `deferrable initially deferred`.
+  2. `profiles.id` now FKs `auth.users(id) on delete cascade` (orphan dev rows deleted first as guard).
+  3. `transactions.amount` must equal `quantity * price` for buy/sell rows (±0.01 tolerance).
+  4. `transactions.instrument_id` may only be null for `type = 'deposit'`.
+  5. `price_bars_daily` enforces `h >= greatest(o,c,l)`, `l <= least(o,c,h)`, `v >= 0`.
+- [x] Out Of Scope: tier-1 reference enrichment (lands as migration 0005), `preferences jsonb` (already present in 0001), feature tables.
+
 ## Done When
 
 - PR-01 through PR-10 are merged.

@@ -1,17 +1,14 @@
 import { KpiTile } from "../../../components/primitives/KpiTile";
 import type { Portfolio } from "../../../lib/api-client";
+import { useCurrency, type Currency } from "../../../lib/currency";
 import styles from "./KpiStrip.module.css";
 
-function formatMoney(value: number, currency: string): string {
-  const sign = currency === "KRW" ? "₩" : currency === "USD" ? "$" : "";
-  const digits = currency === "KRW" ? 0 : 2;
-  return `${sign}${value.toLocaleString("ko-KR", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  })}`;
-}
-
 export function KpiStrip({ portfolio }: { portfolio: Portfolio }) {
+  const { currency, format } = useCurrency();
+
+  // The portfolio API returns numeric values in USD. We treat them as USD and
+  // convert via the active currency context.
+  const sourceCurrency: Currency = "USD";
   const totalCostBasis = portfolio.holdings.reduce(
     (sum, h) => sum + h.cost_basis,
     0,
@@ -25,8 +22,8 @@ export function KpiStrip({ portfolio }: { portfolio: Portfolio }) {
     {
       id: "kpi-cost-basis",
       label: "투자원금 (보유분)",
-      value: formatMoney(totalCostBasis, portfolio.currency),
-      detail: portfolio.currency,
+      value: format(totalCostBasis, sourceCurrency),
+      detail: currency,
     },
     {
       id: "kpi-holdings",

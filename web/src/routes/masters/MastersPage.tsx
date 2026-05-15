@@ -1,10 +1,12 @@
 import { Link, useNavigate } from "react-router-dom";
+import { Star } from "lucide-react";
 import { PageContainer } from "../../components/layout/PageContainer";
 import { Badge } from "../../components/primitives/Badge";
 import { Card } from "../../components/primitives/Card";
 import { DataTable } from "../../components/primitives/DataTable";
 import { MASTERS } from "../../fixtures/masters";
 import type { MasterListItem, MasterStrategy } from "../../fixtures/masters";
+import { useSavedItems } from "../../lib/saved-items";
 import styles from "./MastersPage.module.css";
 
 type BadgeTone = "neutral" | "accent" | "positive" | "negative" | "warning";
@@ -19,7 +21,7 @@ const STRATEGY_TONE: Record<MasterStrategy, BadgeTone> = {
   정량: "neutral",
 };
 
-const columns = [
+const baseColumns = [
   {
     key: "name",
     header: "거장",
@@ -49,6 +51,34 @@ const columns = [
 
 export function MastersPage() {
   const navigate = useNavigate();
+  const { isSaved, toggle } = useSavedItems();
+  const columns = [
+    {
+      key: "bookmark",
+      header: "저장",
+      render: (row: MasterListItem) => {
+        const active = isSaved("master", row.id);
+        return (
+          <button
+            type="button"
+            className={active ? styles.bookmarkActive : styles.bookmarkButton}
+            aria-label={`${row.name} 저장 ${active ? "해제" : ""}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              toggle({
+                kind: "master",
+                refId: row.id,
+                title: `${row.name} · ${row.firm}`,
+              });
+            }}
+          >
+            <Star size={14} aria-hidden="true" fill={active ? "currentColor" : "none"} />
+          </button>
+        );
+      },
+    },
+    ...baseColumns,
+  ];
   return (
     <PageContainer
       eyebrow="Masters"

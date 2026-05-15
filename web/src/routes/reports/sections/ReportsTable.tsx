@@ -10,6 +10,7 @@ import type {
   ReportRegion,
   ReportStatus,
 } from "../../../fixtures/reports";
+import { useSavedItems } from "../../../lib/saved-items";
 import styles from "../ReportsPage.module.css";
 
 type BadgeTone = "neutral" | "accent" | "positive" | "negative" | "warning";
@@ -98,23 +99,17 @@ const columns = [
 
 type ReportsTableProps = {
   reports: ReportListItem[];
-  bookmarkedIds: Set<string>;
-  onToggleBookmark: (id: string) => void;
   onOpenReport?: (report: ReportListItem) => void;
 };
 
-export function ReportsTable({
-  reports,
-  bookmarkedIds,
-  onToggleBookmark,
-  onOpenReport,
-}: ReportsTableProps) {
+export function ReportsTable({ reports, onOpenReport }: ReportsTableProps) {
+  const { isSaved, toggle } = useSavedItems();
   const tableColumns = [
     {
       key: "bookmark",
       header: "관심",
       render: (row: ReportListItem) => {
-        const active = bookmarkedIds.has(row.id);
+        const active = isSaved("report", row.id);
         return (
           <button
             type="button"
@@ -122,7 +117,7 @@ export function ReportsTable({
             aria-label={`${row.title} 관심글 ${active ? "해제" : "저장"}`}
             onClick={(event) => {
               event.stopPropagation();
-              onToggleBookmark(row.id);
+              toggle({ kind: "report", refId: row.id, title: row.title });
             }}
           >
             <Star size={15} aria-hidden="true" fill={active ? "currentColor" : "none"} />

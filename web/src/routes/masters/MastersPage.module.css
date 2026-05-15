@@ -28,3 +28,22 @@
 .mono {
   font-family: var(--mono);
 }
+
+.bookmarkButton,
+.bookmarkActive {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.bookmarkButton:hover,
+.bookmarkActive {
+  color: var(--accent);
+  border-color: var(--hairline);
+}

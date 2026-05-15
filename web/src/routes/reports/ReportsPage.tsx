@@ -2,37 +2,22 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageContainer } from "../../components/layout/PageContainer";
 import { REPORT_KPIS, REPORTS } from "../../fixtures/reports";
+import { useSavedItems } from "../../lib/saved-items";
 import { ReportFilters } from "./sections/ReportFilters";
 import { ReportKpiStrip } from "./sections/ReportKpiStrip";
 import { ReportsTable } from "./sections/ReportsTable";
 import styles from "./ReportsPage.module.css";
 
-const INITIAL_BOOKMARKED_REPORTS = new Set([
-  "bok-monetary-2025-09",
-  "berkshire-13f-2025-q3",
-  "blackrock-ai-capex-2026",
-]);
-
 export function ReportsPage() {
   const navigate = useNavigate();
-  const [bookmarkedIds, setBookmarkedIds] = useState(INITIAL_BOOKMARKED_REPORTS);
+  const { items, isSaved } = useSavedItems();
   const [savedOnly, setSavedOnly] = useState(false);
+  const savedCount = items.filter((entry) => entry.kind === "report").length;
   const reports = useMemo(
-    () => REPORTS.filter((report) => !savedOnly || bookmarkedIds.has(report.id)),
-    [bookmarkedIds, savedOnly],
+    () =>
+      REPORTS.filter((report) => !savedOnly || isSaved("report", report.id)),
+    [isSaved, savedOnly],
   );
-
-  function toggleBookmark(id: string) {
-    setBookmarkedIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }
 
   return (
     <PageContainer
@@ -46,7 +31,7 @@ export function ReportsPage() {
             className={savedOnly ? styles.savedToggleActive : styles.savedToggle}
             onClick={() => setSavedOnly((value) => !value)}
           >
-            관심글 {bookmarkedIds.size}
+            관심글 {savedCount}
           </button>
           <span>마지막 갱신 06:32</span>
         </div>
@@ -56,8 +41,6 @@ export function ReportsPage() {
       <ReportKpiStrip kpis={REPORT_KPIS} />
       <ReportsTable
         reports={reports}
-        bookmarkedIds={bookmarkedIds}
-        onToggleBookmark={toggleBookmark}
         onOpenReport={(report) => navigate(`/reports/${encodeURIComponent(report.id)}`)}
       />
     </PageContainer>

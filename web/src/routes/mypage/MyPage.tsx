@@ -1,16 +1,19 @@
-import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useState, type FormEvent } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { PageContainer } from "../../components/layout/PageContainer";
 import { ActionNotice } from "../../components/interaction/ActionNotice";
 import { DetailPanel } from "../../components/interaction/DetailPanel";
 import { Badge } from "../../components/primitives/Badge";
 import { Card } from "../../components/primitives/Card";
 import { DataTable } from "../../components/primitives/DataTable";
+import { EmptyState } from "../../components/primitives/EmptyState";
 import { KpiTile } from "../../components/primitives/KpiTile";
 import { REPORTS } from "../../fixtures/reports";
 import type { ReportListItem } from "../../fixtures/reports";
 import { useAuth } from "../../lib/auth-state";
-import { getUserDisplayName } from "../../lib/auth-user";
+import { displayNameStorageKey, getUserDisplayName } from "../../lib/auth-user";
+import { SHELL_LABELS, useLanguage } from "../../lib/language";
+import { useSavedItems, type SavedItem, type SavedItemKind } from "../../lib/saved-items";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
 import type { DetailContent } from "../../lib/interaction/action-intent";
 import {
@@ -192,6 +195,7 @@ export function MyPage() {
   const [activeTab, setActiveTab] = useState<MyPageTab>(initialTab);
   const { detail, notice, handleAction, closeDetail } = useInteractionActions();
   const auth = useAuth();
+  const { pick } = useLanguage();
   const displayName =
     auth.status === "signed-in" ? getUserDisplayName(auth.user) : "사용자";
   const email = auth.status === "signed-in" ? auth.user.email ?? "이메일 없음" : "";
@@ -199,6 +203,27 @@ export function MyPage() {
     auth.status === "signed-in"
       ? new Date(auth.user.created_at).toLocaleDateString("ko-KR")
       : "";
+  const [nameInput, setNameInput] = useState(displayName);
+  const [trackedDisplayName, setTrackedDisplayName] = useState(displayName);
+  const [nameSaved, setNameSaved] = useState(false);
+  if (trackedDisplayName !== displayName) {
+    setTrackedDisplayName(displayName);
+    setNameInput(displayName);
+  }
+
+  function handleSaveName(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (auth.status !== "signed-in") return;
+    const next = nameInput.trim();
+    const key = displayNameStorageKey(auth.user.id);
+    if (next) {
+      window.localStorage.setItem(key, next);
+    } else {
+      window.localStorage.removeItem(key);
+    }
+    setNameSaved(true);
+    window.setTimeout(() => setNameSaved(false), 2400);
+  }
 
   function selectTab(tab: MyPageTab) {
     setActiveTab(tab);
@@ -231,6 +256,33 @@ export function MyPage() {
             </button>
           </div>
         </div>
+        {auth.status === "signed-in" ? (
+          <form className={styles.profileForm} onSubmit={handleSaveName}>
+            <label className={styles.profileField}>
+              <span>표시 이름</span>
+              <input
+                type="text"
+                value={nameInput}
+                onChange={(event) => setNameInput(event.target.value)}
+                placeholder="표시 이름"
+                maxLength={64}
+                aria-label="표시 이름"
+              />
+            </label>
+            <label className={styles.profileField}>
+              <span>이메일</span>
+              <input type="email" value={email} readOnly aria-readonly="true" />
+            </label>
+            <button type="submit" className={styles.profileSubmit}>
+              저장
+            </button>
+            {nameSaved ? (
+              <p className={styles.profileNotice} role="status">
+                이름이 저장되었습니다 (로컬). 백엔드 동기화는 PR-19에서 연결됩니다.
+              </p>
+            ) : null}
+          </form>
+        ) : null}
       </Card>
 
       <nav className={styles.tabBar} aria-label="마이페이지 섹션">
@@ -384,7 +436,8 @@ export function MyPage() {
 
       {activeTab === "saved" ? (
         <div className={styles.stack}>
-          <Card title="관심 리포트" eyebrow="Saved reports">
+          <SavedItemsSection />
+          <Card title="관심 리포트 (정적 샘플)" eyebrow="Saved reports">
             <DataTable<ReportListItem>
               columns={reportColumns}
               rows={REPORTS.filter((report) => SAVED_REPORT_IDS.has(report.id))}
@@ -451,6 +504,7 @@ export function MyPage() {
 
       {activeTab === "settings" ? (
         <Card title="계정 설정" eyebrow="Static form summary">
+          <aside className={styles.settingsNote}>{pick(SHELL_LABELS.partialI18nNote)}</aside>
           <DataTable<SettingRow>
             columns={settingColumns}
             rows={SETTING_ROWS}
@@ -464,5 +518,212 @@ export function MyPage() {
       <DetailPanel detail={detail} onClose={closeDetail} />
       <ActionNotice message={notice} />
     </PageContainer>
+  );
+}
+
+const KIND_LABEL: Record<SavedItemKind, string> = {
+  report: "리포트",
+  stock: "종목",
+  master: "고수",
+  news: "뉴스",
+};
+
+const UNFILED = "미분류";
+const ALL = "전체";
+
+function refToUrl(item: SavedItem): string | null {
+  switch (item.kind) {
+    case "report":
+      return `/reports/${encodeURIComponent(item.refId)}`;
+    case "stock":
+      return `/stocks/${encodeURIComponent(item.refId)}`;
+    case "master":
+      return `/masters/${encodeURIComponent(item.refId)}`;
+    default:
+      return null;
+  }
+}
+
+function SavedItemsSection() {
+  const { items, remove, setFolder, setNote, folders } = useSavedItems();
+  const [activeFolder, setActiveFolder] = useState<string>(ALL);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
+  const folderList = folders();
+
+  const filteredItems = items.filter((item) => {
+    if (activeFolder === ALL) return true;
+    if (activeFolder === UNFILED) return !item.folder;
+    return item.folder === activeFolder;
+  });
+
+  function handleAddFolder(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmed = newFolderName.trim();
+    if (!trimmed) return;
+    setActiveFolder(trimmed);
+    setNewFolderName("");
+  }
+
+  return (
+    <Card title="저장한 항목" eyebrow="Saved items">
+      <div className={styles.folderChips} role="tablist" aria-label="폴더 필터">
+        {[ALL, UNFILED, ...folderList].map((folder) => (
+          <button
+            key={folder}
+            type="button"
+            role="tab"
+            aria-selected={activeFolder === folder}
+            className={
+              activeFolder === folder ? styles.folderChipActive : styles.folderChip
+            }
+            onClick={() => setActiveFolder(folder)}
+          >
+            {folder}
+          </button>
+        ))}
+        <form className={styles.newFolderForm} onSubmit={handleAddFolder}>
+          <input
+            type="text"
+            placeholder="새 폴더 이름"
+            value={newFolderName}
+            onChange={(event) => setNewFolderName(event.target.value)}
+            aria-label="새 폴더 이름"
+          />
+          <button type="submit">새 폴더</button>
+        </form>
+      </div>
+      {filteredItems.length === 0 ? (
+        <EmptyState
+          title="저장한 항목이 없습니다"
+          description="리포트, 종목, 고수 페이지에서 별 아이콘으로 저장하세요."
+        />
+      ) : (
+        <ul className={styles.savedList}>
+          {filteredItems.map((item) => {
+            const url = refToUrl(item);
+            const expanded = !!expandedNotes[item.id];
+            return (
+              <li key={item.id} className={styles.savedRow}>
+                <div className={styles.savedRowHead}>
+                  <Badge tone="neutral">{KIND_LABEL[item.kind]}</Badge>
+                  {url ? (
+                    <Link to={url} className={styles.savedTitle}>
+                      {item.title}
+                    </Link>
+                  ) : (
+                    <span className={styles.savedTitle}>{item.title}</span>
+                  )}
+                  <FolderPicker
+                    item={item}
+                    folders={folderList}
+                    onChange={(next) => setFolder(item.id, next)}
+                  />
+                  <button
+                    type="button"
+                    className={styles.savedNoteToggle}
+                    onClick={() =>
+                      setExpandedNotes((current) => ({
+                        ...current,
+                        [item.id]: !current[item.id],
+                      }))
+                    }
+                  >
+                    {expanded ? "메모 닫기" : item.note ? "메모 보기" : "메모 추가"}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.savedRemove}
+                    aria-label={`${item.title} 저장 해제`}
+                    onClick={() => remove(item.id)}
+                  >
+                    삭제
+                  </button>
+                </div>
+                {expanded ? (
+                  <textarea
+                    className={styles.savedNote}
+                    value={item.note ?? ""}
+                    placeholder="메모를 입력하세요 (로컬 저장)"
+                    onChange={(event) => setNote(item.id, event.target.value)}
+                    rows={3}
+                  />
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
+function FolderPicker({
+  item,
+  folders,
+  onChange,
+}: {
+  item: SavedItem;
+  folders: string[];
+  onChange: (next: string | null) => void;
+}) {
+  const [creating, setCreating] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  function handleSelect(value: string) {
+    if (value === "__new__") {
+      setCreating(true);
+      return;
+    }
+    if (value === "__none__") {
+      onChange(null);
+      return;
+    }
+    onChange(value);
+  }
+
+  function handleSubmitNew(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmed = draft.trim();
+    if (!trimmed) return;
+    onChange(trimmed);
+    setDraft("");
+    setCreating(false);
+  }
+
+  if (creating) {
+    return (
+      <form className={styles.folderInline} onSubmit={handleSubmitNew}>
+        <input
+          type="text"
+          value={draft}
+          autoFocus
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder="새 폴더…"
+          aria-label="새 폴더 이름"
+        />
+        <button type="submit">저장</button>
+        <button type="button" onClick={() => setCreating(false)}>
+          취소
+        </button>
+      </form>
+    );
+  }
+
+  return (
+    <select
+      className={styles.folderSelect}
+      value={item.folder ?? "__none__"}
+      onChange={(event) => handleSelect(event.target.value)}
+      aria-label={`${item.title} 폴더`}
+    >
+      <option value="__none__">미분류</option>
+      {folders.map((folder) => (
+        <option key={folder} value={folder}>
+          {folder}
+        </option>
+      ))}
+      <option value="__new__">+ 새 폴더…</option>
+    </select>
   );
 }
