@@ -1,106 +1,101 @@
 import { Card } from "../../../components/primitives/Card";
-import type { WatchlistItem } from "../../../fixtures/dashboard";
-import { SPARK_ROW_DOWN, SPARK_ROW_UP } from "./sparkline";
+import type { Watchlist, WatchlistItem } from "../../../lib/api-client";
+import type { WatchlistState } from "../../../lib/useWatchlist";
 import styles from "./WatchlistCard.module.css";
 
-const MA_CLASS: Record<WatchlistItem["maTrend"], string> = {
-  up: styles.maUp,
-  down: styles.maDown,
-  neutral: styles.maNeutral,
-};
+const DASH = "—";
 
-const MA_LABEL: Record<WatchlistItem["maTrend"], string> = {
-  up: "↑",
-  down: "↓",
-  neutral: "=",
-};
-
-function rsiClasses(rsi: number) {
-  if (rsi >= 70)
-    return {
-      cell: styles.rsiOverbought,
-      dot: styles.rsiDotActive,
-      value: styles.rsiValueActive,
-      label: "과매수",
-    };
-  if (rsi <= 30)
-    return {
-      cell: styles.rsiOversold,
-      dot: styles.rsiDotActive,
-      value: styles.rsiValueActive,
-      label: "과매도",
-    };
-  return {
-    cell: styles.rsiNeutral,
-    dot: styles.rsiDot,
-    value: styles.rsiValue,
-    label: String(rsi),
-  };
+function formatUpdatedAt(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("ko-KR", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
-export function WatchlistCard({ items }: { items: WatchlistItem[] }) {
+function ItemRow({ item }: { item: WatchlistItem }) {
+  return (
+    <div className={styles.row}>
+      <div className={styles.symbol}>
+        <span className={styles.symbolCode}>{item.symbol}</span>
+        <span className={styles.symbolName}>{item.name}</span>
+      </div>
+      <span className={styles.cellPrice}>
+        {item.last_price != null ? item.last_price.toFixed(2) : DASH}
+      </span>
+      <span className={styles.cellPrice}>{DASH}</span>
+      <span className={styles.maNeutral}>{DASH}</span>
+      <div className={styles.rsiNeutral}>
+        <span className={styles.rsiValue}>{DASH}</span>
+      </div>
+      <span className={styles.cellMemo}>
+        {item.note ? (
+          <span className={styles.memoHasCount}>✎</span>
+        ) : (
+          <span className={styles.memoAdd}>+ 메모</span>
+        )}
+      </span>
+      <span className={styles.cellEvent}>{DASH}</span>
+    </div>
+  );
+}
+
+function ReadyCard({ watchlist }: { watchlist: Watchlist }) {
   return (
     <Card className={styles.card}>
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <h2 className={styles.title}>관심종목</h2>
-          <span className={styles.count}>{items.length}개</span>
+          <span className={styles.count}>{watchlist.items.length}개</span>
         </div>
         <span className={styles.legend}>
-          <span className={styles.legendDotUp}>●</span> 강세{" "}
-          <span className={styles.legendDotDown}>●</span> 약세
+          업데이트 {formatUpdatedAt(watchlist.updated_at)}
         </span>
       </div>
-      <div className={styles.tableHead}>
-        <div className={[styles.thGrow, styles.thSymbol].join(" ")}>종목</div>
-        <div className={[styles.thFixed, styles.thPrice].join(" ")}>현재가</div>
-        <div className={[styles.thFixed, styles.thChange].join(" ")}>오늘</div>
-        <div className={[styles.thFixed, styles.thMa].join(" ")}>MA</div>
-        <div className={[styles.thFixed, styles.thRsi].join(" ")}>RSI</div>
-        <div className={[styles.thFixed, styles.thMemo].join(" ")}>메모</div>
-        <div className={[styles.thFixed, styles.thEvent].join(" ")}>
-          다음 이벤트
-        </div>
-      </div>
-      {items.map((s) => {
-        const rsi = rsiClasses(s.rsi);
-        return (
-          <div key={s.symbol} className={styles.row}>
-            <div className={styles.symbol}>
-              <span className={styles.symbolCode}>{s.symbol}</span>
-              <span className={styles.symbolName}>{s.name}</span>
-              <svg width="28" height="14" viewBox="0 0 28 14" aria-hidden="true">
-                <path
-                  d={s.up ? SPARK_ROW_UP : SPARK_ROW_DOWN}
-                  fill="none"
-                  strokeWidth="1.2"
-                  className={s.up ? styles.sparkUp : styles.sparkDown}
-                />
-              </svg>
-            </div>
-            <span className={styles.cellPrice}>{s.price}</span>
-            <span className={s.up ? styles.cellChangePos : styles.cellChangeNeg}>
-              {s.change}
-            </span>
-            <span className={MA_CLASS[s.maTrend]}>{MA_LABEL[s.maTrend]}</span>
-            <div className={rsi.cell}>
-              <span className={rsi.dot} />
-              <span className={rsi.value}>{rsi.label}</span>
-            </div>
-            <span className={styles.cellMemo}>
-              {s.memoCount > 0 ? (
-                <span className={styles.memoHasCount}>
-                  ✎ {s.memoCount}
-                </span>
-              ) : (
-                <span className={styles.memoAdd}>+ 메모</span>
-              )}
-            </span>
-            <span className={styles.cellEvent}>{s.nextEvent}</span>
+      {watchlist.items.length === 0 ? (
+        <div className={styles.statusBody}>아직 관심종목이 없습니다.</div>
+      ) : (
+        <>
+          <div className={styles.tableHead}>
+            <div className={[styles.thGrow, styles.thSymbol].join(" ")}>종목</div>
+            <div className={[styles.thFixed, styles.thPrice].join(" ")}>현재가</div>
+            <div className={[styles.thFixed, styles.thChange].join(" ")}>오늘</div>
+            <div className={[styles.thFixed, styles.thMa].join(" ")}>MA</div>
+            <div className={[styles.thFixed, styles.thRsi].join(" ")}>RSI</div>
+            <div className={[styles.thFixed, styles.thMemo].join(" ")}>메모</div>
+            <div className={[styles.thFixed, styles.thEvent].join(" ")}>다음 이벤트</div>
           </div>
-        );
-      })}
-      <div className={styles.footer}>전체 보기 →</div>
+          {watchlist.items.map((item) => (
+            <ItemRow key={`${item.exchange}:${item.symbol}`} item={item} />
+          ))}
+        </>
+      )}
     </Card>
   );
+}
+
+function StatusCard({ children }: { children: React.ReactNode }) {
+  return (
+    <Card className={styles.card}>
+      <div className={styles.header}>
+        <div className={styles.headerLeft}>
+          <h2 className={styles.title}>관심종목</h2>
+        </div>
+      </div>
+      <div className={styles.statusBody}>{children}</div>
+    </Card>
+  );
+}
+
+export function WatchlistCard({ state }: { state: WatchlistState }) {
+  if (state.status === "loading") {
+    return <StatusCard>불러오는 중…</StatusCard>;
+  }
+  if (state.status === "error") {
+    return <StatusCard>관심종목을 불러오지 못했습니다. ({state.message})</StatusCard>;
+  }
+  return <ReadyCard watchlist={state.watchlist} />;
 }

@@ -18,6 +18,7 @@ web/src/
     layout/               # Page chrome (shell, sidebar, container)
     primitives/           # Cross-page reusable building blocks
   fixtures/               # Static typed sample data; one file per route domain
+  lib/                    # Browser-safe env, typed API client, route data hooks
   routes/                 # One folder per route; *Page.tsx is the export
     {route}/{route}Page.tsx
     {route}/sections/     # Page-specific composition pieces (only when the page is large)
@@ -99,6 +100,20 @@ Defaults — use these *before* writing route-local alternatives. See `docs/FRON
 - **`Card` / `Section`** — Default container for grouped content with a `<h2>` header. Custom inner header layouts go inside the `Card` body, not outside it.
 
 If you bypass a default, document the blocker in the PR description before implementing the replacement.
+
+## Lib (`lib/`)
+
+### `env.ts`
+
+Browser-safe environment access. Exports `env.apiBaseUrl`, read from `VITE_API_BASE_URL` with a local fallback.
+
+### `api-client.ts`
+
+Typed FastAPI client for frontend data paths. Exports `apiClient.getMyWatchlist()` for `GET /v1/watchlists/me`, watchlist response types, and `ApiError`. In local dev, attaches `X-Dev-User` from `VITE_DEV_USER_ID`.
+
+### `useWatchlist.ts`
+
+Dashboard hook for the PR-09 watchlist data path. Returns `WatchlistState`: loading, ready with `Watchlist`, or error with message.
 
 ## Fixtures (`fixtures/`)
 
@@ -246,7 +261,7 @@ Composes the dashboard from `routes/dashboard/sections/*` and `fixtures/dashboar
 - `NoticeBanner({ notice })`.
 - `ActionPrompts({ todos })` — todo grid, 2-col → 1-col responsive.
 - `IndicatorStrip({ fearGreed, macros, marketTime })` — renders **two** sibling `<Card>`s (F&G gauges + macro grid); place inside a `.pair` wrapper in the page.
-- `WatchlistCard({ items })`.
+- `WatchlistCard({ state })` — renders loading, error, empty, and ready states from `useWatchlist()`.
 - `TopMoversCard({ movers })`.
 - `NewsList({ items })`.
 - `EconomicEventsList({ events })`.

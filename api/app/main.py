@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.errors import register_exception_handlers
 from app.models.health import HealthResponse
 from app.routes.dashboard import router as dashboard_router
+from app.routes.watchlists import router as watchlists_router
 from app.settings import get_settings
 
 
@@ -27,6 +28,7 @@ app.add_middleware(
 register_exception_handlers(app)
 
 app.include_router(dashboard_router, prefix="/v1")
+app.include_router(watchlists_router, prefix="/v1")
 
 
 @app.get("/health")

@@ -154,11 +154,11 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 
 ### PR-09 — First end-to-end path: dashboard watchlist
 
-- [ ] Scope: Backend `GET /v1/watchlists/me` returns the signed-in user's watchlist from Supabase. Frontend dashboard `WatchlistCard` reads from this endpoint with a typed client and last-updated timestamp. Auth is the dev header `X-Dev-User` per `docs/design-docs/auth.md`; real auth is deferred to PR-14 (final PR).
-- [ ] Required Reading: `docs/API.md` (the `/v1/watchlists/me` section), PR-07/PR-08 outputs, `docs/design-docs/first-real-data.md`, `docs/RELIABILITY.md`.
-- [ ] Files: `api/app/routes/watchlists.py`, `api/app/repos/watchlists.py`, `src/lib/api-client.ts`, dashboard wiring.
-- [ ] Acceptance: Inserting a row in Supabase reflects on the dashboard within a refresh. Empty state and error state both render.
-- [ ] Out Of Scope: write endpoints, multiple watchlists.
+- [x] Scope: Backend `GET /v1/watchlists/me` returns the signed-in user's watchlist from Supabase. Frontend dashboard `WatchlistCard` reads from this endpoint with a typed client and last-updated timestamp. Auth is the dev header `X-Dev-User` per `docs/design-docs/auth.md`; real auth is deferred to PR-14 (final PR).
+- [x] Required Reading: `docs/API.md` (the `/v1/watchlists/me` section), PR-07/PR-08 outputs, `docs/design-docs/first-real-data.md`, `docs/RELIABILITY.md`.
+- [x] Files: `api/app/routes/watchlists.py`, `api/app/repos/watchlists.py`, `api/app/auth.py`, `api/app/models/watchlists.py`, `web/src/lib/api-client.ts`, `web/src/lib/useWatchlist.ts`, dashboard wiring.
+- [x] Acceptance: Inserting a row in Supabase reflects on the dashboard within a refresh. Empty state and error state both render.
+- [x] Out Of Scope: write endpoints, multiple watchlists.
 
 ### PR-10 — First real market data on a stock detail page
 

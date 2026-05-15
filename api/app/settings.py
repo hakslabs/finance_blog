@@ -1,7 +1,7 @@
 from functools import lru_cache
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -36,6 +36,10 @@ class Settings(BaseSettings):
             "http://127.0.0.1:5173",
         ],
         alias="CORS_ORIGINS",
+    )
+    supabase_url: Optional[str] = Field(default=None, alias="SUPABASE_URL")
+    supabase_service_role_key: Optional[str] = Field(
+        default=None, alias="SUPABASE_SERVICE_ROLE_KEY"
     )
 
     @field_validator("cors_origins", mode="before")
