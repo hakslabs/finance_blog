@@ -162,11 +162,11 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 
 ### PR-10 — First real market data on a stock detail page
 
-- [ ] Scope: Implement the source chosen in `docs/design-docs/first-real-data.md`. Backend endpoint exposes latest quote + recent OHLCV for one symbol; frontend renders it on `/stocks/AAPL` with a real chart and a `last_refreshed_at` label. Failure shows stale data plus a warning, not a blank.
-- [ ] Required Reading: `docs/API.md` (the `/v1/quotes/{symbol}` section), `docs/design-docs/first-real-data.md`, `docs/RELIABILITY.md`, `docs/references/market-data-llms.txt`.
-- [ ] Files: `api/app/sources/<provider>.py`, `api/app/routes/quotes.py`, frontend chart adapter.
-- [ ] Acceptance: `/stocks/AAPL` shows live values on first load; rate-limit and provider-outage paths produce stale-with-warning, not a crash. **This is the production milestone bar from `ARCHITECTURE.md`.**
-- [ ] Out Of Scope: multiple providers, caching strategy beyond a simple in-memory TTL.
+- [x] Scope: Implement the source chosen in `docs/design-docs/first-real-data.md`. Backend endpoint exposes latest quote + recent OHLCV for one symbol; frontend renders it on `/stocks/AAPL` with a real chart and a `last_refreshed_at` label. Failure shows stale data plus a warning, not a blank.
+- [x] Required Reading: `docs/API.md` (the `/v1/quotes/{symbol}` section), `docs/design-docs/first-real-data.md`, `docs/RELIABILITY.md`, `docs/references/market-data-llms.txt`, `docs/design-docs/prices-ingestion-schema.md`.
+- [x] Files: `api/app/sources/polygon.py`, `api/app/sources/alphavantage.py`, `api/app/routes/quotes.py`, `api/app/models/quotes.py`, `api/app/tests/test_quotes.py`, `web/src/lib/api-client.ts` (extend), `web/src/lib/useQuote.ts`, `web/src/components/primitives/PriceChart.tsx`, `web/src/routes/stocks/sections/ChartSection.tsx`.
+- [x] Acceptance: `/stocks/AAPL` shows live values on first load; rate-limit and provider-outage paths produce stale-with-warning, not a crash. **This is the production milestone bar from `ARCHITECTURE.md`.**
+- [x] Out Of Scope: multiple providers, caching strategy beyond a simple in-memory TTL, `price_bars_daily` table writes (deferred to PR-13 cron per `docs/design-docs/prices-ingestion-schema.md`).
 
 ### PR-11 — Portfolio data path
 

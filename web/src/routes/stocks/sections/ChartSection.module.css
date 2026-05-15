@@ -54,3 +54,4 @@
 
 .subPositive { color: var(--positive); }
 .subNegative { color: var(--negative); }
+.subNeutral { color: var(--muted); }

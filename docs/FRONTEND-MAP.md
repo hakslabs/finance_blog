@@ -87,6 +87,10 @@ Single KPI block — label, big value, optional detail line and trend node.
 
 Stub chart box for routes that don't yet have real chart implementations. `height` defaults to 240px.
 
+### `PriceChart({ bars, height?, ariaLabel })`
+
+Inline SVG line chart for daily closes. Used by `/stocks/:symbol` once `useQuote` resolves. `height` defaults to 280px. Renders three y-axis ticks and a colored polyline (positive vs negative based on first→last close). No deps; viewBox-based so it scales to container width.
+
 ### Primitive Selection Rules
 
 Defaults — use these *before* writing route-local alternatives. See `docs/FRONTEND.md` rule C-11 for the full reasoning and blocker criteria.
@@ -109,11 +113,15 @@ Browser-safe environment access. Exports `env.apiBaseUrl`, read from `VITE_API_B
 
 ### `api-client.ts`
 
-Typed FastAPI client for frontend data paths. Exports `apiClient.getMyWatchlist()` for `GET /v1/watchlists/me`, watchlist response types, and `ApiError`. In local dev, attaches `X-Dev-User` from `VITE_DEV_USER_ID`.
+Typed FastAPI client for frontend data paths. Exports `apiClient.getMyWatchlist()` for `GET /v1/watchlists/me`, `apiClient.getQuote(symbol, range)` for `GET /v1/quotes/{symbol}`, response types (`Watchlist`, `Quote`, `QuoteBar`, `QuoteRange`), and `ApiError`. In local dev, attaches `X-Dev-User` from `VITE_DEV_USER_ID`.
 
 ### `useWatchlist.ts`
 
 Dashboard hook for the PR-09 watchlist data path. Returns `WatchlistState`: loading, ready with `Watchlist`, or error with message.
+
+### `useQuote.ts`
+
+Stock detail hook for the PR-10 quote data path. Returns `QuoteState`: loading, ready with `Quote`, empty (503 upstream), or error.
 
 ## Fixtures (`fixtures/`)
 
@@ -294,7 +302,7 @@ Route-param-driven stock detail page. Uses `useParams` to read `symbol`, calls `
 **Sections** (`routes/stocks/sections/`):
 
 - `OverviewSection({ detail })` — grid: price chart placeholder (ChartPlaceholder) + key stats card + technical signals card + company overview card + sector position card.
-- `ChartSection({ detail })` — full chart area with period pills, type pills, indicator pills, main ChartPlaceholder, volume sub-panel, RSI sub-panel, MACD sub-panel.
+- `ChartSection({ detail })` — full chart area with period pills, type pills, indicator pills. Main chart reads from `useQuote(detail.symbol, "6mo")` and renders `PriceChart` when ready; loading/empty/error states fall back to `ChartPlaceholder`. Source bar shows `last_refreshed_at` and a stale notice when present. Volume/RSI/MACD sub-panels remain `ChartPlaceholder` until later PRs wire indicators.
 - `FinancialsSection({ incomeStatement, balanceSheet, cashFlow, keyRatios })` — sub-tabs (손익/재무/현금, 연간/분기), income statement table, balance sheet + cash flow grid, key ratios table. All from fixture tables.
 - `ValuationSection({ metrics, peers, fairValues })` — 4-column metric cards (PER/PBR/EV/DY), PER-PBR trend chart placeholder + fair value estimates list, peer comparison table with highlight row.
 - `FilingsSection({ filings, nextEarnings })` — earnings trend chart placeholder + next earnings card, filing timeline table with form-type badges and price impact colors.

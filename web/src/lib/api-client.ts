@@ -36,6 +36,29 @@ export type Watchlist = {
 
 export type WatchlistResponse = { watchlist: Watchlist };
 
+export type QuoteBar = {
+  t: string;
+  o: number;
+  h: number;
+  l: number;
+  c: number;
+  v: number;
+};
+
+export type Quote = {
+  symbol: string;
+  currency: string;
+  last: number;
+  change: number;
+  change_pct: number;
+  as_of: string;
+  bars: QuoteBar[];
+  last_refreshed_at: string;
+  stale: boolean;
+};
+
+export type QuoteRange = "1mo" | "3mo" | "6mo" | "1y" | "5y";
+
 const DEV_USER_ID = import.meta.env.VITE_DEV_USER_ID as string | undefined;
 
 function buildHeaders(): HeadersInit {
@@ -68,5 +91,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const apiClient = {
   getMyWatchlist(): Promise<WatchlistResponse> {
     return request<WatchlistResponse>("/v1/watchlists/me");
+  },
+  getQuote(symbol: string, range: QuoteRange = "6mo"): Promise<Quote> {
+    const search = new URLSearchParams({ range });
+    return request<Quote>(
+      `/v1/quotes/${encodeURIComponent(symbol)}?${search.toString()}`,
+    );
   },
 };
