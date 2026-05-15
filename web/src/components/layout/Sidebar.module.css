@@ -115,8 +115,8 @@
 
 .link {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: flex-start;
   gap: 12px;
   min-height: 34px;
   padding: 7px 8px;
@@ -145,14 +145,13 @@
   padding: 0;
 }
 
-.linkInitial {
-  display: none;
-  font-size: 0.75rem;
-  font-weight: 800;
-}
-
-.asideCollapsed .linkInitial {
+.linkIcon {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  color: currentcolor;
+  flex: 0 0 auto;
 }
 
 .linkLabel {
@@ -171,6 +170,7 @@
   flex: 0 0 auto;
   color: var(--faint);
   font-size: 0.625rem;
+  margin-left: auto;
 }
 
 @media (max-width: 900px) {
@@ -234,10 +234,6 @@
     width: auto;
     min-height: 32px;
     padding: 7px 8px;
-  }
-
-  .asideCollapsed .linkInitial {
-    display: none;
   }
 
   .asideCollapsed .linkLabel {

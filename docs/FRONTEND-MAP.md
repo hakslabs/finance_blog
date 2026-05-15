@@ -36,11 +36,11 @@ Top-level chrome: collapsible sidebar + main area. Wraps `<Routes>` in `App.tsx`
 
 ### `Sidebar({ collapsed, onToggleCollapsed })`
 
-Left navigation. Items come from `navigation.ts`. Desktop sidebar can collapse to a compact rail; mobile keeps the horizontal nav pattern.
+Left navigation. Items come from `navigation.ts`. Desktop sidebar can collapse to a compact lucide-icon rail; mobile keeps the horizontal nav pattern. The toggle uses a familiar menu/panel icon instead of text-only collapse affordances.
 
 ### `TopBar()`
 
-Top utility bar. Reads auth context for login/account state. Submits the symbol search box to `/stocks/:symbol`, opens the account menu for signed-in users, shows icon-based shortcuts, and keeps the notification dot tied to unread local UI state. Unavailable write-backed actions show short "planned feature" feedback instead of doing nothing.
+Top utility bar. Reads auth context for login/account state. Submits the symbol search box to `/stocks/:symbol`, opens the account menu for signed-in users, shows a compact currency chip, routes saved items to `/mypage?tab=saved`, and keeps the notification dot tied to unread local UI state.
 
 ### `AuthGate({ children })`
 
@@ -62,7 +62,7 @@ Page-level landmark. Emits `<section aria-labelledby>` + `<h1>`. **Every route p
 
 ### `navigation.ts`
 
-Exports `NAV_ITEMS: { label, path, icon? }[]` consumed by `Sidebar`.
+Exports `primaryNavItems` and `utilityNavItems` with lucide icon components consumed by `Sidebar`, plus active-route helpers.
 
 ## Primitives (`components/primitives/`)
 

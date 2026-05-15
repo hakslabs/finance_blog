@@ -4,6 +4,7 @@ import {
   Bookmark,
   BriefcaseBusiness,
   ChevronDown,
+  CircleDollarSign,
   FileText,
   Home,
   LogOut,
@@ -70,10 +71,6 @@ export function TopBar() {
     navigate(`/stocks/${encodeURIComponent(rawQuery.toUpperCase())}`);
   }
 
-  function showPlanned(message: string) {
-    setNotice(message);
-  }
-
   function toggleNotifications() {
     setNotificationsOpen((open) => !open);
     setUnreadNotifications(0);
@@ -122,20 +119,21 @@ export function TopBar() {
 
       <div className={styles.actions}>
         <span className={styles.chip} translate="no">
-          KRW
+          <CircleDollarSign size={15} aria-hidden="true" strokeWidth={1.8} />
+          <span>KRW 기준</span>
         </span>
-        <button
-          type="button"
-          className={styles.iconButton}
-          aria-label="북마크 열기"
-          title="북마크"
-          onClick={() => showPlanned("북마크 패널은 PR-17 관심종목 쓰기 경로에서 연결됩니다.")}
+        <Link
+          className={styles.actionButton}
+          aria-label="저장한 항목 보기"
+          title="저장한 항목"
+          to="/mypage?tab=saved"
         >
           <Bookmark size={16} aria-hidden="true" strokeWidth={1.8} />
-        </button>
+          <span>저장</span>
+        </Link>
         <div className={styles.notifications} ref={notificationsRef}>
           <button
-            className={styles.iconButtonNotice}
+            className={styles.actionButtonNotice}
             type="button"
             aria-expanded={notificationsOpen}
             aria-haspopup="menu"
@@ -145,6 +143,7 @@ export function TopBar() {
             onClick={toggleNotifications}
           >
             <Bell size={16} aria-hidden="true" strokeWidth={1.8} />
+            <span>알림</span>
           </button>
           {notificationsOpen ? (
             <div className={styles.notificationMenu} role="menu">

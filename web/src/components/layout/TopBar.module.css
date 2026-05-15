@@ -69,14 +69,18 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 5px;
   height: 32px;
-  min-width: 42px;
-  padding: 0 9px;
+  padding: 0 10px;
   color: var(--muted);
   font-family: var(--mono);
   font-size: 0.6875rem;
   background: var(--surface);
   border: 1px solid var(--hairline);
+}
+
+.chip span {
+  white-space: nowrap;
 }
 
 .iconButton {
@@ -101,7 +105,34 @@
   position: relative;
 }
 
-.iconButtonNotice[data-unread="true"]::after {
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-decoration: none;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  cursor: pointer;
+}
+
+.actionButton:hover,
+.actionButton:focus-visible {
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+.actionButtonNotice {
+  composes: actionButton;
+  position: relative;
+}
+
+.actionButtonNotice[data-unread="true"]::after {
   position: absolute;
   top: 6px;
   right: 7px;
@@ -284,6 +315,17 @@
   }
 
   .chip {
+    display: none;
+  }
+
+  .actionButton,
+  .actionButtonNotice {
+    width: 32px;
+    padding: 0;
+  }
+
+  .actionButton span,
+  .actionButtonNotice span {
     display: none;
   }
 }

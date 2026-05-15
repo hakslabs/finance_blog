@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Menu, PanelLeftOpen } from "lucide-react";
 import { isNavActive, primaryNavItems, utilityNavItems } from "./navigation";
 import styles from "./Sidebar.module.css";
 
@@ -7,10 +7,6 @@ type SidebarProps = {
   collapsed: boolean;
   onToggleCollapsed: () => void;
 };
-
-function getNavInitial(label: string) {
-  return label.slice(0, 1);
-}
 
 export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const { pathname } = useLocation();
@@ -38,9 +34,9 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
         onClick={onToggleCollapsed}
       >
         {collapsed ? (
-          <PanelLeftOpen size={16} aria-hidden="true" />
+          <PanelLeftOpen size={18} aria-hidden="true" />
         ) : (
-          <PanelLeftClose size={16} aria-hidden="true" />
+          <Menu size={18} aria-hidden="true" />
         )}
         <span>메뉴 {collapsed ? "펼치기" : "접기"}</span>
       </button>
@@ -48,6 +44,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
       <nav className={styles.nav} aria-label="제품 메뉴">
         {primaryNavItems.map((item) => {
           const active = isNavActive(pathname, item);
+          const Icon = item.icon;
 
           return (
             <Link
@@ -58,8 +55,8 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
               aria-label={item.label}
               title={collapsed ? item.label : undefined}
             >
-              <span className={styles.linkInitial} aria-hidden="true">
-                {getNavInitial(item.label)}
+              <span className={styles.linkIcon} aria-hidden="true">
+                <Icon size={18} strokeWidth={1.9} />
               </span>
               <span className={styles.linkLabel}>{item.label}</span>
               <span className={styles.linkLabelEn} translate="no">
@@ -73,6 +70,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
       <nav className={styles.navUtility} aria-label="설정 메뉴">
         {utilityNavItems.map((item) => {
           const active = isNavActive(pathname, item);
+          const Icon = item.icon;
 
           return (
             <Link
@@ -83,8 +81,8 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
               aria-label={item.label}
               title={collapsed ? item.label : undefined}
             >
-              <span className={styles.linkInitial} aria-hidden="true">
-                {getNavInitial(item.label)}
+              <span className={styles.linkIcon} aria-hidden="true">
+                <Icon size={18} strokeWidth={1.9} />
               </span>
               <span className={styles.linkLabel}>{item.label}</span>
               <span className={styles.linkLabelEn} translate="no">
