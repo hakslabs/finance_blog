@@ -58,6 +58,11 @@
   white-space: nowrap;
 }
 
+.error {
+  margin: 10px 0 0;
+  color: var(--negative);
+}
+
 .tableHead {
   composes: tableHead from "./_table.module.css";
 }

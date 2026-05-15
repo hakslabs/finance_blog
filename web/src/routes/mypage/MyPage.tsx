@@ -3,7 +3,8 @@ import { Badge } from "../../components/primitives/Badge";
 import { Card } from "../../components/primitives/Card";
 import { DataTable } from "../../components/primitives/DataTable";
 import { KpiTile } from "../../components/primitives/KpiTile";
-import { getUserDisplayName, useAuth } from "../../lib/auth-state";
+import { useAuth } from "../../lib/auth-state";
+import { getUserDisplayName } from "../../lib/auth-user";
 import {
   ACTIVITY_LOGS,
   MYPAGE_KPIS,

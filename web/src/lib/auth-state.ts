@@ -8,7 +8,7 @@ export type AuthState =
   | { status: "signed-in"; session: Session; user: User };
 
 export type AuthContextValue = AuthState & {
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: (returnTo?: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -20,15 +20,4 @@ export function useAuth(): AuthContextValue {
     throw new Error("useAuth must be used inside AuthProvider.");
   }
   return value;
-}
-
-export function getUserDisplayName(user: User): string {
-  const metadata = user.user_metadata;
-  const name =
-    metadata.full_name ?? metadata.name ?? metadata.preferred_username ?? user.email;
-  return typeof name === "string" && name.trim() ? name.trim() : "사용자";
-}
-
-export function getUserInitial(user: User): string {
-  return getUserDisplayName(user).charAt(0).toUpperCase();
 }

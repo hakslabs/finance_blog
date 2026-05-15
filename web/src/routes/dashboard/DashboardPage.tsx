@@ -1,5 +1,6 @@
 import { PageContainer } from "../../components/layout/PageContainer";
-import { getUserDisplayName, useAuth } from "../../lib/auth-state";
+import { useAuth } from "../../lib/auth-state";
+import { getUserDisplayName } from "../../lib/auth-user";
 import { useWatchlist } from "../../lib/useWatchlist";
 import {
   ECONOMIC_EVENTS,

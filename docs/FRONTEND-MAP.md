@@ -39,7 +39,15 @@ Left navigation. Items come from `navigation.ts`. No props.
 
 ### `TopBar()`
 
-Top utility bar. Reads auth context for the signed-in user's avatar initial and sign-out action.
+Top utility bar. Reads auth context for login/account state. Submits the symbol search box to `/stocks/:symbol`, opens the account menu for signed-in users, and shows short "planned feature" feedback for toolbar actions not wired yet.
+
+### `AuthGate({ children })`
+
+Route-level auth boundary used inside `ProtectedRoute`. It renders config/loading/login states inside the normal app chrome, then returns `children` once signed in.
+
+### `ProtectedRoute({ children })`
+
+Small wrapper around `AuthGate` for private routes such as `/portfolio`, `/mypage`, and `/admin`.
 
 ### `PageContainer({ title, eyebrow?, description?, actions?, children? })`
 
@@ -125,11 +133,15 @@ Supabase session bootstrap and auth actions. Exports `AuthProvider`. Handles Goo
 
 ### `auth-state.ts`
 
-Auth context types plus `useAuth()`. Split from `auth-context.tsx` so React Fast Refresh sees the provider module as component-only.
+Auth context types plus `useAuth()`. Split from `auth-context.tsx` so React Fast Refresh sees the provider module as component-only. `signInWithGoogle(returnTo?)` accepts an optional absolute return URL for route-scoped login.
+
+### `auth-user.ts`
+
+Pure helpers for Supabase user display data: `getUserDisplayName`, `getUserEmail`, and `getUserInitial`.
 
 ### `useWatchlist.ts`
 
-Dashboard hook for the PR-09 watchlist data path. Returns `WatchlistState`: loading, ready with `Watchlist`, or error with message.
+Dashboard hook for the watchlist data path. Returns `WatchlistState`: signed-out/config-error/loading, ready with `Watchlist`, or error with message. It does not call the private API until Supabase Auth is signed in.
 
 ### `useQuote.ts`
 

@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import { AuthGate } from "./components/layout/AuthGate";
 import { AppShell } from "./components/layout/AppShell";
+import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 import { AnalysisPage } from "./routes/analysis/AnalysisPage";
 import { DashboardPage } from "./routes/dashboard/DashboardPage";
 import { LearnPage } from "./routes/learn/LearnPage";
@@ -24,15 +24,36 @@ export default function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/stocks" element={<StocksPage />} />
         <Route path="/stocks/:symbol" element={<StockDetailPage />} />
-        <Route path="/portfolio" element={<AuthGate><PortfolioPage /></AuthGate>} />
+        <Route
+          path="/portfolio"
+          element={
+            <ProtectedRoute>
+              <PortfolioPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/analysis" element={<AnalysisPage />} />
         <Route path="/masters" element={<MastersPage />} />
         <Route path="/masters/:id" element={<MasterDetailPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/reports/:id" element={<ReportDetailPage />} />
         <Route path="/learn" element={<LearnPage />} />
-        <Route path="/mypage" element={<AuthGate><MyPage /></AuthGate>} />
-        <Route path="/admin" element={<AuthGate><AdminPage /></AuthGate>} />
+        <Route
+          path="/mypage"
+          element={
+            <ProtectedRoute>
+              <MyPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/_kitchen-sink" element={<KitchenSinkPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

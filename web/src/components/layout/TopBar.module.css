@@ -59,6 +59,7 @@
 }
 
 .actions {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -121,6 +122,66 @@
   background: var(--ink);
 }
 
+.account {
+  position: relative;
+}
+
+.accountMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  width: 240px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 12px 24px rgb(26 24 21 / 10%);
+}
+
+.accountHeader {
+  display: grid;
+  gap: 3px;
+  padding: 12px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.accountName {
+  overflow: hidden;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accountEmail {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accountItem,
+.accountItemButton {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 38px;
+  padding: 0 12px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.8125rem;
+  text-align: left;
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
+  cursor: pointer;
+}
+
+.accountItem:hover,
+.accountItemButton:hover {
+  background: var(--bg);
+}
+
 .loginButton {
   display: inline-flex;
   align-items: center;
@@ -134,6 +195,26 @@
   border: 1px solid var(--ink);
   cursor: pointer;
   white-space: nowrap;
+}
+
+.loginButton:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.notice {
+  position: absolute;
+  right: 20px;
+  bottom: -34px;
+  z-index: 25;
+  max-width: min(420px, calc(100vw - 40px));
+  margin: 0;
+  padding: 8px 10px;
+  color: var(--ink);
+  font-size: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 20px rgb(26 24 21 / 8%);
 }
 
 @media (max-width: 900px) {

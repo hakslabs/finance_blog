@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import { Card } from "../../../components/primitives/Card";
 import type { Watchlist, WatchlistItem } from "../../../lib/api-client";
 import { useAuth } from "../../../lib/auth-state";
@@ -94,6 +95,18 @@ function StatusCard({ children }: { children: React.ReactNode }) {
 
 export function WatchlistCard({ state }: { state: WatchlistState }) {
   const auth = useAuth();
+  const [signInError, setSignInError] = useState<string | null>(null);
+
+  async function handleSignIn() {
+    setSignInError(null);
+    try {
+      await auth.signInWithGoogle(window.location.href);
+    } catch (error) {
+      setSignInError(
+        error instanceof Error ? error.message : "로그인을 시작하지 못했습니다.",
+      );
+    }
+  }
 
   if (state.status === "signed-out") {
     return (
@@ -103,11 +116,12 @@ export function WatchlistCard({ state }: { state: WatchlistState }) {
           <button
             type="button"
             className={styles.signInButton}
-            onClick={() => void auth.signInWithGoogle()}
+            onClick={() => void handleSignIn()}
           >
             로그인
           </button>
         </div>
+        {signInError ? <p className={styles.error}>{signInError}</p> : null}
       </StatusCard>
     );
   }

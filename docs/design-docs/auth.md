@@ -14,6 +14,7 @@ Use **Supabase Auth** with **Google OAuth** as the only sign-in method. Email ma
 
 - Browser uses `@supabase/supabase-js` to sign in with Google. Supabase returns a JWT.
 - Frontend stores the session via Supabase's helpers and attaches `Authorization: Bearer <jwt>` to every API call.
+- Public market/research routes remain browsable without login. Private routes (`/portfolio`, `/mypage`, `/admin`) render a route-scoped login prompt and return the user to the requested URL after OAuth.
 - FastAPI verifies the JWT using the Supabase project's JWT secret (env: `SUPABASE_JWT_SECRET`). On success, request context gets `user_id = jwt.sub`.
 - If the matching `profiles` row does not exist yet, the API creates a minimal row with the JWT `sub` and email before reading user-owned data. For a freshly rebuilt solo database, the first real user also claims the seeded dev watchlist and portfolio rows from `00000000-0000-4000-8000-000000000001`.
 - RLS policies use `auth.uid()` and continue to work unchanged from PR-08.
@@ -26,6 +27,7 @@ To enable Google OAuth, **you** must:
 1. Create an OAuth 2.0 Client ID in Google Cloud Console (type: Web application). Authorized redirect URI is the Supabase project's `https://<ref>.supabase.co/auth/v1/callback`.
 2. Paste client ID and secret into Supabase Dashboard → Auth → Providers → Google. Enable.
 3. Copy `SUPABASE_JWT_SECRET` from Supabase Dashboard → Project Settings → API into `.env`.
+4. In Supabase Authentication → URL Configuration, set the production Site URL and allow the Vercel production/preview callback patterns so OAuth does not redirect to localhost.
 
 These are dashboard-only steps; nothing lands in code. The PR's agent cannot do them.
 

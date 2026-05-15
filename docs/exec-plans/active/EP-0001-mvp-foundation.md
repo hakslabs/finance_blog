@@ -192,15 +192,22 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 - [x] Acceptance: Job verified end-to-end against remote Supabase — 1 Polygon call returned 12,134 bars, filtered to 3 tracked US instruments (AAPL/MSFT/SPY), 3 rows upserted per day; running it for 4 days yields 12 rows visible in `price_bars_daily` and 4 success rows in `ingestion_runs`. Subsequent rate-limit failures during a wider backfill produced `failed` rows with the error message preserved — the API didn't crash and `last_refreshed_at` still reflects the last successful run. `/v1/quotes/AAPL` now serves directly from DB without hitting Polygon on the warm path.
 - [x] Out Of Scope: KR ingestion (KRX cron lands when KR is in scope), historical backfill in production (keep on the laptop per DEPLOYMENT.md), retries beyond a single attempt, UI badge changes (existing `last_refreshed_at` chip already surfaces the value).
 
-### PR-14 — Supabase Auth (final PR)
+### PR-14 — Supabase Auth
 
-- [ ] Scope: Replace the `X-Dev-User` header path with Supabase Auth + Google OAuth. Frontend signs in via `@supabase/supabase-js`; backend verifies the JWT with `SUPABASE_JWT_SECRET` and derives `user_id` from `jwt.sub`. Delete dev-header acceptance in the same PR — no overlap window in production.
-- [ ] Required Reading: `docs/design-docs/auth.md`, `docs/API.md`, `docs/SECURITY.md`, `docs/references/supabase-llms.txt`.
-- [ ] Operator Prerequisites (you, not the agent): Google OAuth client created in Google Cloud Console, client ID/secret pasted into Supabase Auth Providers, `SUPABASE_JWT_SECRET` copied into `.env`. See `docs/design-docs/auth.md` "Operator Action Required".
-- [ ] Files: `api/app/auth.py` (JWT verifier), middleware/dependency wiring, frontend sign-in route + session bootstrap, removal of dev-header code.
-- [ ] Acceptance: Logging in via Google reaches the dashboard with real user data; requests without a bearer token return 401; existing RLS policies continue to pass without edits.
-- [ ] Out Of Scope: additional providers, password sign-in, role/permission system, organization accounts.
-- [ ] Blocking Gate: **Do not share any deployed URL beyond yourself until this PR is merged.** This is the only gate that lifts the single-user constraint on PR-12's deployment.
+- [x] Scope: Replace the `X-Dev-User` header path with Supabase Auth + Google OAuth. Frontend signs in via `@supabase/supabase-js`; backend verifies the JWT with `SUPABASE_JWT_SECRET` and derives `user_id` from `jwt.sub`. Delete dev-header acceptance in the same PR — no overlap window in production.
+- [x] Required Reading: `docs/design-docs/auth.md`, `docs/API.md`, `docs/SECURITY.md`, `docs/references/supabase-llms.txt`.
+- [x] Operator Prerequisites (you, not the agent): Google OAuth client created in Google Cloud Console, client ID/secret pasted into Supabase Auth Providers, `SUPABASE_JWT_SECRET` copied into `.env`. See `docs/design-docs/auth.md` "Operator Action Required".
+- [x] Files: `api/app/auth.py` (JWT verifier), middleware/dependency wiring, frontend sign-in route + session bootstrap, removal of dev-header code.
+- [x] Acceptance: Logging in via Google reaches the dashboard with real user data; requests without a bearer token return 401; existing RLS policies continue to pass without edits.
+- [x] Out Of Scope: additional providers, password sign-in, role/permission system, organization accounts.
+
+### PR-15 — Auth UX hardening
+
+- [ ] Scope: Keep public research routes browsable without login, protect only private account routes, return users to the requested page after OAuth, surface signed-in user identity consistently, and add visible feedback for top-bar controls that are not yet fully implemented.
+- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `docs/design-docs/auth.md`.
+- [ ] Files: `web/src/components/layout/{AuthGate,ProtectedRoute,TopBar}.*`, `web/src/lib/auth-*`, dashboard auth CTA, docs map updates.
+- [ ] Acceptance: `/` loads without login; `/portfolio` and `/mypage` show a route-scoped login prompt when signed out; top-bar search submit navigates to a stock route; signed-in account menu shows name/email and logout; unavailable top-bar actions show a visible short message instead of doing nothing; `npm run lint` and `npm run build` pass.
+- [ ] Out Of Scope: persistence for profile edits, watchlist add/delete, notification backend, full search autocomplete.
 
 ## Done When
 

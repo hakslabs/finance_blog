@@ -43,11 +43,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
-  const signInWithGoogle = useCallback(async () => {
+  const signInWithGoogle = useCallback(async (returnTo?: string) => {
     if (!supabase) return;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.href },
+      options: { redirectTo: returnTo ?? window.location.href },
     });
     if (error) throw error;
   }, []);

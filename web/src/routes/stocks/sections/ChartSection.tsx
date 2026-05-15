@@ -44,6 +44,8 @@ export function ChartSection({ detail }: ChartSectionProps) {
     sourceLine = state.quote.stale
       ? `데이터: Polygon · 캐시 표시 · ${formatTime(state.quote.last_refreshed_at)} 기준 (재시도 중)`
       : `데이터: Polygon · ${formatTime(state.quote.last_refreshed_at)} 갱신`;
+  } else if (state.status === "signed-out") {
+    sourceLine = "데이터: 로그인하면 실시간 차트를 볼 수 있습니다.";
   } else if (state.status === "loading") {
     sourceLine = "데이터: 불러오는 중…";
   } else if (state.status === "empty") {
@@ -90,7 +92,9 @@ export function ChartSection({ detail }: ChartSectionProps) {
       ) : (
         <ChartPlaceholder
           label={
-            state.status === "loading"
+            state.status === "signed-out"
+              ? "로그인 후 실시간 차트 표시"
+              : state.status === "loading"
               ? `${detail.symbol} 차트 불러오는 중…`
               : state.status === "empty"
                 ? "데이터 없음"
