@@ -34,7 +34,16 @@
   position: relative;
   width: 130px;
   height: 130px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
   flex-shrink: 0;
+}
+
+.donutWrap:hover .donutCenterValue,
+.donutWrap:focus-visible .donutCenterValue {
+  color: var(--accent);
 }
 
 .donutHole {
@@ -74,7 +83,20 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  width: 100%;
+  padding: 1px 0;
+  color: inherit;
+  font: inherit;
   font-size: 0.65625rem;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.legendRow:hover,
+.legendRow:focus-visible {
+  color: var(--accent);
 }
 
 .legendSwatch {
@@ -127,9 +149,21 @@
 .holdingRow {
   display: flex;
   gap: 6px;
+  width: 100%;
   font-size: 0.65625rem;
   padding: 3px 0;
   align-items: center;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.holdingRow:hover .holdingName,
+.holdingRow:focus-visible .holdingName {
+  color: var(--ink);
 }
 
 .holdingSymbol {

@@ -38,11 +38,17 @@ import { TopMoversCard } from "./sections/TopMoversCard";
 import { WatchlistCard } from "./sections/WatchlistCard";
 import {
   eventDetail,
+  eventReminderDetail,
   fearGreedDetail,
+  heatmapDetail,
+  holdingDetail,
   macroDetail,
   newsDetail,
   noticeDetail,
+  portfolioAssetDetail,
+  portfolioOverviewDetail,
   returnContributorDetail,
+  returnSeriesDetail,
   todoDetail,
 } from "./dashboardInteractions";
 import { useDashboardClock } from "./useDashboardClock";
@@ -53,6 +59,7 @@ export function DashboardPage() {
   const { detail, notice, handleAction, closeDetail } = useInteractionActions();
   const dashboardClock = useDashboardClock();
   const [todos, setTodos] = useState(TODOS);
+  const [starredEventIds, setStarredEventIds] = useState(() => new Set<string>());
   const greetingName =
     auth.status === "signed-in" ? getUserDisplayName(auth.user) : GREETING_NAME;
 
@@ -113,13 +120,28 @@ export function DashboardPage() {
           />
           <EconomicEventsList
             events={ECONOMIC_EVENTS}
+            starredEventIds={starredEventIds}
             onOpenEvent={(event) => handleAction({ type: "detail", detail: eventDetail(event) })}
+            onToggleReminder={(event) => {
+              const enabled = !starredEventIds.has(event.id);
+              setStarredEventIds((current) => {
+                const next = new Set(current);
+                if (enabled) {
+                  next.add(event.id);
+                } else {
+                  next.delete(event.id);
+                }
+                return next;
+              });
+              handleAction({ type: "detail", detail: eventReminderDetail(event, enabled) });
+            }}
           />
         </div>
 
         <div className={styles.pair}>
           <ReturnsChart
             data={RETURN_DATA}
+            onOpenReturns={(period) => handleAction({ type: "detail", detail: returnSeriesDetail(RETURN_DATA, period) })}
             onOpenContributor={(contributor) => handleAction({ type: "detail", detail: returnContributorDetail(contributor) })}
             onSendReview={() => handleAction({ type: "planned", message: "수익률 복기 저장은 PR-19 Thesis/반응 메모 저장에서 연결됩니다." })}
           />
@@ -127,12 +149,44 @@ export function DashboardPage() {
             assets={PORTFOLIO_COMPOSITION}
             holdings={TOP_HOLDINGS}
             totalAssetsShort={PORTFOLIO_SUMMARY.totalAssetsShort}
+            onOpenPortfolio={() =>
+              handleAction({
+                type: "detail",
+                detail: portfolioOverviewDetail(
+                  PORTFOLIO_COMPOSITION,
+                  TOP_HOLDINGS,
+                  PORTFOLIO_SUMMARY.totalAssetsShort
+                ),
+              })
+            }
+            onOpenAsset={(asset) => handleAction({ type: "detail", detail: portfolioAssetDetail(asset) })}
+            onOpenHolding={(holding) => handleAction({ type: "detail", detail: holdingDetail(holding) })}
           />
         </div>
 
         <div className={styles.pair}>
-          <HeatmapCard title="한국 시장 지도" sub="KOSPI 시총 가중" seed={1} />
-          <HeatmapCard title="미국 시장 지도" sub="S&P 500 시총 가중" seed={7} />
+          <HeatmapCard
+            title="한국 시장 지도"
+            sub="KOSPI 시총 가중"
+            seed={1}
+            onOpenCell={(title, sub, label, change) =>
+              handleAction({ type: "detail", detail: heatmapDetail(title, sub, label, change) })
+            }
+            onOpenAll={(title, sub) =>
+              handleAction({ type: "detail", detail: heatmapDetail(title, sub, "시장 전체", 1.24) })
+            }
+          />
+          <HeatmapCard
+            title="미국 시장 지도"
+            sub="S&P 500 시총 가중"
+            seed={7}
+            onOpenCell={(title, sub, label, change) =>
+              handleAction({ type: "detail", detail: heatmapDetail(title, sub, label, change) })
+            }
+            onOpenAll={(title, sub) =>
+              handleAction({ type: "detail", detail: heatmapDetail(title, sub, "시장 전체", 0.86) })
+            }
+          />
         </div>
       </div>
       <DetailPanel detail={detail} onClose={closeDetail} />

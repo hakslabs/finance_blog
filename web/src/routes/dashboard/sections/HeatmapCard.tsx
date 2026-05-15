@@ -5,11 +5,17 @@ import styles from "./HeatmapCard.module.css";
 type Cell = {
   id: string;
   bg: string;
+  label: string;
+  change: number;
   spanRow: number;
   spanCol: number;
 };
 
-function buildCells(seed: number): Cell[] {
+const KR_LABELS = ["삼성전자", "SK하이닉스", "현대차", "NAVER", "LG엔솔", "셀트리온", "기아", "POSCO", "KB금융", "카카오"];
+const US_LABELS = ["NVDA", "AAPL", "MSFT", "AMZN", "META", "TSLA", "AMD", "GOOGL", "AVGO", "JPM"];
+
+function buildCells(seed: number, title: string): Cell[] {
+  const labels = title.includes("한국") ? KR_LABELS : US_LABELS;
   return Array.from({ length: 60 }, (_, i) => {
     const v = (((i * seed + seed * 3) % 7) - 3) / 3;
     const up = v >= 0;
@@ -20,6 +26,8 @@ function buildCells(seed: number): Cell[] {
     return {
       id: `${seed}-${i}`,
       bg,
+      label: labels[i % labels.length],
+      change: Number((v * 3.2).toFixed(2)),
       spanRow: i === 0 || i === 5 ? 2 : 1,
       spanCol: i === 0 ? 2 : 1,
     };
@@ -30,12 +38,16 @@ export function HeatmapCard({
   title,
   sub,
   seed,
+  onOpenCell,
+  onOpenAll,
 }: {
   title: string;
   sub: string;
   seed: number;
+  onOpenCell?: (title: string, sub: string, label: string, change: number) => void;
+  onOpenAll?: (title: string, sub: string) => void;
 }) {
-  const cells = useMemo(() => buildCells(seed), [seed]);
+  const cells = useMemo(() => buildCells(seed, title), [seed, title]);
   return (
     <Card className={styles.card}>
       <div className={styles.header}>
@@ -44,9 +56,12 @@ export function HeatmapCard({
       </div>
       <div className={styles.grid}>
         {cells.map((cell) => (
-          <div
+          <button
+            type="button"
             key={cell.id}
             className={styles.cell}
+            aria-label={`${cell.label} ${cell.change >= 0 ? "+" : ""}${cell.change}% 상세`}
+            onClick={() => onOpenCell?.(title, sub, cell.label, cell.change)}
             style={{
               background: cell.bg,
               gridRow: `span ${cell.spanRow}`,
@@ -60,7 +75,9 @@ export function HeatmapCard({
           <span className={styles.legendUp}>● 상승</span>
           <span className={styles.legendDown}>● 하락</span>
         </span>
-        <span className={styles.viewAll}>전체 보기 →</span>
+        <button type="button" className={styles.viewAll} onClick={() => onOpenAll?.(title, sub)}>
+          전체 보기 →
+        </button>
       </div>
     </Card>
   );

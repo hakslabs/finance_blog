@@ -32,10 +32,16 @@ export function PortfolioSummaryCard({
   assets,
   holdings,
   totalAssetsShort,
+  onOpenAsset,
+  onOpenHolding,
+  onOpenPortfolio,
 }: {
   assets: PortfolioAsset[];
   holdings: TopHolding[];
   totalAssetsShort: string;
+  onOpenAsset?: (asset: PortfolioAsset) => void;
+  onOpenHolding?: (holding: TopHolding) => void;
+  onOpenPortfolio?: () => void;
 }) {
   const segments = donutSegments(assets);
   const maxWeight = holdings.reduce((m, h) => Math.max(m, h.weight), 0) || 1;
@@ -48,7 +54,12 @@ export function PortfolioSummaryCard({
       </div>
       <div className={styles.rule} />
       <div className={styles.layout}>
-        <div className={styles.donutWrap}>
+        <button
+          type="button"
+          className={styles.donutWrap}
+          onClick={onOpenPortfolio}
+          aria-label="포트폴리오 구성 상세"
+        >
           <svg
             width="130"
             height="130"
@@ -64,10 +75,15 @@ export function PortfolioSummaryCard({
             <span className={styles.donutCenterLabel}>총 자산</span>
             <span className={styles.donutCenterValue}>{totalAssetsShort}</span>
           </div>
-        </div>
+        </button>
         <div className={styles.compositionLegend}>
           {assets.map((s) => (
-            <div key={s.label} className={styles.legendRow}>
+            <button
+              type="button"
+              key={s.label}
+              className={styles.legendRow}
+              onClick={() => onOpenAsset?.(s)}
+            >
               <span
                 className={styles.legendSwatch}
                 style={{ background: s.color }}
@@ -75,7 +91,7 @@ export function PortfolioSummaryCard({
               <span className={styles.legendRowLabel}>{s.label}</span>
               <span className={styles.legendPercent}>{s.percent}%</span>
               <span className={styles.legendAmount}>₩{s.amount}</span>
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -88,7 +104,12 @@ export function PortfolioSummaryCard({
           <span className={styles.holdingsSubtitle}>비중 순</span>
         </div>
         {holdings.map((h) => (
-          <div key={h.symbol} className={styles.holdingRow}>
+          <button
+            type="button"
+            key={h.symbol}
+            className={styles.holdingRow}
+            onClick={() => onOpenHolding?.(h)}
+          >
             <span className={styles.holdingSymbol}>{h.symbol}</span>
             <span className={styles.holdingName}>{h.name}</span>
             <div className={styles.weightBarOuter}>
@@ -103,7 +124,7 @@ export function PortfolioSummaryCard({
             >
               {h.change}
             </span>
-          </div>
+          </button>
         ))}
       </div>
     </Card>

@@ -19,10 +19,14 @@ const IMPORTANCE_LEVELS = [1, 2, 3] as const;
 
 export function EconomicEventsList({
   events,
+  starredEventIds,
   onOpenEvent,
+  onToggleReminder,
 }: {
   events: EconomicEvent[];
+  starredEventIds?: Set<string>;
   onOpenEvent?: (event: EconomicEvent) => void;
+  onToggleReminder?: (event: EconomicEvent) => void;
 }) {
   return (
     <Card className={styles.card}>
@@ -36,18 +40,29 @@ export function EconomicEventsList({
         <Badge tone="neutral">2주</Badge>
       </div>
       {events.map((e) => (
-        <button
+        <div
           key={e.id}
-          type="button"
           className={styles.row}
-          onClick={() => onOpenEvent?.(e)}
         >
+          <button
+            type="button"
+            className={starredEventIds?.has(e.id) ? styles.starActive : styles.star}
+            aria-label={`${e.event} 관심 일정 ${starredEventIds?.has(e.id) ? "해제" : "등록"}`}
+            aria-pressed={starredEventIds?.has(e.id) ?? false}
+            onClick={() => onToggleReminder?.(e)}
+          >
+            ★
+          </button>
           <div className={styles.dateBox}>
             <span className={styles.dayName}>{e.dayOfWeek}</span>
             <span className={styles.dayNum}>{e.dateLabel.split("/")[1]}</span>
           </div>
           <div className={styles.divider} />
-          <div className={styles.body}>
+          <button
+            type="button"
+            className={styles.bodyButton}
+            onClick={() => onOpenEvent?.(e)}
+          >
             <div className={styles.name}>{e.event}</div>
             <div className={styles.tags}>
               <span className={TYPE_CLASS[e.type]}>{TYPE_LABEL[e.type]}</span>
@@ -74,8 +89,8 @@ export function EconomicEventsList({
                 </span>
               )}
             </div>
-          </div>
-        </button>
+          </button>
+        </div>
       ))}
     </Card>
   );

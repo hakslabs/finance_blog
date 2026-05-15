@@ -29,17 +29,43 @@
   font: inherit;
   text-align: left;
   background: transparent;
-  border: 0;
   border-bottom: 1px solid var(--hairline);
-  cursor: pointer;
 }
 
-.row:hover {
+.row:hover,
+.row:focus-within {
   background: var(--bg);
 }
 
 .row:last-child {
   border-bottom: none;
+}
+
+.star {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--faint);
+  font: inherit;
+  font-size: 0.875rem;
+  background: transparent;
+  border: 1px solid var(--hairline);
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.star:hover,
+.star:focus-visible {
+  color: var(--warning);
+  border-color: var(--warning);
+}
+
+.starActive {
+  composes: star;
+  color: var(--warning);
+  background: rgb(154 106 22 / 10%);
+  border-color: var(--warning);
 }
 
 .dateBox {
@@ -71,9 +97,16 @@
   flex-shrink: 0;
 }
 
-.body {
+.bodyButton {
   flex: 1;
   min-width: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
 }
 
 .name {

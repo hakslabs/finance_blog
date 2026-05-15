@@ -27,6 +27,15 @@
 
 .cell {
   min-height: 0;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+}
+
+.cell:hover,
+.cell:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
 }
 
 .footer {
@@ -49,5 +58,14 @@
 
 .viewAll {
   font-size: 0.625rem;
+  color: var(--muted);
+  font: inherit;
+  background: transparent;
+  border: 0;
   cursor: pointer;
+}
+
+.viewAll:hover,
+.viewAll:focus-visible {
+  color: var(--accent);
 }

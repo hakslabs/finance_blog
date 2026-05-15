@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { Card } from "../../../components/primitives/Card";
 import type { ReturnContributor, ReturnSeries } from "../../../fixtures/dashboard";
 import styles from "./ReturnsChart.module.css";
@@ -35,38 +36,52 @@ function areaPath(
   return `M${coords.join("L")}`;
 }
 
-const PORTFOLIO_PATH = areaPath("home-portfolio", 600, 130);
-const KOSPI_PATH = areaPath("home-kospi", 600, 130);
-const SPX_PATH = areaPath("home-spx", 600, 130);
-
 export function ReturnsChart({
   data,
   onOpenContributor,
+  onOpenReturns,
   onSendReview,
 }: {
   data: ReturnSeries;
   onOpenContributor?: (contributor: ReturnContributor) => void;
+  onOpenReturns?: (period: string) => void;
   onSendReview?: () => void;
 }) {
+  const [selectedPeriod, setSelectedPeriod] = useState(data.period);
+  const paths = useMemo(
+    () => ({
+      portfolio: areaPath(`home-portfolio-${selectedPeriod}`, 600, 130),
+      kospi: areaPath(`home-kospi-${selectedPeriod}`, 600, 130),
+      spx: areaPath(`home-spx-${selectedPeriod}`, 600, 130),
+    }),
+    [selectedPeriod]
+  );
+
   return (
     <Card className={styles.card}>
       <div className={styles.header}>
         <h2 className={styles.title}>내 수익률 vs 시장</h2>
         <div className={styles.periods}>
           {PERIODS.map((p) => (
-            <span
+            <button
+              type="button"
               key={p}
               className={
-                p === data.period ? styles.periodPillActive : styles.periodPill
+                p === selectedPeriod ? styles.periodPillActive : styles.periodPill
               }
+              onClick={() => setSelectedPeriod(p)}
             >
               {p}
-            </span>
+            </button>
           ))}
         </div>
       </div>
       <div className={styles.rule} />
-      <div className={styles.chartArea}>
+      <button
+        type="button"
+        className={styles.chartArea}
+        onClick={() => onOpenReturns?.(selectedPeriod)}
+      >
         <svg
           className={styles.svg}
           viewBox="0 0 600 130"
@@ -85,14 +100,14 @@ export function ReturnsChart({
             />
           ))}
           <path
-            d={`${PORTFOLIO_PATH} L600,130 L0,130 Z`}
+            d={`${paths.portfolio} L600,130 L0,130 Z`}
             className={styles.portfolioArea}
           />
-          <path d={PORTFOLIO_PATH} className={styles.portfolioLine} />
-          <path d={KOSPI_PATH} className={styles.kospiLine} />
-          <path d={SPX_PATH} className={styles.spxLine} />
+          <path d={paths.portfolio} className={styles.portfolioLine} />
+          <path d={paths.kospi} className={styles.kospiLine} />
+          <path d={paths.spx} className={styles.spxLine} />
         </svg>
-      </div>
+      </button>
       <div className={styles.legend}>
         <span className={styles.legendItem}>
           <span className={styles.swatchPortfolio} />

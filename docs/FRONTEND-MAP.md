@@ -302,7 +302,7 @@ Used by routes that haven't been implemented yet. Wraps content in `PageContaine
 
 ### `dashboard/DashboardPage` (paths: `/`, `/dashboard`)
 
-Composes the dashboard from `routes/dashboard/sections/*` and `fixtures/dashboard.ts`. Top-level structure: `PageContainer(title=time-aware greeting, description=GreetingMeta, actions=GreetingActions)` → `NoticeBanner` → `ActionPrompts` → `IndicatorStrip` → 4× `.pair` grids of sibling section cards. The page owns `useDashboardClock()` for greeting/market session state, local todo completion state, and `useInteractionActions()` so notices, todos, F&G gauges, macro indicators, news, events, and return contributors open `DetailPanel` or planned notices.
+Composes the dashboard from `routes/dashboard/sections/*` and `fixtures/dashboard.ts`. Top-level structure: `PageContainer(title=time-aware greeting, description=GreetingMeta, actions=GreetingActions)` → `NoticeBanner` → `ActionPrompts` → `IndicatorStrip` → 4× `.pair` grids of sibling section cards. The page owns `useDashboardClock()` for greeting/market session state, local todo completion state, local calendar interest state, and `useInteractionActions()` so visible dashboard surfaces open `DetailPanel` or planned notices instead of dead-clicking.
 
 **Sections** (`routes/dashboard/sections/`):
 
@@ -313,10 +313,10 @@ Composes the dashboard from `routes/dashboard/sections/*` and `fixtures/dashboar
 - `WatchlistCard({ state })` — renders signed-out/config-error/loading/error/empty/ready states from `useWatchlist()`; loading uses the shared `Skeleton` primitive.
 - `TopMoversCard({ moversByMarket, initialMarket, sessions })` — market-aware KR/US movers with MTS-style market switch and current-session badge.
 - `NewsList({ items, onOpenNews?, onSaveNews?, onAddNote? })`.
-- `EconomicEventsList({ events, onOpenEvent? })`.
-- `ReturnsChart({ data, onOpenContributor?, onSendReview? })`.
-- `PortfolioSummaryCard({ assets, holdings, totalAssetsShort })`.
-- `HeatmapCard({ title, sub, seed })` — `seed: number` drives the deterministic cell colors.
+- `EconomicEventsList({ events, starredEventIds?, onOpenEvent?, onToggleReminder? })` — calendar rows open detail; star button toggles local interest/reminder state and opens reminder detail.
+- `ReturnsChart({ data, onOpenReturns?, onOpenContributor?, onSendReview? })` — period buttons switch local chart state, chart opens period comparison detail, contributor rows open detail.
+- `PortfolioSummaryCard({ assets, holdings, totalAssetsShort, onOpenPortfolio?, onOpenAsset?, onOpenHolding? })` — donut, asset rows, and holding rows all open detail.
+- `HeatmapCard({ title, sub, seed, onOpenCell?, onOpenAll? })` — `seed: number` drives deterministic cell colors; cells and footer open market-map detail.
 
 **Shared helpers**:
 
