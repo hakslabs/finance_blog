@@ -13,10 +13,12 @@ export function KpiTile({ label, value, detail, trend }: KpiTileProps) {
     <div className={styles.tile}>
       <div className={styles.label}>{label}</div>
       <div className={styles.value}>{value}</div>
-      <div className={styles.footer}>
-        {detail ? <span>{detail}</span> : <span />}
-        {trend ? <span>{trend}</span> : null}
-      </div>
+      {(detail || trend) ? (
+        <div className={styles.footer}>
+          {detail ? <span>{detail}</span> : null}
+          {trend ? <span>{trend}</span> : null}
+        </div>
+      ) : null}
     </div>
   );
 }

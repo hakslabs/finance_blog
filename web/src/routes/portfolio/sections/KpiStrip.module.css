@@ -1,12 +1,18 @@
 .strip {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   border: 1px solid var(--line);
   background: var(--surface);
 }
 
 .item {
+  display: flex;
   border-right: 1px solid var(--hairline);
+}
+
+.item > * {
+  flex: 1;
+  border: 0;
 }
 
 .item:last-child {
@@ -23,14 +29,17 @@
   font-weight: 700;
 }
 
-@media (max-width: 900px) {
-  .strip {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
 @media (max-width: 560px) {
   .strip {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
+  }
+
+  .item {
+    border-right: none;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .item:last-child {
+    border-bottom: none;
   }
 }

@@ -212,11 +212,64 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 
 ### PR-16 — Interaction surface audit
 
-- [ ] Scope: Audit all visible buttons, cards, chips, chart controls, table rows, and dashboard widgets across public/private routes. Every control must either navigate, switch in-page state, open a lightweight panel/modal, show a planned-feature notice, or be restyled as clearly non-interactive. The dashboard cards called out by user feedback (notice, todos, charts, watchlist rows, events) are the first pass.
-- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, relevant route files under `web/src/routes/*`.
-- [ ] Files: `web/src/components/layout/*`, shared primitives if needed, route pages/sections with dead-click surfaces, docs map updates.
-- [ ] Acceptance: No visible element uses pointer affordance without an observable result; public routes remain browsable; private data actions that require future write endpoints show precise planned notices instead of silently doing nothing; `npm run lint` and `npm run build` pass.
-- [ ] Out Of Scope: implementing every backend write path. Persistence still lands in the domain PRs for watchlists, saved reports, memos/theses, notifications, and profile settings.
+- [x] Scope: Audit all visible buttons, cards, chips, chart controls, table rows, and dashboard widgets across public/private routes. Every control must either navigate, switch in-page state, open a lightweight panel/modal, show a planned-feature notice, or be restyled as clearly non-interactive. The dashboard cards called out by user feedback (notice, todos, charts, watchlist rows, events) are the first pass.
+- [x] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, relevant route files under `web/src/routes/*`.
+- [x] Files: `web/src/components/layout/*`, shared primitives if needed, route pages/sections with dead-click surfaces, docs map updates.
+- [x] Acceptance: No visible element uses pointer affordance without an observable result; public routes remain browsable; private data actions that require future write endpoints show precise planned notices instead of silently doing nothing; `npm run lint` and `npm run build` pass.
+- [x] Out Of Scope: implementing every backend write path. Persistence still lands in the domain PRs for watchlists, saved reports, memos/theses, notifications, and profile settings.
+- [x] Closing polish (PR-16 wrap-up):
+  - StockDetail "종목 분석 한눈에" detail-panel rewritten as a one-line summary that points to `/analysis`, removing the inline duplicate of `MarketOverviewSection` per the no-duplicate-pages rule.
+  - TopBar search group labels centralized as `SEARCH_GROUPS` to remove repeated hardcoded strings.
+  - `KpiTile`, `KpiStrip`, `IndicatorStrip` realigned so each block renders symmetrically (centered label/value, equal-width columns, stretched fear-greed halves).
+
+### PR-17 — Schema master plan (design only)
+
+> **Status note.** Wireframes are being revised at the time of writing. This section captures the *structure and decisions*, not finalized table/column shapes. Do **not** convert into migrations until wires settle and the affected screens stop moving. When that happens, split into migrations 0004–0011 per the order below.
+
+- [x] Scope: Produce a complete, layered schema plan that covers (a) every entity the current UI renders from fixtures, (b) the raw market/macro data the ingestion pipeline will collect, and (c) how the two combine to drive charts and analysis. The plan must be sufficient to slice into migration-sized PRs once wires settle.
+- [x] Required Reading: `web/src/fixtures/*.ts`, `web/src/routes/*` route files, `docs/design-docs/data-sources.md`, `docs/design-docs/first-real-data.md`, `docs/design-docs/prices-ingestion-schema.md`, all existing migrations under `supabase/migrations/`.
+- [x] Files: `docs/design-docs/schema-master-plan.md` (new — owns the table inventory and join map), updates to `docs/exec-plans/tech-debt-tracker.md`. **No** changes under `supabase/migrations/` in this PR.
+- [x] Acceptance: `schema-master-plan.md` documents the 4-tier layout, every fixture-only entity is mapped to a tier, every chart/analysis widget has a documented join path, the five open decision points (the original four plus a recorded answer for `user_settings` placement) have recorded answers, and migration order is fixed.
+- [x] Out Of Scope: writing migrations, seeding data, FastAPI endpoint changes, RLS policy SQL. Those land in the migration-slice PRs (0004…0011) after this plan is approved.
+
+**Existing schema bugs (carry into migration 0004 when scheduled, not this PR):**
+
+- `supabase/migrations/0001_mvp_foundation.sql:81` — `watchlist_items_unique_position` is not `deferrable initially deferred`; reorder swaps will fail.
+- `supabase/migrations/0001_mvp_foundation.sql:21-33` — `profiles.id` has no FK to `auth.users` (comment says PR-08 deferred it pending PR-14; PR-14 is now merged so the FK should land).
+- `supabase/migrations/0002_portfolio.sql:33,47` — `transactions.amount` has no consistency check against `quantity*price` for buy/sell rows.
+- `supabase/migrations/0002_portfolio.sql:44` — `dividend` rows currently allow `instrument_id` null. Only `deposit` should.
+- `supabase/migrations/0003_prices_ingestion.sql:4-15` — `price_bars_daily` has no OHLC sanity checks (`h >= greatest(o,c,l)`, `l <= least(o,c,h)`, `v >= 0`).
+
+**Tier outline (table names tentative, will move with wires):**
+
+- **TIER 1 — Reference**: `instruments` (extend with industry/figi/cik/corp_code/delisted_at), `instrument_aliases`, `company_profiles`, `indices`, `index_constituents`, `sectors`, `instrument_sector`.
+- **TIER 2 — Market data (raw ingest)**: extend `price_bars_daily` with `adj_c`; add `price_bars_intraday`, `corporate_actions`, `fx_rates_daily`, `macro_series` + `macro_observations`, `fear_greed_daily`. All raw series use `(entity_id, t)` composite keys + `source` column + public-read RLS.
+- **TIER 3 — Derived / analysis input**: `financial_statements` + `financial_lines` (long format with line-code book), `key_ratios_quarterly` (wide cache), `analyst_estimates`, `consensus_snapshots`, `earnings_events`, `filings`, `filing_holdings` (13F), `institutional_holders`, `insider_trades`.
+- **TIER 3.5 — News, events, reports**: `news_items` + `news_instruments`, `economic_events`, `reports` + `report_tickers`.
+- **TIER 3.6 — Masters**: `masters`, `master_principles`, `master_books`, `master_strategies`, `master_filings` (reuses `filings` + `filing_holdings` for quarterly changes — no separate holdings table).
+- **TIER 4 — User state**: `saved_reports`, `saved_instruments`, `position_theses` + `position_thesis_conditions`, `memos` (polymorphic target with check), `alerts`, `notifications`, `todos`, `activity_log`, `user_settings` (or `profiles.preferences` extension), `screens` (saved analysis filters).
+
+**Open decision points (answer before slicing into migrations):**
+
+1. Indices as `instruments` rows vs a separate `indices` table — leaning *separate* because constituent membership is index-specific.
+2. `financial_lines` shape — long with a line-code book vs wide columns. Leaning *long* to absorb KR/US accounting differences.
+3. `memos` polymorphism — single table with `(target_kind, target_id)` + check constraint vs one table per target. Leaning *single*.
+4. Whether wireframe revisions invalidate any of these tiers (e.g., if reports/masters get cut, drop the matching tiers from migration scope).
+
+**Migration slicing (locked once plan is approved):**
+
+```
+0004  schema-bugfixes        (the five bugs above)
+0005  reference-enrich       (company_profiles, sectors, indices, aliases)
+0006  market-data-extend     (corporate_actions, fx_rates, macro_*, fear_greed, adj_c)
+0007  fundamentals           (financial_statements/lines, key_ratios, consensus_*, earnings_events)
+0008  filings-holdings       (filings, filing_holdings, institutional_holders, insider_trades)
+0009  news-events-reports    (news_*, economic_events, reports/report_tickers)
+0010  masters                (masters + dependents)
+0011  user-state             (saved_*, theses, memos, alerts, notifications, todos, activity_log, screens)
+```
+
+Each migration ships with RLS policies, grants, indexes, and `updated_at` triggers in the same file. Do not start 0004 until the wireframe revision pass is complete and PR-16 has merged.
 
 ## Done When
 

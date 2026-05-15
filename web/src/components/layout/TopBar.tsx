@@ -32,10 +32,18 @@ const INITIAL_NOTIFICATIONS = [
   "NVDA Thesis 조건 검토",
 ] as const;
 
+const SEARCH_GROUPS = {
+  menu: "메뉴",
+  stock: "종목",
+  report: "리포트",
+  master: "고수",
+} as const;
+type SearchGroup = (typeof SEARCH_GROUPS)[keyof typeof SEARCH_GROUPS];
+
 type Currency = "KRW" | "USD";
 type SearchResult = {
   id: string;
-  group: string;
+  group: SearchGroup;
   label: string;
   meta: string;
   to: string;
@@ -44,7 +52,7 @@ type SearchResult = {
 function navSearchItems(items: NavItem[]): SearchResult[] {
   return items.map((item) => ({
     id: `nav-${item.path}`,
-    group: "메뉴",
+    group: SEARCH_GROUPS.menu,
     label: item.label,
     meta: item.labelEn,
     to: item.path,
@@ -53,7 +61,7 @@ function navSearchItems(items: NavItem[]): SearchResult[] {
 
 const STOCK_SEARCH_ITEMS: SearchResult[] = STOCK_LIST.map((stock) => ({
   id: `stock-${stock.id}`,
-  group: "종목",
+  group: SEARCH_GROUPS.stock,
   label: stock.symbol,
   meta: `${stock.name} · ${stock.exchange}`,
   to: `/stocks/${encodeURIComponent(stock.symbol)}`,
@@ -61,7 +69,7 @@ const STOCK_SEARCH_ITEMS: SearchResult[] = STOCK_LIST.map((stock) => ({
 
 const REPORT_SEARCH_ITEMS: SearchResult[] = REPORTS.slice(0, 8).map((report) => ({
   id: `report-${report.id}`,
-  group: "리포트",
+  group: SEARCH_GROUPS.report,
   label: report.title,
   meta: `${report.source} · ${report.category}`,
   to: `/reports/${encodeURIComponent(report.id)}`,
@@ -69,7 +77,7 @@ const REPORT_SEARCH_ITEMS: SearchResult[] = REPORTS.slice(0, 8).map((report) => 
 
 const MASTER_SEARCH_ITEMS: SearchResult[] = MASTERS.map((master) => ({
   id: `master-${master.id}`,
-  group: "고수",
+  group: SEARCH_GROUPS.master,
   label: master.name,
   meta: `${master.firm} · ${master.style}`,
   to: `/masters/${encodeURIComponent(master.id)}`,
@@ -94,7 +102,7 @@ function getSearchResults(query: string, isAdmin: boolean): SearchResult[] {
     ? searchItems.filter((item) =>
         `${item.group} ${item.label} ${item.meta}`.toLowerCase().includes(normalized),
       )
-    : searchItems.filter((item) => item.group === "메뉴").slice(0, 7);
+    : searchItems.filter((item) => item.group === SEARCH_GROUPS.menu).slice(0, 7);
   return base.slice(0, 8);
 }
 

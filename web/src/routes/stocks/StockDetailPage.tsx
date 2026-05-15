@@ -54,35 +54,21 @@ function filingDetail(filing: FilingItem, symbol: string) {
 }
 
 function stockAnalysisDetail(symbol: string): DetailContent {
-  const matchingSignals = RECENT_SIGNALS.filter((signal) => signal.ticker === symbol).slice(0, 3);
-  const sentiment = SENTIMENT_INDICATORS.slice(0, 3);
+  const topMarket = MARKET_INDICES.slice(0, 3).map((idx) => `${idx.label} ${idx.value} (${idx.change})`).join(" · ");
+  const sentiment = SENTIMENT_INDICATORS[1];
   const rate = FED_RATE_PROBABILITIES[2];
+  const signal = RECENT_SIGNALS.find((s) => s.ticker === symbol) ?? RECENT_SIGNALS[0];
 
   return {
     id: `stock-analysis-${symbol}`,
     eyebrow: `${symbol} Analysis snapshot`,
-    title: `${symbol} 종목 분석 요약`,
-    summary: "시장, 심리, 기술 신호, 금리 확률을 종목 상세에서 한 번에 훑는 요약입니다.",
-    tags: ["시장", "심리", "기술", "금리"],
+    title: `${symbol} 분석 요약 한 줄`,
+    summary: `시장 ${topMarket} · 심리 ${sentiment.label} ${sentiment.value} · 금리 ${rate.meeting} 인하 ${rate.cutProbability}% · 신호 ${signal.signal}`,
     sections: [
       {
-        title: "시장 배경",
-        body: "종목 수익률을 해석하기 전에 먼저 확인할 주요 시장 지표입니다.",
-        items: MARKET_INDICES.slice(0, 5).map((index) => `${index.label}: ${index.value} (${index.change})`),
-      },
-      {
-        title: "심리 상태",
-        body: "미국/한국/글로벌 심리 지표의 현재 상태입니다.",
-        items: sentiment.map((item) => `${item.label}: ${item.value} · ${item.statusLabel}`),
-      },
-      {
-        title: "종목 신호",
-        body: matchingSignals.length > 0 ? "현재 종목에 직접 연결된 기술 신호입니다." : "현재 fixture에는 직접 연결된 기술 신호가 없어 관심종목 신호를 참고합니다.",
-        items: (matchingSignals.length > 0 ? matchingSignals : RECENT_SIGNALS.slice(0, 3)).map((signal) => `${signal.ticker}: ${signal.signal} · ${signal.time}`),
-      },
-      {
-        title: "금리 경로",
-        body: `${rate.meeting} 기준 인하 확률 ${rate.cutProbability}%, 동결 ${rate.holdProbability}%, 예상 금리 ${rate.expectedRate}.`,
+        title: "전체 분석은 분석 페이지에서",
+        body: "시장 한눈에, 시장 심리, 기술적 분석, 신호 알림 등 8개 탭에서 동일 데이터를 깊이 있게 확인할 수 있습니다.",
+        items: ["오른쪽 상단 '분석 열기' 링크 또는 사이드바에서 이동"],
       },
     ],
   };
