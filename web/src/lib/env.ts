@@ -4,6 +4,16 @@ export const env = {
   supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined,
 };
 
+function isHttpUrl(value: string | undefined): value is string {
+  if (!value) return false;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" || parsed.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
 export const hasSupabaseBrowserConfig = Boolean(
-  env.supabaseUrl && env.supabaseAnonKey,
+  isHttpUrl(env.supabaseUrl) && env.supabaseAnonKey,
 );
