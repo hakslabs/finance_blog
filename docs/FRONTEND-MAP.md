@@ -31,11 +31,11 @@ web/src/
 
 ### `AppShell({ children })`
 
-Top-level chrome: sidebar + main area. Wraps `<Routes>` in `App.tsx`.
+Top-level chrome: collapsible sidebar + main area. Wraps `<Routes>` in `App.tsx` and persists the desktop sidebar collapsed state in `localStorage`.
 
-### `Sidebar()`
+### `Sidebar({ collapsed, onToggleCollapsed })`
 
-Left navigation. Items come from `navigation.ts`. No props.
+Left navigation. Items come from `navigation.ts`. Desktop sidebar can collapse to a compact rail; mobile keeps the horizontal nav pattern.
 
 ### `TopBar()`
 

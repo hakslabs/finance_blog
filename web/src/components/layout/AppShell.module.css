@@ -5,6 +5,11 @@
   background: var(--bg);
 }
 
+.shellCollapsed {
+  composes: shell;
+  grid-template-columns: 76px minmax(0, 1fr);
+}
+
 .workspace {
   min-width: 0;
 }
@@ -16,6 +21,10 @@
 
 @media (max-width: 900px) {
   .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .shellCollapsed {
     grid-template-columns: 1fr;
   }
 }

@@ -210,6 +210,14 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 - [x] Out Of Scope: persistence for profile edits, watchlist add/delete, notification backend, full search autocomplete.
 - [x] Follow-up UX audit: PR-15 may include local-only affordances that remove dead clicks (icon buttons, notification read dot, report interest stars, MyPage quick links, loading skeletons). Anything requiring DB writes or real event delivery remains deferred: saved-report persistence, watchlist/report write endpoints, notification backend, and full cross-page saved-items surfaces.
 
+### PR-16 — Interaction surface audit
+
+- [ ] Scope: Audit all visible buttons, cards, chips, chart controls, table rows, and dashboard widgets across public/private routes. Every control must either navigate, switch in-page state, open a lightweight panel/modal, show a planned-feature notice, or be restyled as clearly non-interactive. The dashboard cards called out by user feedback (notice, todos, charts, watchlist rows, events) are the first pass.
+- [ ] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, relevant route files under `web/src/routes/*`.
+- [ ] Files: `web/src/components/layout/*`, shared primitives if needed, route pages/sections with dead-click surfaces, docs map updates.
+- [ ] Acceptance: No visible element uses pointer affordance without an observable result; public routes remain browsable; private data actions that require future write endpoints show precise planned notices instead of silently doing nothing; `npm run lint` and `npm run build` pass.
+- [ ] Out Of Scope: implementing every backend write path. Persistence still lands in the domain PRs for watchlists, saved reports, memos/theses, notifications, and profile settings.
+
 ## Done When
 
 - PR-01 through PR-10 are merged.
