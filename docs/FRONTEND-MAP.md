@@ -208,7 +208,8 @@ PR-11 wires `/portfolio` to live data via `lib/usePortfolio.ts` and the `apiClie
 **Constants** (all typed):
 
 - `ANALYSIS_TABS` — readonly tuple of 8 tab names: `시장 한눈에 | 시장 심리 | 기술적 분석 | 재무 분석 | 퀀트 팩터 | 적정주가 계산 | 섹터 흐름 | 신호 알림`. Exported as `AnalysisTab` type.
-- `MARKET_INDICES: MarketIndex[]` — 3 items (S&P 500, KOSPI, VIX).
+- `MARKET_INDICES: MarketIndex[]` — 15 selectable market indicators across US/KR/rates/FX/volatility/macro. Analysis overview defaults to 5 selected items and can expand to all.
+- `FED_RATE_PROBABILITIES: FedRateProbability[]` — 5 FOMC meeting probability rows for the FedWatch-style rate-cut visualization.
 - `SECTOR_ROTATION: SectorReturn[]` — 7 sectors, 1M returns.
 - `STYLE_ROTATION: StyleCell[]` — 4 cells (대형/소형 × 그로스/밸류).
 - `ANALYSIS_TOOLS: AnalysisTool[]` — 8 tool registry entries with target tab and detail sections. Adding a tool should be a data change, not a hardcoded card change.
@@ -339,7 +340,7 @@ Route-param-driven stock detail page. Uses `useParams` to read `symbol`, calls `
 - **Header**: PageContainer with eyebrow "리서치 / 종목", title = company name, description = Badges (symbol, exchange, sector) + price/change/lastUpdated.
 - **Key stats strip**: Card with 8 inline stats (marketCap, volume, 52W range, PER, PBR, ROE, dividendYield, beta).
 - **8 tabs** (state-driven via `useState`): 개요 / 차트 / 재무 / 밸류에이션 / 공시·실적 / 뉴스 / 수급 / 컨센서스. Tab bar uses `<button>` elements with class-variant active state.
-- **Right sidebar** (sticky): Similar stocks list (from fixture), sector average comparison cards.
+- **Right sidebar** (sticky): analysis snapshot card reusing `fixtures/analysis.ts`, similar stocks list (from fixture), sector average comparison cards.
 - **Tab content** delegated to section components under `routes/stocks/sections/`.
 
 **Sections** (`routes/stocks/sections/`):
@@ -375,7 +376,7 @@ Static analysis hub composed from `routes/analysis/sections/*` and `fixtures/ana
 
 **Sections** (`routes/analysis/sections/`):
 
-- `MarketOverviewSection({ onOpenTool?, onSelectToolTab?, onOpenIndex?, onOpenSector?, onOpenStyle?, onOpenSignal?, onOpenScreen?, onOpenChart? })` — 시장 한눈에. 3-col top grid (`Card`: 시장 개요 with clickable `ChartPlaceholder` + clickable index row · `Card` with `DataTable<SectorReturn>` for sector rotation · `Card` with clickable style rotation grid). Tool cards are generated from `ANALYSIS_TOOLS` registry and can either switch to the target tab or open `DetailPanel`. 2-col bottom grid: `Card` with recent signal list + `Card` with `DataTable<SavedScreen>`; all rows open detail.
+- `MarketOverviewSection({ onOpenTool?, onSelectToolTab?, onOpenIndex?, onOpenSector?, onOpenStyle?, onOpenSignal?, onOpenScreen?, onOpenChart?, onOpenFedWatch? })` — 시장 한눈에. 3-col top grid (`Card`: 시장 개요 with clickable `ChartPlaceholder`, 15-item selector, default 5 selected indicators, all/5 toggle, clickable index row · `Card` with `DataTable<SectorReturn>` for sector rotation · `Card` with clickable style rotation grid). Adds a FedWatch-style rate-cut probability visualization before the tool registry. Tool cards are generated from `ANALYSIS_TOOLS` registry and can either switch to the target tab or open `DetailPanel`. 2-col bottom grid: `Card` with recent signal list + `Card` with `DataTable<SavedScreen>`; all rows open detail.
 - `SentimentSection({ onOpenIndicator?, onOpenGlossary?, onOpenChart? })` — 시장 심리. Banner `Card`, balanced region grid with one `Card`+`DataTable<SentimentIndicator>` per region (US/KR/Global), then a 2-col chart/glossary row. Rows and chart placeholder open detail. Status mapped to `Badge` tone via `Record<SentimentStatus, BadgeTone>`.
 - `TechnicalSection({ onOpenIndicator?, onOpenChart? })` — 기술적 분석. Clickable `Card`+`ChartPlaceholder` for chart, `Card`+`DataTable<TechnicalIndicator>` with buy/sell/hold `Badge`; rows open detail.
 - `FinancialAnalysisSection({ onOpenScore?, onOpenChart? })` — 재무 분석. Clickable `Card`+`ChartPlaceholder`, `Card`+`DataTable<FinancialScore>` with A-D grade `Badge`; rows open detail.

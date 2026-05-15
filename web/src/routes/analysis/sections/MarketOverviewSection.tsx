@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card } from "../../../components/primitives/Card";
 import { Section } from "../../../components/primitives/Section";
 import { ChartPlaceholder } from "../../../components/primitives/ChartPlaceholder";
@@ -8,6 +9,7 @@ import {
 import { Badge } from "../../../components/primitives/Badge";
 import {
   MARKET_INDICES,
+  FED_RATE_PROBABILITIES,
   SECTOR_ROTATION,
   STYLE_ROTATION,
   ANALYSIS_TOOLS,
@@ -18,6 +20,7 @@ import {
   type SavedScreen,
   type MarketIndex,
   type StyleCell,
+  type FedRateProbability,
   type AnalysisTab,
   type AnalysisTool,
 } from "../../../fixtures/analysis";
@@ -37,6 +40,7 @@ const DIR_DOT_CLASS: Record<RecentSignal["direction"], string> = {
 
 const STYLE_GROWTH = STYLE_ROTATION.filter((c) => c.style === "그로스");
 const STYLE_VALUE = STYLE_ROTATION.filter((c) => c.style === "밸류");
+const DEFAULT_MARKET_INDEX_IDS = ["mi-spx", "mi-ndx", "mi-kospi", "mi-vix", "mi-us10y"];
 
 const sectorColumns: DataTableColumn<SectorReturn>[] = [
   { key: "sector", header: "섹터", render: (r) => r.sector },
@@ -104,6 +108,7 @@ export function MarketOverviewSection({
   onOpenSignal,
   onOpenScreen,
   onOpenChart,
+  onOpenFedWatch,
 }: {
   onOpenTool?: (tool: AnalysisTool) => void;
   onSelectToolTab?: (tab: AnalysisTab) => void;
@@ -113,18 +118,61 @@ export function MarketOverviewSection({
   onOpenSignal?: (row: RecentSignal) => void;
   onOpenScreen?: (row: SavedScreen) => void;
   onOpenChart?: (label: string) => void;
+  onOpenFedWatch?: (row: FedRateProbability) => void;
 }) {
+  const [selectedIndexIds, setSelectedIndexIds] = useState<string[]>(DEFAULT_MARKET_INDEX_IDS);
+  const [showAllIndices, setShowAllIndices] = useState(false);
+  const visibleIndices = showAllIndices
+    ? MARKET_INDICES
+    : MARKET_INDICES.filter((index) => selectedIndexIds.includes(index.id));
+
+  function toggleIndex(id: string) {
+    setSelectedIndexIds((current) => {
+      if (current.includes(id)) {
+        return current.length > 1 ? current.filter((value) => value !== id) : current;
+      }
+      return current.length < 5 ? [...current, id] : [...current.slice(1), id];
+    });
+  }
+
   return (
     <div className={styles.root}>
       <div className={styles.topGrid}>
-        <Card title="시장 개요">
+        <Card
+          title="시장 개요"
+          actions={
+            <button
+              type="button"
+              className={styles.cardActionButton}
+              onClick={() => setShowAllIndices((value) => !value)}
+            >
+              {showAllIndices ? "5개 보기" : "전체 보기"}
+            </button>
+          }
+        >
           <ChartPlaceholder
             label="S&P 500 · KOSPI 추이"
             height={140}
             onOpen={() => onOpenChart?.("S&P 500 · KOSPI 추이")}
           />
+          <div className={styles.indexPicker} aria-label="표시할 시장지표 선택">
+            {MARKET_INDICES.map((index) => {
+              const selected = selectedIndexIds.includes(index.id);
+              return (
+                <button
+                  key={index.id}
+                  type="button"
+                  className={selected ? styles.pickerButtonActive : styles.pickerButton}
+                  aria-pressed={selected}
+                  onClick={() => toggleIndex(index.id)}
+                >
+                  {index.label}
+                </button>
+              );
+            })}
+          </div>
           <div className={styles.indexRow}>
-            {MARKET_INDICES.map((mi, i) => (
+            {visibleIndices.map((mi, i) => (
               <button
                 type="button"
                 key={mi.id}
@@ -185,6 +233,29 @@ export function MarketOverviewSection({
           <p className={styles.styleNote}>이번 분기 대형 그로스 우위</p>
         </Card>
       </div>
+
+      <Card title="FedWatch · 금리 인하 확률" eyebrow="CME 스타일 확률 뷰 · fixture">
+        <div className={styles.fedWatchGrid}>
+          {FED_RATE_PROBABILITIES.map((row) => (
+            <button
+              key={row.id}
+              type="button"
+              className={styles.fedWatchRow}
+              onClick={() => onOpenFedWatch?.(row)}
+            >
+              <span className={styles.fedMeeting}>{row.meeting}</span>
+              <span className={styles.fedBars} aria-hidden="true">
+                <span className={styles.fedCut} style={{ width: `${row.cutProbability}%` }} />
+                <span className={styles.fedHold} style={{ width: `${row.holdProbability}%` }} />
+                <span className={styles.fedHike} style={{ width: `${row.hikeProbability}%` }} />
+              </span>
+              <span className={styles.fedMeta}>
+                인하 {row.cutProbability}% · 동결 {row.holdProbability}% · 예상 {row.expectedRate}
+              </span>
+            </button>
+          ))}
+        </div>
+      </Card>
 
       <Section title="분석 도구">
         <div className={styles.toolsGrid}>

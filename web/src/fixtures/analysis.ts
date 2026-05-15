@@ -20,12 +20,43 @@ export type MarketIndex = {
   value: string;
   change: string;
   up: boolean;
+  group?: "US" | "KR" | "Macro" | "Rates" | "FX" | "Volatility";
+  description?: string;
 };
 
 export const MARKET_INDICES: MarketIndex[] = [
-  { id: "mi-spx", label: "S&P 500", value: "5,124.6", change: "+0.38%", up: true },
-  { id: "mi-kospi", label: "KOSPI", value: "2,684.2", change: "+0.69%", up: true },
-  { id: "mi-vix", label: "VIX", value: "14.2", change: "-0.4", up: true },
+  { id: "mi-spx", label: "S&P 500", value: "5,124.6", change: "+0.38%", up: true, group: "US", description: "미국 대형주 벤치마크" },
+  { id: "mi-ndx", label: "NASDAQ 100", value: "18,024.1", change: "+0.72%", up: true, group: "US", description: "미국 기술주 중심 지수" },
+  { id: "mi-dji", label: "Dow", value: "39,880.4", change: "-0.12%", up: false, group: "US", description: "미국 우량 산업주 지수" },
+  { id: "mi-rut", label: "Russell 2000", value: "2,071.8", change: "+0.21%", up: true, group: "US", description: "미국 중소형주 지수" },
+  { id: "mi-kospi", label: "KOSPI", value: "2,684.2", change: "+0.69%", up: true, group: "KR", description: "한국 유가증권시장 대표 지수" },
+  { id: "mi-kosdaq", label: "KOSDAQ", value: "872.5", change: "-0.31%", up: false, group: "KR", description: "한국 성장주 중심 지수" },
+  { id: "mi-vix", label: "VIX", value: "14.2", change: "-0.4", up: true, group: "Volatility", description: "S&P 500 옵션 내재변동성" },
+  { id: "mi-vkospi", label: "V-KOSPI", value: "18.4", change: "+0.8", up: false, group: "Volatility", description: "KOSPI 200 옵션 내재변동성" },
+  { id: "mi-us10y", label: "US 10Y", value: "4.42%", change: "+3bp", up: false, group: "Rates", description: "미국 10년물 국채금리" },
+  { id: "mi-us2y", label: "US 2Y", value: "4.78%", change: "-2bp", up: true, group: "Rates", description: "미국 2년물 국채금리" },
+  { id: "mi-dxy", label: "DXY", value: "104.2", change: "+0.18%", up: false, group: "FX", description: "달러 인덱스" },
+  { id: "mi-usdkrw", label: "USD/KRW", value: "1,358.4", change: "-0.24%", up: true, group: "FX", description: "원/달러 환율" },
+  { id: "mi-wti", label: "WTI", value: "$78.4", change: "+1.1%", up: true, group: "Macro", description: "서부텍사스산 원유" },
+  { id: "mi-gold", label: "Gold", value: "$2,386", change: "+0.4%", up: true, group: "Macro", description: "금 현물 가격" },
+  { id: "mi-btc", label: "Bitcoin", value: "$66,420", change: "-1.8%", up: false, group: "Macro", description: "위험자산 심리 참고 지표" },
+];
+
+export type FedRateProbability = {
+  id: string;
+  meeting: string;
+  cutProbability: number;
+  holdProbability: number;
+  hikeProbability: number;
+  expectedRate: string;
+};
+
+export const FED_RATE_PROBABILITIES: FedRateProbability[] = [
+  { id: "fed-jun", meeting: "6월 FOMC", cutProbability: 8, holdProbability: 91, hikeProbability: 1, expectedRate: "5.25–5.50%" },
+  { id: "fed-jul", meeting: "7월 FOMC", cutProbability: 28, holdProbability: 71, hikeProbability: 1, expectedRate: "5.00–5.25%" },
+  { id: "fed-sep", meeting: "9월 FOMC", cutProbability: 54, holdProbability: 45, hikeProbability: 1, expectedRate: "4.75–5.00%" },
+  { id: "fed-nov", meeting: "11월 FOMC", cutProbability: 63, holdProbability: 36, hikeProbability: 1, expectedRate: "4.75–5.00%" },
+  { id: "fed-dec", meeting: "12월 FOMC", cutProbability: 72, holdProbability: 27, hikeProbability: 1, expectedRate: "4.50–4.75%" },
 ];
 
 export type SectorReturn = {

@@ -8,6 +8,7 @@ import {
   type AnalysisTab,
   type AnalysisTool,
   type DcfAssumption,
+  type FedRateProbability,
   type FinancialScore,
   type IndicatorGlossary,
   type MarketIndex,
@@ -46,7 +47,7 @@ function toolDetail(tool: AnalysisTool) {
 function rowDetail(kind: string, row: object): DetailContent {
   const values = row as Record<string, unknown>;
   const title =
-    String(values.title ?? values.symbol ?? values.ticker ?? values.factor ?? values.sector ?? values.label ?? values.term ?? kind);
+    String(values.title ?? values.symbol ?? values.ticker ?? values.factor ?? values.sector ?? values.label ?? values.term ?? values.meeting ?? kind);
   const summary =
     String(values.description ?? values.signal ?? values.type ?? values.detail ?? "선택한 항목의 분석 상세입니다.");
   return {
@@ -127,6 +128,7 @@ function TabContent({
           onOpenSignal={(row: RecentSignal) => onOpenDetail(rowDetail("최근 기술적 신호", row))}
           onOpenScreen={(row: SavedScreen) => onOpenDetail(rowDetail("저장한 스크린", row))}
           onOpenChart={(label) => onOpenDetail(chartDetail(label, tab))}
+          onOpenFedWatch={(row: FedRateProbability) => onOpenDetail(rowDetail("FedWatch 금리 확률", row))}
         />
       );
     case "시장 심리":

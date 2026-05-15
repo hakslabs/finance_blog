@@ -102,6 +102,61 @@
   top: 12px;
 }
 
+.cardLink {
+  color: var(--accent);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.cardLink:hover {
+  color: var(--ink);
+}
+
+.analysisSnapshot {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.analysisSnapshot span {
+  display: grid;
+  gap: 2px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.analysisSnapshot span:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.analysisSnapshot strong {
+  font-size: 0.6875rem;
+}
+
+.analysisSnapshot small {
+  color: var(--muted);
+  font-size: 0.625rem;
+  line-height: 1.35;
+}
+
+.analysisSnapshot:hover strong,
+.analysisSnapshot:focus-visible strong {
+  color: var(--accent);
+}
+
+.analysisSnapshot:focus-visible {
+  outline: 0;
+}
+
 @media (max-width: 900px) {
   .sidebar {
     position: static;

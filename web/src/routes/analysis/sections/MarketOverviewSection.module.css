@@ -10,6 +10,24 @@
   gap: 12px;
 }
 
+.cardActionButton {
+  min-height: 28px;
+  padding: 0 8px;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  cursor: pointer;
+}
+
+.cardActionButton:hover,
+.cardActionButton:focus-visible {
+  border-color: var(--accent);
+  outline: 0;
+}
+
 @media (max-width: 900px) {
   .topGrid {
     grid-template-columns: 1fr;
@@ -22,6 +40,41 @@
   gap: 10px;
   margin-top: 8px;
   font-size: 0.6875rem;
+}
+
+.indexPicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.pickerButton,
+.pickerButtonActive {
+  min-height: 26px;
+  padding: 0 7px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.625rem;
+  font-weight: 700;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  cursor: pointer;
+}
+
+.pickerButtonActive {
+  color: var(--ink);
+  background: var(--surface-muted);
+  border-color: var(--line);
+}
+
+.pickerButton:hover,
+.pickerButton:focus-visible,
+.pickerButtonActive:hover,
+.pickerButtonActive:focus-visible {
+  color: var(--ink);
+  border-color: var(--accent);
+  outline: 0;
 }
 
 .indexCell {
@@ -102,6 +155,74 @@
   font-size: 0.625rem;
   color: var(--faint);
   margin: 8px 0 0;
+}
+
+.fedWatchGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.fedWatchRow {
+  display: grid;
+  grid-template-columns: 110px minmax(160px, 1fr) minmax(220px, auto);
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 8px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--hairline);
+  cursor: pointer;
+}
+
+.fedWatchRow:hover,
+.fedWatchRow:focus-visible {
+  border-color: var(--accent);
+  outline: 0;
+}
+
+.fedMeeting {
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.fedBars {
+  display: flex;
+  overflow: hidden;
+  height: 12px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+}
+
+.fedCut {
+  background: var(--positive);
+}
+
+.fedHold {
+  background: var(--muted);
+}
+
+.fedHike {
+  background: var(--negative);
+}
+
+.fedMeta {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  text-align: right;
+}
+
+@media (max-width: 760px) {
+  .fedWatchRow {
+    grid-template-columns: 1fr;
+  }
+
+  .fedMeta {
+    text-align: left;
+  }
 }
 
 .toolsGrid {

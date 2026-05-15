@@ -9,6 +9,13 @@ import { EmptyState } from "../../components/primitives/EmptyState";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
 import type { FilingItem, NewsItem, StockDetail, StockTab } from "../../fixtures/stocks";
 import { getStockDetail, STOCK_TABS } from "../../fixtures/stocks";
+import {
+  FED_RATE_PROBABILITIES,
+  MARKET_INDICES,
+  RECENT_SIGNALS,
+  SENTIMENT_INDICATORS,
+} from "../../fixtures/analysis";
+import type { DetailContent } from "../../lib/interaction/action-intent";
 import { OverviewSection } from "./sections/OverviewSection";
 import { ChartSection } from "./sections/ChartSection";
 import { FinancialsSection } from "./sections/FinancialsSection";
@@ -43,6 +50,41 @@ function filingDetail(filing: FilingItem, symbol: string) {
     title: filing.title,
     meta: `${filing.date} · 가격 영향 ${filing.priceImpact}`,
     summary: "공시 요약, 원문 링크, 내 메모를 한 패널에서 볼 수 있도록 연결하는 상세 보기입니다.",
+  };
+}
+
+function stockAnalysisDetail(symbol: string): DetailContent {
+  const matchingSignals = RECENT_SIGNALS.filter((signal) => signal.ticker === symbol).slice(0, 3);
+  const sentiment = SENTIMENT_INDICATORS.slice(0, 3);
+  const rate = FED_RATE_PROBABILITIES[2];
+
+  return {
+    id: `stock-analysis-${symbol}`,
+    eyebrow: `${symbol} Analysis snapshot`,
+    title: `${symbol} 종목 분석 요약`,
+    summary: "시장, 심리, 기술 신호, 금리 확률을 종목 상세에서 한 번에 훑는 요약입니다.",
+    tags: ["시장", "심리", "기술", "금리"],
+    sections: [
+      {
+        title: "시장 배경",
+        body: "종목 수익률을 해석하기 전에 먼저 확인할 주요 시장 지표입니다.",
+        items: MARKET_INDICES.slice(0, 5).map((index) => `${index.label}: ${index.value} (${index.change})`),
+      },
+      {
+        title: "심리 상태",
+        body: "미국/한국/글로벌 심리 지표의 현재 상태입니다.",
+        items: sentiment.map((item) => `${item.label}: ${item.value} · ${item.statusLabel}`),
+      },
+      {
+        title: "종목 신호",
+        body: matchingSignals.length > 0 ? "현재 종목에 직접 연결된 기술 신호입니다." : "현재 fixture에는 직접 연결된 기술 신호가 없어 관심종목 신호를 참고합니다.",
+        items: (matchingSignals.length > 0 ? matchingSignals : RECENT_SIGNALS.slice(0, 3)).map((signal) => `${signal.ticker}: ${signal.signal} · ${signal.time}`),
+      },
+      {
+        title: "금리 경로",
+        body: `${rate.meeting} 기준 인하 확률 ${rate.cutProbability}%, 동결 ${rate.holdProbability}%, 예상 금리 ${rate.expectedRate}.`,
+      },
+    ],
   };
 }
 
@@ -151,11 +193,38 @@ function KeyStatsStrip({ detail }: { detail: StockDetail }) {
 /** Similar stocks sidebar. */
 function SimilarStocksSidebar({
   detail,
+  onOpenAnalysis,
 }: {
   detail: StockDetail;
+  onOpenAnalysis: () => void;
 }) {
   return (
     <aside className={styles.sidebar}>
+      <Card
+        title="종목 분석 한눈에"
+        eyebrow="Market + sentiment + rates"
+        actions={<Link to="/analysis" className={styles.cardLink}>분석 열기</Link>}
+      >
+        <button type="button" className={styles.analysisSnapshot} onClick={onOpenAnalysis}>
+          <span>
+            <strong>시장지표</strong>
+            <small>{MARKET_INDICES.slice(0, 3).map((index) => index.label).join(" · ")}</small>
+          </span>
+          <span>
+            <strong>심리</strong>
+            <small>{SENTIMENT_INDICATORS[1].label} {SENTIMENT_INDICATORS[1].value} · {SENTIMENT_INDICATORS[1].statusLabel}</small>
+          </span>
+          <span>
+            <strong>금리</strong>
+            <small>{FED_RATE_PROBABILITIES[2].meeting} 인하 {FED_RATE_PROBABILITIES[2].cutProbability}%</small>
+          </span>
+          <span>
+            <strong>신호</strong>
+            <small>{RECENT_SIGNALS.find((signal) => signal.ticker === detail.symbol)?.signal ?? "관심종목 신호 확인"}</small>
+          </span>
+        </button>
+      </Card>
+
       <Card title="유사 종목" eyebrow="섹터 · 상관계수">
         <div className={styles.similarList}>
           {detail.similarStocks.map((s) => (
@@ -279,7 +348,10 @@ export function StockDetailPage() {
         </main>
 
         {/* Right sidebar */}
-        <SimilarStocksSidebar detail={detail} />
+        <SimilarStocksSidebar
+          detail={detail}
+          onOpenAnalysis={() => handleAction({ type: "detail", detail: stockAnalysisDetail(detail.symbol) })}
+        />
       </div>
       <DetailPanel detail={panelDetail} onClose={closeDetail} />
       <ActionNotice message={notice} />
