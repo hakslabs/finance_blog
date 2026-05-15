@@ -1,28 +1,51 @@
-"""Authentication dependencies.
-
-PR-09 uses the interim dev-header contract from `docs/design-docs/auth.md`:
-the request must include `X-Dev-User: <uuid>` and the API must be running with
-`APP_ENV=local`. JWT-based auth replaces this in PR-14.
-"""
+"""Authentication dependencies."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from uuid import UUID
 
-from fastapi import Depends, Header, HTTPException
+import jwt
+from fastapi import Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.settings import Settings, get_settings
 
 
+bearer_scheme = HTTPBearer(auto_error=False)
+
+
+@dataclass(frozen=True)
+class CurrentUser:
+    id: UUID
+    email: str | None = None
+
+
 def get_current_user_id(
-    x_dev_user: str | None = Header(default=None, alias="X-Dev-User"),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     settings: Settings = Depends(get_settings),
-) -> UUID:
-    if settings.app_env != "local":
+) -> CurrentUser:
+    if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(status_code=401, detail="unauthenticated")
-    if not x_dev_user:
+    if not settings.supabase_jwt_secret:
         raise HTTPException(status_code=401, detail="unauthenticated")
+
     try:
-        return UUID(x_dev_user)
-    except ValueError:
+        payload = jwt.decode(
+            credentials.credentials,
+            settings.supabase_jwt_secret,
+            algorithms=["HS256"],
+            audience="authenticated",
+            options={"require": ["sub", "exp"]},
+        )
+    except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="unauthenticated")
+
+    subject = payload.get("sub")
+    try:
+        user_id = UUID(str(subject))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=401, detail="unauthenticated")
+
+    email = payload.get("email")
+    return CurrentUser(id=user_id, email=email if isinstance(email, str) else None)

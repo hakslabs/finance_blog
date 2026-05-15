@@ -8,14 +8,13 @@ from app.models.quotes import Bar, Quote
 from app.repos.prices import get_price_repo
 from app.routes import quotes as quotes_route
 from app.settings import Settings, get_settings
-
-
-DEV_USER = "00000000-0000-4000-8000-000000000001"
+from app.tests.auth_helpers import auth_header
 
 
 def _settings_with_keys() -> Settings:
     return Settings(
         APP_ENV="local",
+        SUPABASE_JWT_SECRET="test-supabase-jwt-secret-32-bytes-minimum",
         POLYGON_API_KEY="test-polygon",
         ALPHA_VANTAGE_API_KEY="test-alpha",
     )
@@ -24,6 +23,7 @@ def _settings_with_keys() -> Settings:
 def _settings_without_keys() -> Settings:
     return Settings(
         APP_ENV="local",
+        SUPABASE_JWT_SECRET="test-supabase-jwt-secret-32-bytes-minimum",
         POLYGON_API_KEY=None,
         ALPHA_VANTAGE_API_KEY=None,
     )
@@ -70,7 +70,7 @@ def _reset_cache():
     app.dependency_overrides.pop(get_price_repo, None)
 
 
-def test_requires_dev_header(client: TestClient) -> None:
+def test_requires_bearer_token(client: TestClient) -> None:
     app.dependency_overrides[get_settings] = _settings_with_keys
     response = client.get("/v1/quotes/AAPL")
     assert response.status_code == 401
@@ -90,9 +90,7 @@ def test_returns_quote_from_polygon(client: TestClient, monkeypatch) -> None:
         "app.routes.quotes.polygon.fetch_daily_quote", fake_polygon
     )
 
-    response = client.get(
-        "/v1/quotes/AAPL", headers={"X-Dev-User": DEV_USER}
-    )
+    response = client.get("/v1/quotes/AAPL", headers=auth_header())
     assert response.status_code == 200
     body = response.json()
     assert body["symbol"] == "AAPL"
@@ -120,9 +118,7 @@ def test_falls_back_to_alphavantage_on_polygon_error(
         "app.routes.quotes.alphavantage.fetch_daily_quote", fake_alpha
     )
 
-    response = client.get(
-        "/v1/quotes/AAPL", headers={"X-Dev-User": DEV_USER}
-    )
+    response = client.get("/v1/quotes/AAPL", headers=auth_header())
     assert response.status_code == 200
     assert response.json()["last"] == pytest.approx(187.42)
 
@@ -154,9 +150,7 @@ def test_serves_stale_cache_on_provider_outage(
         "app.routes.quotes.alphavantage.fetch_daily_quote", boom_alpha
     )
 
-    response = client.get(
-        "/v1/quotes/AAPL", headers={"X-Dev-User": DEV_USER}
-    )
+    response = client.get("/v1/quotes/AAPL", headers=auth_header())
     assert response.status_code == 200
     body = response.json()
     assert body["stale"] is True
@@ -181,9 +175,7 @@ def test_returns_503_when_no_cache_and_provider_fails(
         "app.routes.quotes.alphavantage.fetch_daily_quote", boom_alpha
     )
 
-    response = client.get(
-        "/v1/quotes/AAPL", headers={"X-Dev-User": DEV_USER}
-    )
+    response = client.get("/v1/quotes/AAPL", headers=auth_header())
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "upstream_unavailable"
 
@@ -199,18 +191,14 @@ def test_404_for_unknown_symbol(client: TestClient, monkeypatch) -> None:
         "app.routes.quotes.polygon.fetch_daily_quote", not_found
     )
 
-    response = client.get(
-        "/v1/quotes/NOPE", headers={"X-Dev-User": DEV_USER}
-    )
+    response = client.get("/v1/quotes/NOPE", headers=auth_header())
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "not_found"
 
 
 def test_no_provider_configured_returns_503(client: TestClient) -> None:
     app.dependency_overrides[get_settings] = _settings_without_keys
-    response = client.get(
-        "/v1/quotes/AAPL", headers={"X-Dev-User": DEV_USER}
-    )
+    response = client.get("/v1/quotes/AAPL", headers=auth_header())
     assert response.status_code == 503
 
 
@@ -226,9 +214,7 @@ def test_uppercases_symbol(client: TestClient, monkeypatch) -> None:
         "app.routes.quotes.polygon.fetch_daily_quote", fake_polygon
     )
 
-    response = client.get(
-        "/v1/quotes/aapl", headers={"X-Dev-User": DEV_USER}
-    )
+    response = client.get("/v1/quotes/aapl", headers=auth_header())
     assert response.status_code == 200
     assert seen == ["AAPL"]
 
@@ -237,6 +223,6 @@ def test_rejects_intraday_interval(client: TestClient) -> None:
     app.dependency_overrides[get_settings] = _settings_with_keys
     response = client.get(
         "/v1/quotes/AAPL?interval=1h",
-        headers={"X-Dev-User": DEV_USER},
+        headers=auth_header(),
     )
     assert response.status_code == 400

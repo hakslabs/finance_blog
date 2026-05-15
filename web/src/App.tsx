@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { AuthGate } from "./components/layout/AuthGate";
 import { AppShell } from "./components/layout/AppShell";
 import { AnalysisPage } from "./routes/analysis/AnalysisPage";
 import { DashboardPage } from "./routes/dashboard/DashboardPage";
@@ -16,24 +17,27 @@ import { StocksPage } from "./routes/stocks/StocksPage";
 
 export default function App() {
   return (
-    <AppShell>
-      <Routes>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/stocks" element={<StocksPage />} />
-        <Route path="/stocks/:symbol" element={<StockDetailPage />} />
-        <Route path="/portfolio" element={<PortfolioPage />} />
-        <Route path="/analysis" element={<AnalysisPage />} />
-        <Route path="/masters" element={<MastersPage />} />
-        <Route path="/masters/:id" element={<MasterDetailPage />} />
-        <Route path="/reports" element={<ReportsPage />} />
-        <Route path="/reports/:id" element={<ReportDetailPage />} />
-        <Route path="/learn" element={<LearnPage />} />
-        <Route path="/mypage" element={<MyPage />} />
-        <Route path="/admin" element={<AdminPage />} />
-        <Route path="/_kitchen-sink" element={<KitchenSinkPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </AppShell>
+    <AuthGate>
+      <AppShell>
+        <Routes>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/auth/callback" element={<Navigate to="/" replace />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/stocks" element={<StocksPage />} />
+          <Route path="/stocks/:symbol" element={<StockDetailPage />} />
+          <Route path="/portfolio" element={<PortfolioPage />} />
+          <Route path="/analysis" element={<AnalysisPage />} />
+          <Route path="/masters" element={<MastersPage />} />
+          <Route path="/masters/:id" element={<MasterDetailPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/reports/:id" element={<ReportDetailPage />} />
+          <Route path="/learn" element={<LearnPage />} />
+          <Route path="/mypage" element={<MyPage />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/_kitchen-sink" element={<KitchenSinkPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AppShell>
+    </AuthGate>
   );
 }

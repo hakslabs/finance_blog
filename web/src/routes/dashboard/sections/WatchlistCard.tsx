@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Card } from "../../../components/primitives/Card";
 import type { Watchlist, WatchlistItem } from "../../../lib/api-client";
 import type { WatchlistState } from "../../../lib/useWatchlist";
@@ -19,10 +20,10 @@ function formatUpdatedAt(value: string): string {
 function ItemRow({ item }: { item: WatchlistItem }) {
   return (
     <div className={styles.row}>
-      <div className={styles.symbol}>
+      <Link className={styles.symbol} to={`/stocks/${encodeURIComponent(item.symbol)}`}>
         <span className={styles.symbolCode}>{item.symbol}</span>
         <span className={styles.symbolName}>{item.name}</span>
-      </div>
+      </Link>
       <span className={styles.cellPrice}>
         {item.last_price != null ? item.last_price.toFixed(2) : DASH}
       </span>

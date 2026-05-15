@@ -198,7 +198,7 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 - [ ] Required Reading: `docs/design-docs/auth.md`, `docs/API.md`, `docs/SECURITY.md`, `docs/references/supabase-llms.txt`.
 - [ ] Operator Prerequisites (you, not the agent): Google OAuth client created in Google Cloud Console, client ID/secret pasted into Supabase Auth Providers, `SUPABASE_JWT_SECRET` copied into `.env`. See `docs/design-docs/auth.md` "Operator Action Required".
 - [ ] Files: `api/app/auth.py` (JWT verifier), middleware/dependency wiring, frontend sign-in route + session bootstrap, removal of dev-header code.
-- [ ] Acceptance: Logging in via Google reaches the dashboard with real user data; the dev header is rejected with 401 in `APP_ENV != local`; existing RLS policies continue to pass without edits.
+- [ ] Acceptance: Logging in via Google reaches the dashboard with real user data; requests without a bearer token return 401; existing RLS policies continue to pass without edits.
 - [ ] Out Of Scope: additional providers, password sign-in, role/permission system, organization accounts.
 - [ ] Blocking Gate: **Do not share any deployed URL beyond yourself until this PR is merged.** This is the only gate that lifts the single-user constraint on PR-12's deployment.
 

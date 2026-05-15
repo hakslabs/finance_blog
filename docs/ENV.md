@@ -15,11 +15,11 @@ If a new variable is introduced, add a row here in the same PR. If a row says "b
 
 ### App config
 
-| Variable            | Used by | Browser-safe   | Source                               | First PR | Required           | Missing behavior                                     |
-| ------------------- | ------- | -------------- | ------------------------------------ | -------- | ------------------ | ---------------------------------------------------- |
-| `APP_ENV`           | api     | no             | you (`local` / `preview` / `prod`)   | PR-07    | yes                | API refuses to start; controls dev-header acceptance |
-| `LOG_LEVEL`         | api     | no             | you (`debug`/`info`/`warn`/`error`)  | PR-07    | no, default `info` | log verbosity only                                   |
-| `VITE_API_BASE_URL` | web     | yes (URL only) | you (`http://localhost:8000` in dev) | PR-09    | yes                | every API call fails                                 |
+| Variable            | Used by | Browser-safe   | Source                               | First PR | Required           | Missing behavior                |
+| ------------------- | ------- | -------------- | ------------------------------------ | -------- | ------------------ | ------------------------------- |
+| `APP_ENV`           | api     | no             | you (`local` / `preview` / `prod`)   | PR-07    | yes                | API refuses to start if missing |
+| `LOG_LEVEL`         | api     | no             | you (`debug`/`info`/`warn`/`error`)  | PR-07    | no, default `info` | log verbosity only              |
+| `VITE_API_BASE_URL` | web     | yes (URL only) | you (`http://localhost:8000` in dev) | PR-09    | yes                | every API call fails            |
 
 ### Supabase
 
@@ -32,10 +32,9 @@ If a new variable is introduced, add a row here in the same PR. If a row says "b
 | `SUPABASE_ACCESS_TOKEN`     | supabase CLI             | no                   | https://app.supabase.com/account/tokens                      | PR-08    | yes for CLI ops                         | CLI auth fails                  |
 | `VITE_SUPABASE_URL`         | web                      | yes                  | same URL as `SUPABASE_URL`                                   | PR-08    | yes once browser uses Supabase directly | client init fails               |
 | `VITE_SUPABASE_ANON_KEY`    | web                      | yes (anon is public) | Supabase Dashboard → Settings → API → anon                   | PR-08    | yes once browser uses Supabase directly | client init fails               |
-| `SUPABASE_JWT_SECRET`       | api                      | no                   | Supabase Dashboard → Settings → API → JWT Secret             | PR-14    | yes at PR-14                            | real auth verification fails    |
-| `VITE_DEV_USER_ID`          | web                      | yes (dev only)       | uuid you choose, seeded by PR-08                             | PR-09    | yes in dev                              | dev header empty → 401          |
+| `SUPABASE_JWT_SECRET`       | api                      | no                   | Supabase Dashboard → Settings → API → JWT Secret             | PR-14    | yes                                     | auth verification fails         |
 
-### Auth (PR-14)
+### Auth
 
 Google OAuth client ID/secret are pasted into the **Supabase Dashboard**, not the app `.env`. No app variables for those.
 

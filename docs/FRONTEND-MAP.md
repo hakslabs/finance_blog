@@ -39,7 +39,7 @@ Left navigation. Items come from `navigation.ts`. No props.
 
 ### `TopBar()`
 
-Top utility bar. No props.
+Top utility bar. Reads auth context for the signed-in user's avatar initial and sign-out action.
 
 ### `PageContainer({ title, eyebrow?, description?, actions?, children? })`
 
@@ -93,7 +93,7 @@ Inline SVG line chart for daily closes. Used by `/stocks/:symbol` once `useQuote
 
 ### Primitive Selection Rules
 
-Defaults — use these *before* writing route-local alternatives. See `docs/FRONTEND.md` rule C-11 for the full reasoning and blocker criteria.
+Defaults — use these _before_ writing route-local alternatives. See `docs/FRONTEND.md` rule C-11 for the full reasoning and blocker criteria.
 
 - **`DataTable<T>`** — Default for any tabular column/row data. Cell `render` functions accept arbitrary JSX, so colored values, symbols+name pairs, Badges, sparklines, and compact metadata inside cells are **not** reasons to hand-roll a `<table>`. Bypass only for structural needs `DataTable` does not support: row expansion, grouped/nested rows, pinned columns, non-table spatial layout.
 - **`KpiTile`** — Default for label / big value / optional detail / optional trend blocks. Compose a horizontal strip by wrapping multiple `KpiTile`s in a grid (see `KpiStrip` in `routes/portfolio/sections/`).
@@ -113,7 +113,19 @@ Browser-safe environment access. Exports `env.apiBaseUrl`, read from `VITE_API_B
 
 ### `api-client.ts`
 
-Typed FastAPI client for frontend data paths. Exports `apiClient.getMyWatchlist()` for `GET /v1/watchlists/me`, `apiClient.getQuote(symbol, range)` for `GET /v1/quotes/{symbol}`, `apiClient.getMyPortfolio()` for `GET /v1/portfolios/me`, response types (`Watchlist`, `Quote`, `QuoteBar`, `QuoteRange`, `Portfolio`, `PortfolioHolding`, `PortfolioTransaction`, `PortfolioTransactionType`), and `ApiError`. In local dev, attaches `X-Dev-User` from `VITE_DEV_USER_ID`.
+Typed FastAPI client for frontend data paths. Exports `apiClient.getMyWatchlist()` for `GET /v1/watchlists/me`, `apiClient.getQuote(symbol, range)` for `GET /v1/quotes/{symbol}`, `apiClient.getMyPortfolio()` for `GET /v1/portfolios/me`, response types (`Watchlist`, `Quote`, `QuoteBar`, `QuoteRange`, `Portfolio`, `PortfolioHolding`, `PortfolioTransaction`, `PortfolioTransactionType`), and `ApiError`. Attaches the current Supabase access token as `Authorization: Bearer <jwt>`.
+
+### `supabase.ts`
+
+Browser-safe Supabase client. Uses `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; exports `null` when either value is missing so the auth gate can render a config error instead of crashing.
+
+### `auth-context.tsx`
+
+Supabase session bootstrap and auth actions. Exports `AuthProvider`. Handles Google OAuth sign-in, sign-out, session refresh, and signed-in/signed-out/config-error state.
+
+### `auth-state.ts`
+
+Auth context types plus `useAuth()`. Split from `auth-context.tsx` so React Fast Refresh sees the provider module as component-only.
 
 ### `useWatchlist.ts`
 
@@ -413,4 +425,4 @@ Global reset, `.sr-only`, `.skip-link`. **No new selectors here without a discus
 
 ## Conventions Pointer
 
-Behavior rules (heading hierarchy, CSS Module layout, key stability, etc.) live in `docs/FRONTEND.md` under **Conventions** and **Anti-patterns**. This file is the *map*; that file is the *law*. If they disagree, fix the map.
+Behavior rules (heading hierarchy, CSS Module layout, key stability, etc.) live in `docs/FRONTEND.md` under **Conventions** and **Anti-patterns**. This file is the _map_; that file is the _law_. If they disagree, fix the map.

@@ -2,7 +2,7 @@
 
 Finance_lab ships as a **single Vercel project** that hosts both the Vite/React app and the FastAPI backend (as Python serverless functions). One git push deploys everything. The daily price-bar ingestion runs as a Vercel Cron Job — there is no separate server to babysit.
 
-**Blocking gate.** Per EP-0001 PR-14, the deployed URL is for **you only** until PR-14 ships real auth. The interim `X-Dev-User` header path lets anyone with the URL act as the dev user. Do not share the preview URL until PR-14 is merged.
+The deployed app requires Supabase Auth with Google OAuth. Configure the Supabase provider and `SUPABASE_JWT_SECRET` before sharing the URL.
 
 ## Architecture
 
@@ -45,24 +45,23 @@ Add these in the Vercel project → Settings → Environment Variables, applied 
 
 ### Server-only (Python functions can read these; never reach browser)
 
-| Variable                       | Notes                                                                    |
-| ------------------------------ | ------------------------------------------------------------------------ |
-| `APP_ENV`                      | `preview` for preview deploys, `prod` for production. Gates the dev-header path. |
-| `SUPABASE_URL`                 | Same value used locally.                                                 |
-| `SUPABASE_SERVICE_ROLE_KEY`    | Server-only. Never put in a `VITE_` variable.                            |
-| `SUPABASE_JWT_SECRET`          | Required from PR-14 onward.                                              |
-| `POLYGON_API_KEY`              | US OHLCV provider.                                                       |
-| `ALPHA_VANTAGE_API_KEY`        | US OHLCV fallback.                                                       |
-| `CRON_SECRET`                  | Any high-entropy string. Vercel forwards this as the `Authorization` header on every cron invocation; the FastAPI cron route rejects mismatches with 401. |
+| Variable                    | Notes                                                                                                                                                     |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `APP_ENV`                   | `preview` for preview deploys, `prod` for production.                                                                                                     |
+| `SUPABASE_URL`              | Same value used locally.                                                                                                                                  |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-only. Never put in a `VITE_` variable.                                                                                                             |
+| `SUPABASE_JWT_SECRET`       | Required from PR-14 onward.                                                                                                                               |
+| `POLYGON_API_KEY`           | US OHLCV provider.                                                                                                                                        |
+| `ALPHA_VANTAGE_API_KEY`     | US OHLCV fallback.                                                                                                                                        |
+| `CRON_SECRET`               | Any high-entropy string. Vercel forwards this as the `Authorization` header on every cron invocation; the FastAPI cron route rejects mismatches with 401. |
 
 ### Browser-bundled (build-time, embedded into the JS bundle)
 
-| Variable                | Value                                          | Notes |
-| ----------------------- | ---------------------------------------------- | ----- |
-| `VITE_API_BASE_URL`     | `/api`                                         | Relative URL so the SPA hits its own origin's `/api/*`. |
-| `VITE_DEV_USER_ID`      | **unset on Vercel**                            | Setting this would defeat the dev-header gate. |
-| `VITE_SUPABASE_URL`     | Public Supabase URL                            | Used from PR-14 once the browser participates in auth. |
-| `VITE_SUPABASE_ANON_KEY`| Supabase anon key (public-safe by design)      | Used from PR-14.                                |
+| Variable                 | Value                                     | Notes                                                   |
+| ------------------------ | ----------------------------------------- | ------------------------------------------------------- |
+| `VITE_API_BASE_URL`      | `/api`                                    | Relative URL so the SPA hits its own origin's `/api/*`. |
+| `VITE_SUPABASE_URL`      | Public Supabase URL                       | Used from PR-14 once the browser participates in auth.  |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon key (public-safe by design) | Used from PR-14.                                        |
 
 Rules:
 
@@ -118,9 +117,8 @@ curl -sS https://<project>.vercel.app/ | head        # serves index.html
 # API health
 curl -sS https://<project>.vercel.app/api/health     # {"status":"ok",...}
 
-# API gate (must reject when APP_ENV=prod)
+# API auth gate
 curl -sS -o /dev/null -w "%{http_code}\n" \
-  -H "X-Dev-User: 00000000-0000-4000-8000-000000000001" \
   https://<project>.vercel.app/api/v1/watchlists/me   # 401
 
 # Cron auth gate
@@ -130,9 +128,9 @@ curl -sS https://<project>.vercel.app/api/v1/internal/cron/refresh-us-daily
 
 Then in the browser at the deployed URL:
 
-- Dashboard `WatchlistCard` should render with the seeded watchlist (only visible because the dev-header gate is open in `APP_ENV=preview`; in `APP_ENV=prod` it stays closed until PR-14).
+- Google sign-in should land back on the dashboard, and `WatchlistCard` should render rows for the signed-in user's profile.
 - `/stocks/AAPL` chart renders from `price_bars_daily` (populated by the cron, or seeded once via the manual backfill below).
-- `/portfolio` shows the dev portfolio.
+- `/portfolio` shows the signed-in user's portfolio.
 
 DevTools → Network → check the JS bundle's source: searching for `POLYGON_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ALPHA_VANTAGE_API_KEY`, or `SUPABASE_JWT_SECRET` must yield **zero** hits.
 

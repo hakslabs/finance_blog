@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
-from uuid import UUID, uuid4
+from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
-from app.auth import get_current_user_id
+from app.auth import CurrentUser, get_current_user_id
 from app.models.watchlists import Watchlist, WatchlistResponse
 from app.repos.watchlists import WatchlistRepo, get_watchlist_repo
 
@@ -13,11 +13,11 @@ router = APIRouter(prefix="/watchlists", tags=["watchlists"])
 
 @router.get("/me", response_model=WatchlistResponse)
 async def get_my_watchlist(
-    user_id: UUID = Depends(get_current_user_id),
+    user: CurrentUser = Depends(get_current_user_id),
     repo: WatchlistRepo = Depends(get_watchlist_repo),
 ) -> WatchlistResponse:
-    if not await repo.profile_exists(user_id):
-        raise HTTPException(status_code=401, detail="unauthenticated")
+    user_id = user.id
+    await repo.ensure_profile(user_id, user.email)
 
     watchlist = await repo.get_primary_for_user(user_id)
     if watchlist is None:

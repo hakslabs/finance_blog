@@ -1,4 +1,5 @@
 import { env } from "./env";
+import { supabase } from "./supabase";
 
 export type ApiErrorBody = {
   error: { code: string; message: string; details?: Record<string, unknown> };
@@ -94,12 +95,14 @@ export type Portfolio = {
 
 export type PortfolioResponse = { portfolio: Portfolio };
 
-const DEV_USER_ID = import.meta.env.VITE_DEV_USER_ID as string | undefined;
-
-function buildHeaders(): HeadersInit {
+async function buildHeaders(): Promise<HeadersInit> {
   const headers: Record<string, string> = { Accept: "application/json" };
-  if (import.meta.env.DEV && DEV_USER_ID) {
-    headers["X-Dev-User"] = DEV_USER_ID;
+  if (supabase) {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
   }
   return headers;
 }
@@ -107,7 +110,7 @@ function buildHeaders(): HeadersInit {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${env.apiBaseUrl}${path}`, {
     ...init,
-    headers: { ...buildHeaders(), ...(init?.headers ?? {}) },
+    headers: { ...(await buildHeaders()), ...(init?.headers ?? {}) },
   });
   if (!response.ok) {
     let body: ApiErrorBody;

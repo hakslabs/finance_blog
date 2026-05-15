@@ -11,7 +11,7 @@ Migration: `supabase/migrations/0001_mvp_foundation.sql`
 Auth-ready user profile rows keyed by `id uuid`.
 
 - Seeded dev row: `00000000-0000-4000-8000-000000000001`.
-- No foreign key to `auth.users` yet. This is intentional so the PR-09 `X-Dev-User` flow can verify a seeded profile before PR-14 Supabase Auth lands.
+- No foreign key to `auth.users` yet. API auth derives `user_id` from the Supabase JWT `sub`, creates a minimal profile row on first authenticated API read if needed, and existing RLS policies use the same uuid via `auth.uid()`. In a rebuilt solo database, the first real auth user claims the seeded dev watchlist and portfolio rows.
 - User-owned RLS: `authenticated` can select/insert/update only `id = auth.uid()`.
 
 ### `instruments`

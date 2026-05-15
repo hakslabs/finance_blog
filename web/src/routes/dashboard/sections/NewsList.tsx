@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Badge } from "../../../components/primitives/Badge";
 import { Card } from "../../../components/primitives/Card";
 import type { NewsCategory, NewsItem } from "../../../fixtures/dashboard";
@@ -43,9 +44,13 @@ export function NewsList({ items }: { items: NewsItem[] }) {
           <div className={styles.bottom}>
             <span className={styles.relatedLabel}>관련:</span>
             {n.relatedSymbols.map((t) => (
-              <span key={t} className={styles.relatedTicker}>
+              <Link
+                key={t}
+                className={styles.relatedTicker}
+                to={`/stocks/${encodeURIComponent(t)}`}
+              >
                 {t}
-              </span>
+              </Link>
             ))}
             {n.portfolioImpact !== "—" && (
               <span className={styles.impact}>
@@ -63,7 +68,7 @@ export function NewsList({ items }: { items: NewsItem[] }) {
           </div>
         </div>
       ))}
-      <div className={styles.footer}>리포트 메뉴 →</div>
+      <Link className={styles.footer} to="/reports">리포트 메뉴 →</Link>
     </Card>
   );
 }

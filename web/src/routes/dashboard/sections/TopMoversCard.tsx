@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Badge } from "../../../components/primitives/Badge";
 import { Card } from "../../../components/primitives/Card";
 import type { TopMover } from "../../../fixtures/dashboard";
@@ -23,10 +24,10 @@ export function TopMoversCard({ movers }: { movers: TopMover[] }) {
       {movers.map((s) => (
         <div key={s.symbol} className={styles.row}>
           <span className={styles.rank}>{s.rank}</span>
-          <div className={styles.symbol}>
+          <Link className={styles.symbol} to={`/stocks/${encodeURIComponent(s.symbol)}`}>
             <span className={styles.symbolCode}>{s.symbol}</span>
             <span className={styles.symbolName}>{s.name}</span>
-          </div>
+          </Link>
           <span className={styles.cellPrice}>{s.price}</span>
           <span className={s.up ? styles.cellChangePos : styles.cellChangeNeg}>
             {s.change}
@@ -35,7 +36,7 @@ export function TopMoversCard({ movers }: { movers: TopMover[] }) {
         </div>
       ))}
       <div className={styles.footer}>
-        <span className={styles.footerAction}>전체 보기 →</span>
+        <Link className={styles.footerAction} to="/stocks">전체 보기 →</Link>
         <span>21:30 NYSE 개장 시 자동 전환</span>
       </div>
     </Card>

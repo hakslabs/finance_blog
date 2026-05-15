@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     supabase_service_role_key: Optional[str] = Field(
         default=None, alias="SUPABASE_SERVICE_ROLE_KEY"
     )
+    supabase_jwt_secret: Optional[str] = Field(
+        default=None, alias="SUPABASE_JWT_SECRET"
+    )
     polygon_api_key: Optional[str] = Field(default=None, alias="POLYGON_API_KEY")
     alphavantage_api_key: Optional[str] = Field(
         default=None, alias="ALPHA_VANTAGE_API_KEY"

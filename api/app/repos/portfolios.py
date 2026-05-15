@@ -2,8 +2,8 @@
 
 PR-11 reads only the primary portfolio + its transactions. Holdings are
 derived in the route via the average-cost method; no positions table.
-The dev-header path uses the service role key (RLS bypass) just like
-PR-09's watchlist repo — owner filtering is explicit in the query.
+The API keeps using the service role key server-side; owner filtering is
+explicit in the query.
 """
 
 from __future__ import annotations

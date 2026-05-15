@@ -1,10 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "../../lib/auth-state";
 import { getCurrentNavItem } from "./navigation";
 import styles from "./TopBar.module.css";
 
 export function TopBar() {
   const { pathname } = useLocation();
   const current = getCurrentNavItem(pathname);
+  const auth = useAuth();
 
   return (
     <header className={styles.bar}>
@@ -53,7 +55,18 @@ export function TopBar() {
           className={styles.avatar}
           aria-label="마이페이지로 이동"
           title="마이페이지"
-        />
+        >
+          {auth.status === "signed-in" ? auth.user.email?.charAt(0).toUpperCase() : ""}
+        </Link>
+        <button
+          className={styles.iconButton}
+          type="button"
+          aria-label="로그아웃"
+          title="로그아웃"
+          onClick={() => void auth.signOut()}
+        >
+          <span aria-hidden="true">↗</span>
+        </button>
       </div>
     </header>
   );

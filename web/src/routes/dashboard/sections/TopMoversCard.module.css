@@ -54,6 +54,12 @@
 
 .symbol {
   composes: symbol from "./_table.module.css";
+  color: inherit;
+  text-decoration: none;
+}
+
+.symbol:hover .symbolCode {
+  color: var(--accent);
 }
 
 .symbolCode {
@@ -95,5 +101,10 @@
 }
 
 .footerAction {
-  cursor: pointer;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.footerAction:hover {
+  color: var(--accent);
 }

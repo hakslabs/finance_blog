@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Card } from "../../../components/primitives/Card";
 import { EmptyState } from "../../../components/primitives/EmptyState";
 import {
@@ -21,7 +22,7 @@ const columns: DataTableColumn<PortfolioHolding>[] = [
     key: "symbol",
     header: "종목",
     render: (row) => (
-      <span className={styles.symbol}>
+      <Link className={styles.symbol} to={`/stocks/${encodeURIComponent(row.symbol)}`}>
         <span className={styles.symbolIcon} aria-hidden="true">
           {row.symbol[0]}
         </span>
@@ -29,7 +30,7 @@ const columns: DataTableColumn<PortfolioHolding>[] = [
           <span className={styles.symbolCode}>{row.symbol}</span>
           <span className={styles.symbolName}>{row.name}</span>
         </span>
-      </span>
+      </Link>
     ),
   },
   {

@@ -100,6 +100,12 @@
   padding: 0 4px;
   border: 1px solid var(--hairline);
   color: var(--muted);
+  text-decoration: none;
+}
+
+.relatedTicker:hover {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .impact {
@@ -141,6 +147,13 @@
 
 .footer {
   composes: footerRowBordered from "./_card.module.css";
+  display: flex;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.footer:hover {
+  color: var(--accent);
 }
 
 @media (max-width: 860px) {

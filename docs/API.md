@@ -12,7 +12,6 @@ Single source of truth for the FastAPI surface that `web/` consumes. Every endpo
 ### Auth
 
 - Production (lands in PR-14, the **final** PR): `Authorization: Bearer <supabase-jwt>`. Backend verifies with `SUPABASE_JWT_SECRET` and extracts `user_id` from `jwt.sub`.
-- Interim (PR-09 through PR-13): `X-Dev-User: <uuid>`. Accepted **only** when `APP_ENV=local`. See `docs/design-docs/auth.md` for the full contract and deferral rationale.
 - Endpoints that require auth list `Auth: required` below. Public endpoints list `Auth: none`.
 
 ### Response Shapes

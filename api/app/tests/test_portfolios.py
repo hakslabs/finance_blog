@@ -9,9 +9,7 @@ from app.main import app
 from app.models.portfolios import Portfolio
 from app.repos.portfolios import PortfolioRepo, get_portfolio_repo, _row_to_transaction
 from app.repos.watchlists import WatchlistRepo, get_watchlist_repo
-
-
-DEV_USER = "00000000-0000-4000-8000-000000000001"
+from app.tests.auth_helpers import auth_header
 
 
 class _StubWatchlistRepo:
@@ -20,6 +18,9 @@ class _StubWatchlistRepo:
 
     async def profile_exists(self, user_id: UUID) -> bool:
         return self._profile_exists
+
+    async def ensure_profile(self, user_id: UUID, email: str | None) -> None:
+        return None
 
     async def get_primary_for_user(self, user_id: UUID):  # unused here
         return None
@@ -97,25 +98,22 @@ def override_repos():
     app.dependency_overrides.pop(get_portfolio_repo, None)
 
 
-def test_requires_dev_header(client: TestClient, override_repos) -> None:
+def test_requires_bearer_token(client: TestClient, override_repos) -> None:
     override_repos(None)
     response = client.get("/v1/portfolios/me")
     assert response.status_code == 401
 
 
-def test_rejects_unknown_dev_user(client: TestClient, override_repos) -> None:
+def test_new_user_gets_empty_portfolio(client: TestClient, override_repos) -> None:
     override_repos(None, profile_exists=False)
-    response = client.get(
-        "/v1/portfolios/me", headers={"X-Dev-User": DEV_USER}
-    )
-    assert response.status_code == 401
+    response = client.get("/v1/portfolios/me", headers=auth_header())
+    assert response.status_code == 200
+    assert response.json()["portfolio"]["holdings"] == []
 
 
 def test_no_portfolio_returns_empty_container(client: TestClient, override_repos) -> None:
     override_repos(None)
-    response = client.get(
-        "/v1/portfolios/me", headers={"X-Dev-User": DEV_USER}
-    )
+    response = client.get("/v1/portfolios/me", headers=auth_header())
     assert response.status_code == 200
     body = response.json()
     assert body["portfolio"]["holdings"] == []
@@ -136,9 +134,7 @@ def test_holdings_derived_from_buys(client: TestClient, override_repos) -> None:
         _tx("buy", "2026-04-15", instrument=_aapl_instrument(), quantity=5, price=180.0, amount=900.0),
     ]
     override_repos(portfolio, tx_rows)
-    response = client.get(
-        "/v1/portfolios/me", headers={"X-Dev-User": DEV_USER}
-    )
+    response = client.get("/v1/portfolios/me", headers=auth_header())
     assert response.status_code == 200
     holdings = response.json()["portfolio"]["holdings"]
     assert len(holdings) == 1
@@ -161,9 +157,7 @@ def test_partial_sell_keeps_average_cost(client: TestClient, override_repos) -> 
         _tx("sell", "2026-04-15", instrument=_aapl_instrument(), quantity=4, price=200.0, amount=800.0),
     ]
     override_repos(portfolio, tx_rows)
-    response = client.get(
-        "/v1/portfolios/me", headers={"X-Dev-User": DEV_USER}
-    )
+    response = client.get("/v1/portfolios/me", headers=auth_header())
     holdings = response.json()["portfolio"]["holdings"]
     assert len(holdings) == 1
     h = holdings[0]
@@ -184,9 +178,7 @@ def test_full_sell_drops_holding(client: TestClient, override_repos) -> None:
         _tx("sell", "2026-04-15", instrument=_aapl_instrument(), quantity=10, price=200.0, amount=2000.0),
     ]
     override_repos(portfolio, tx_rows)
-    response = client.get(
-        "/v1/portfolios/me", headers={"X-Dev-User": DEV_USER}
-    )
+    response = client.get("/v1/portfolios/me", headers=auth_header())
     assert response.json()["portfolio"]["holdings"] == []
 
 
@@ -204,9 +196,7 @@ def test_dividend_and_deposit_excluded_from_holdings(
         _tx("deposit", "2026-04-20", amount=1000.0),
     ]
     override_repos(portfolio, tx_rows)
-    response = client.get(
-        "/v1/portfolios/me", headers={"X-Dev-User": DEV_USER}
-    )
+    response = client.get("/v1/portfolios/me", headers=auth_header())
     body = response.json()
     holdings = body["portfolio"]["holdings"]
     assert len(holdings) == 1
@@ -225,9 +215,7 @@ def test_deposit_has_null_symbol_in_response(client: TestClient, override_repos)
     )
     tx_rows = [_tx("deposit", "2026-03-20", amount=2_000_000.0, currency="KRW")]
     override_repos(portfolio, tx_rows)
-    response = client.get(
-        "/v1/portfolios/me", headers={"X-Dev-User": DEV_USER}
-    )
+    response = client.get("/v1/portfolios/me", headers=auth_header())
     tx = response.json()["portfolio"]["transactions"][0]
     assert tx["type"] == "deposit"
     assert tx["symbol"] is None
@@ -246,9 +234,7 @@ def test_multi_symbol_holdings(client: TestClient, override_repos) -> None:
         _tx("buy", "2026-02-20", instrument=msft, quantity=5, price=380.0, amount=1900.0),
     ]
     override_repos(portfolio, tx_rows)
-    response = client.get(
-        "/v1/portfolios/me", headers={"X-Dev-User": DEV_USER}
-    )
+    response = client.get("/v1/portfolios/me", headers=auth_header())
     holdings = response.json()["portfolio"]["holdings"]
     assert [h["symbol"] for h in holdings] == ["AAPL", "MSFT"]
 
@@ -263,9 +249,7 @@ def test_missing_supabase_config_returns_503(client: TestClient) -> None:
     )
     app.dependency_overrides[get_settings] = lambda: empty
     try:
-        response = client.get(
-            "/v1/portfolios/me", headers={"X-Dev-User": DEV_USER}
-        )
+        response = client.get("/v1/portfolios/me", headers=auth_header())
     finally:
         app.dependency_overrides.pop(get_settings, None)
     assert response.status_code == 503

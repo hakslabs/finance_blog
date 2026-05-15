@@ -17,11 +17,11 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any, Dict, List
-from uuid import UUID, uuid4
+from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
-from app.auth import get_current_user_id
+from app.auth import CurrentUser, get_current_user_id
 from app.models.portfolios import Holding, Portfolio, PortfolioResponse
 from app.repos.portfolios import PortfolioRepo, get_portfolio_repo
 from app.repos.watchlists import WatchlistRepo, get_watchlist_repo
@@ -32,12 +32,12 @@ router = APIRouter(prefix="/portfolios", tags=["portfolios"])
 
 @router.get("/me", response_model=PortfolioResponse)
 async def get_my_portfolio(
-    user_id: UUID = Depends(get_current_user_id),
+    user: CurrentUser = Depends(get_current_user_id),
     repo: PortfolioRepo = Depends(get_portfolio_repo),
     watchlist_repo: WatchlistRepo = Depends(get_watchlist_repo),
 ) -> PortfolioResponse:
-    if not await watchlist_repo.profile_exists(user_id):
-        raise HTTPException(status_code=401, detail="unauthenticated")
+    user_id = user.id
+    await watchlist_repo.ensure_profile(user_id, user.email)
 
     result = await repo.get_primary_with_transactions(user_id)
     if result is None:
