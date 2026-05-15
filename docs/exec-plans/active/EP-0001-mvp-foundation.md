@@ -300,6 +300,37 @@ Each migration ships with RLS policies, grants, indexes, and `updated_at` trigge
 - [x] Acceptance: Migration is idempotent and adds (1) `price_bars_daily.adj_c`, (2) `corporate_actions`, (3) `fx_rates_daily`, (4) `macro_series` + `macro_observations`, (5) `fear_greed_daily`, (6) `index_bars_daily`. All tables enable RLS with public-read + service-role-write. Includes a small `indices` catalog seed (KOSPI/KOSPI200/KOSDAQ/SPX/NDX/IXIC/DJI) — guarded with `on conflict (code) do nothing` so reruns are safe. Applies cleanly to local *and* remote Supabase via `db push`.
 - [x] Out Of Scope: actual bar/observation row ingestion (later PR), adj_c recomputation job, KRX/Polygon vendor adapters, intraday bars.
 
+### PR-21 — Migration 0007: fundamentals (schema only)
+
+- [x] Scope: TIER-3 derived-input tables — `financial_statements` + `financial_lines` (long with line-code book), `key_ratios_quarterly` (wide cache), `analyst_estimates`, `consensus_snapshots`, `earnings_events`.
+- [x] Files: `supabase/migrations/0007_fundamentals.sql`.
+- [x] Acceptance: Public-read RLS + service-role writes. Applied local + remote.
+- [x] Out Of Scope: pipelines that compute key ratios from financial_lines, consensus aggregation job.
+
+### PR-22 — Migration 0008: filings & holdings (schema only)
+
+- [x] Scope: `filings` (SEC/DART headers), `filing_holdings` (13F line items), `institutional_holders` (per-holder snapshot), `insider_trades`.
+- [x] Files: `supabase/migrations/0008_filings_holdings.sql`.
+- [x] Acceptance: Public-read RLS + service-role writes. Applied local + remote.
+
+### PR-23 — Migration 0009: news, events, reports (schema only)
+
+- [x] Scope: `news_items` + `news_instruments` (M:N), `economic_events`, `reports` + `report_tickers` (M:N).
+- [x] Files: `supabase/migrations/0009_news_events_reports.sql`.
+- [x] Acceptance: Public-read RLS + service-role writes. Applied local + remote.
+
+### PR-24 — Migration 0010: masters (schema only)
+
+- [x] Scope: `masters` (identity + filer_cik), `master_principles`, `master_books`, `master_strategies`, and `master_filings` view joining filings + filing_holdings via filer_cik (no separate holdings table per the recorded decision).
+- [x] Files: `supabase/migrations/0010_masters.sql`.
+- [x] Acceptance: Public-read RLS on base tables; view inherits read access from underlying tables. Applied local + remote.
+
+### PR-25 — Migration 0011: user state (schema only)
+
+- [x] Scope: TIER-4 owner-RLS tables — `saved_reports`, `saved_instruments`, `position_theses` + `position_thesis_conditions`, `memos` (polymorphic with check), `alerts`, `notifications`, `todos`, `activity_log`, `screens`.
+- [x] Files: `supabase/migrations/0011_user_state.sql`.
+- [x] Acceptance: Every table is FK'd to `public.profiles(id) on delete cascade`, has RLS enabled with owner-only select/insert/update/delete policies (`position_thesis_conditions` scoped via its parent thesis). Applied local + remote. Schema-master-plan migration order (0004–0011) is now fully landed.
+
 - PR-01 through PR-10 are merged.
 - The dashboard renders real watchlist data and `/stocks/AAPL` renders real market data through the backend path.
 - Initial Supabase schema and security notes are documented and applied.
