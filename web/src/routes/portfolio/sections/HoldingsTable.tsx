@@ -4,27 +4,19 @@ import {
   DataTable,
   type DataTableColumn,
 } from "../../../components/primitives/DataTable";
-import type { Holding, HoldingMemoStatus } from "../../../fixtures/portfolio";
+import type { PortfolioHolding } from "../../../lib/api-client";
 import styles from "./HoldingsTable.module.css";
 
-const PNL_CLASS: Record<"up" | "down", string> = {
-  up: styles.pnlPos,
-  down: styles.pnlNeg,
-};
+function formatMoney(value: number, currency: string): string {
+  const sign = currency === "KRW" ? "₩" : currency === "USD" ? "$" : "";
+  const digits = currency === "KRW" ? 0 : 2;
+  return `${sign}${value.toLocaleString("ko-KR", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  })}`;
+}
 
-const MEMO_STATUS_CLASS: Record<HoldingMemoStatus, string> = {
-  locked: styles.memoLocked,
-  memo: styles.memoHas,
-  none: styles.memoNone,
-};
-
-const MEMO_STATUS_LABEL: Record<HoldingMemoStatus, (count: number) => string> = {
-  locked: (c) => `🔒 ${c}`,
-  memo: (c) => `✎ ${c}`,
-  none: () => "—",
-};
-
-const columns: DataTableColumn<Holding>[] = [
+const columns: DataTableColumn<PortfolioHolding>[] = [
   {
     key: "symbol",
     header: "종목",
@@ -41,56 +33,36 @@ const columns: DataTableColumn<Holding>[] = [
     ),
   },
   {
+    key: "exchange",
+    header: "거래소",
+    render: (row) => row.exchange,
+  },
+  {
     key: "quantity",
     header: "수량",
     align: "right",
-    render: (row) => row.quantity,
+    render: (row) =>
+      row.quantity.toLocaleString("ko-KR", { maximumFractionDigits: 6 }),
   },
   {
-    key: "averagePrice",
+    key: "average_cost",
     header: "평단가",
     align: "right",
-    render: (row) => row.averagePrice,
+    render: (row) => formatMoney(row.average_cost, row.currency),
   },
   {
-    key: "currentPrice",
-    header: "현재가",
+    key: "cost_basis",
+    header: "투자원금",
     align: "right",
-    render: (row) => row.currentPrice,
-  },
-  {
-    key: "marketValue",
-    header: "평가금액",
-    align: "right",
-    render: (row) => row.marketValue,
-  },
-  {
-    key: "pnl",
-    header: "손익률",
-    align: "right",
-    render: (row) => (
-      <span className={PNL_CLASS[row.up ? "up" : "down"]}>{row.pnlPercent}</span>
-    ),
-  },
-  {
-    key: "weight",
-    header: "비중",
-    align: "right",
-    render: (row) => `${row.weight}%`,
-  },
-  {
-    key: "memo",
-    header: "메모",
-    align: "right",
-    render: (row) => (
-      <span className={MEMO_STATUS_CLASS[row.memoStatus]}>
-        {MEMO_STATUS_LABEL[row.memoStatus](row.memoCount)}
-      </span>
-    ),
+    render: (row) => formatMoney(row.cost_basis, row.currency),
   },
 ];
 
-export function HoldingsTable({ holdings }: { holdings: Holding[] }) {
+export function HoldingsTable({
+  holdings,
+}: {
+  holdings: PortfolioHolding[];
+}) {
   if (holdings.length === 0) {
     return (
       <Card title="보유 종목" className={styles.card}>
@@ -104,10 +76,10 @@ export function HoldingsTable({ holdings }: { holdings: Holding[] }) {
 
   return (
     <Card title={`보유 종목 · ${holdings.length}개`} className={styles.card}>
-      <DataTable<Holding>
+      <DataTable<PortfolioHolding>
         columns={columns}
         rows={holdings}
-        getRowKey={(row) => row.id}
+        getRowKey={(row) => `${row.exchange}:${row.symbol}`}
         density="compact"
       />
     </Card>

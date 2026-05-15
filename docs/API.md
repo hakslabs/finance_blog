@@ -186,10 +186,58 @@ Errors:
 - `429 rate_limited` — provider throttled; client may retry after `Retry-After` seconds.
 - `503 upstream_unavailable` — provider down and no cache; UI shows empty-state card.
 
-### `GET /v1/portfolios/me` _(PR-11, sketch — refine in that PR)_
+### `GET /v1/portfolios/me` _(PR-11)_
 
 - Auth: required.
-- Returns the user's portfolio summary, holdings, and recent transactions. Final shape decided when PR-11 starts; reserve the endpoint name now so PR-09/10 don't collide.
+- Purpose: return the signed-in user's primary portfolio with derived holdings + transaction ledger.
+- Query params: none (MVP supports one portfolio per user).
+
+200 response:
+
+```json
+{
+  "portfolio": {
+    "id": "uuid",
+    "name": "Primary Portfolio",
+    "currency": "USD",
+    "updated_at": "iso8601",
+    "holdings": [
+      {
+        "symbol": "AAPL",
+        "name": "Apple Inc.",
+        "exchange": "NASDAQ",
+        "currency": "USD",
+        "quantity": 15.0,
+        "average_cost": 160.0,
+        "cost_basis": 2400.0
+      }
+    ],
+    "transactions": [
+      {
+        "id": "uuid",
+        "occurred_at": "2026-05-05",
+        "type": "buy",
+        "symbol": "AAPL",
+        "quantity": 10.0,
+        "price": 150.0,
+        "amount": 1500.0,
+        "currency": "USD",
+        "note": "optional"
+      }
+    ]
+  }
+}
+```
+
+Notes:
+
+- Holdings are **derived** from the transaction ledger using the average-cost method; there is no `positions` table. Holdings with `quantity <= 0` are dropped.
+- `type` ∈ `buy | sell | dividend | deposit`. For `dividend` / `deposit`, `symbol`/`quantity`/`price` may be `null`.
+- `transactions` are returned newest-first.
+- Market value, day P&L, and benchmark comparison are **out of scope** for PR-11; they require live prices joined from `price_bars_daily`, which the PR-13 cron populates.
+- Empty portfolio returns the container with `holdings: []` and `transactions: []`, not 404.
+
+Errors: `401 unauthenticated`, `503 upstream_unavailable`.
 
 ---
 

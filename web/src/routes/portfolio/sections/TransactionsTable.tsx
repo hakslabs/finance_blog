@@ -5,28 +5,43 @@ import {
   DataTable,
   type DataTableColumn,
 } from "../../../components/primitives/DataTable";
-import type { Transaction, TransactionType } from "../../../fixtures/portfolio";
+import type {
+  PortfolioTransaction,
+  PortfolioTransactionType,
+} from "../../../lib/api-client";
 import styles from "./TransactionsTable.module.css";
 
-const TX_TYPE_LABEL: Record<TransactionType, string> = {
+const TX_TYPE_LABEL: Record<PortfolioTransactionType, string> = {
   buy: "매수",
   sell: "매도",
   dividend: "배당",
   deposit: "입금",
 };
 
-const TX_TYPE_BADGE: Record<TransactionType, "positive" | "negative" | "accent" | "neutral"> = {
+const TX_TYPE_BADGE: Record<
+  PortfolioTransactionType,
+  "positive" | "negative" | "accent" | "neutral"
+> = {
   buy: "positive",
   sell: "negative",
   dividend: "accent",
   deposit: "neutral",
 };
 
-const columns: DataTableColumn<Transaction>[] = [
+function formatMoney(value: number, currency: string): string {
+  const sign = currency === "KRW" ? "₩" : currency === "USD" ? "$" : "";
+  const digits = currency === "KRW" ? 0 : 2;
+  return `${sign}${value.toLocaleString("ko-KR", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  })}`;
+}
+
+const columns: DataTableColumn<PortfolioTransaction>[] = [
   {
-    key: "date",
+    key: "occurred_at",
     header: "일자",
-    render: (row) => <span className={styles.cellDate}>{row.date}</span>,
+    render: (row) => <span className={styles.cellDate}>{row.occurred_at}</span>,
   },
   {
     key: "type",
@@ -38,25 +53,29 @@ const columns: DataTableColumn<Transaction>[] = [
   {
     key: "symbol",
     header: "종목",
-    render: (row) => <span className={styles.cellSymbol}>{row.symbol}</span>,
+    render: (row) => <span className={styles.cellSymbol}>{row.symbol ?? "—"}</span>,
   },
   {
     key: "quantity",
     header: "수량",
     align: "right",
-    render: (row) => (row.quantity !== null ? row.quantity : "—"),
+    render: (row) =>
+      row.quantity !== null
+        ? row.quantity.toLocaleString("ko-KR", { maximumFractionDigits: 6 })
+        : "—",
   },
   {
     key: "price",
     header: "단가",
     align: "right",
-    render: (row) => (row.price !== null ? row.price : "—"),
+    render: (row) =>
+      row.price !== null ? formatMoney(row.price, row.currency) : "—",
   },
   {
     key: "amount",
     header: "금액",
     align: "right",
-    render: (row) => row.amount,
+    render: (row) => formatMoney(row.amount, row.currency),
   },
   {
     key: "currency",
@@ -73,7 +92,7 @@ const columns: DataTableColumn<Transaction>[] = [
 export function TransactionsTable({
   transactions,
 }: {
-  transactions: Transaction[];
+  transactions: PortfolioTransaction[];
 }) {
   if (transactions.length === 0) {
     return (
@@ -88,7 +107,7 @@ export function TransactionsTable({
 
   return (
     <Card title="거래 내역" className={styles.card}>
-      <DataTable<Transaction>
+      <DataTable<PortfolioTransaction>
         columns={columns}
         rows={transactions}
         getRowKey={(row) => row.id}

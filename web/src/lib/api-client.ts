@@ -59,6 +59,41 @@ export type Quote = {
 
 export type QuoteRange = "1mo" | "3mo" | "6mo" | "1y" | "5y";
 
+export type PortfolioHolding = {
+  symbol: string;
+  name: string;
+  exchange: string;
+  currency: string;
+  quantity: number;
+  average_cost: number;
+  cost_basis: number;
+};
+
+export type PortfolioTransactionType = "buy" | "sell" | "dividend" | "deposit";
+
+export type PortfolioTransaction = {
+  id: string;
+  occurred_at: string;
+  type: PortfolioTransactionType;
+  symbol: string | null;
+  quantity: number | null;
+  price: number | null;
+  amount: number;
+  currency: string;
+  note: string | null;
+};
+
+export type Portfolio = {
+  id: string;
+  name: string;
+  currency: string;
+  updated_at: string;
+  holdings: PortfolioHolding[];
+  transactions: PortfolioTransaction[];
+};
+
+export type PortfolioResponse = { portfolio: Portfolio };
+
 const DEV_USER_ID = import.meta.env.VITE_DEV_USER_ID as string | undefined;
 
 function buildHeaders(): HeadersInit {
@@ -97,5 +132,8 @@ export const apiClient = {
     return request<Quote>(
       `/v1/quotes/${encodeURIComponent(symbol)}?${search.toString()}`,
     );
+  },
+  getMyPortfolio(): Promise<PortfolioResponse> {
+    return request<PortfolioResponse>("/v1/portfolios/me");
   },
 };

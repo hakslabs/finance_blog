@@ -170,11 +170,11 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 
 ### PR-11 — Portfolio data path
 
-- [ ] Scope: Extend schema with `portfolios`, `transactions`, `positions`. Backend endpoints for read-only listing. Frontend `/portfolio` reads from API. Position derivation may be a stored snapshot or a backend-side computation — pick one and document.
-- [ ] Required Reading: `docs/API.md` (the `/v1/portfolios/me` section), `docs/generated/db-schema.md`, `docs/SECURITY.md`, PR-09 patterns.
-- [ ] Files: migration `0002_*`, repo + route + frontend wiring.
-- [ ] Acceptance: Manually inserted transactions render as holdings and history on `/portfolio` for the dev user.
-- [ ] Out Of Scope: transaction write UI, performance analytics.
+- [x] Scope: Extend schema with `portfolios` and `transactions`. **No `positions` table** — holdings are derived in the backend from the transaction ledger using the average-cost method (decision documented in `docs/generated/db-schema.md`). Backend `GET /v1/portfolios/me` returns the primary portfolio with derived holdings + transactions. Frontend `/portfolio` reads from API; KpiStrip/HoldingsTable/TransactionsTable now consume live data, and the static `PerformanceSummary` section + `fixtures/portfolio.ts` are dropped as out-of-scope.
+- [x] Required Reading: `docs/API.md` (the `/v1/portfolios/me` section), `docs/generated/db-schema.md`, `docs/SECURITY.md`, PR-09 patterns.
+- [x] Files: `supabase/migrations/0002_portfolio.sql`, `supabase/seed/portfolio.sql`, `api/app/models/portfolios.py`, `api/app/repos/portfolios.py`, `api/app/routes/portfolios.py`, `api/app/tests/test_portfolios.py`, `web/src/lib/api-client.ts` (extend), `web/src/lib/usePortfolio.ts`, `web/src/routes/portfolio/{PortfolioPage,sections/KpiStrip,sections/HoldingsTable,sections/TransactionsTable}.tsx`. Removed: `web/src/fixtures/portfolio.ts`, `web/src/routes/portfolio/sections/PerformanceSummary.{tsx,module.css}`.
+- [x] Acceptance: Manually inserted transactions render as holdings and history on `/portfolio` for the dev user. Verified end-to-end against remote Supabase: 6 sample transactions across 4 types yield AAPL 15 @ avg $160 and MSFT 5 @ avg $380 in the API response.
+- [x] Out Of Scope: transaction write UI, performance analytics (Sharpe / drawdown / benchmarks), market value join (lands when PR-13 cron populates `price_bars_daily`).
 
 ### PR-12 — Deployment and env docs
 

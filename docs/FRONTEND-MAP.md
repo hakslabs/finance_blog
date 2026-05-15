@@ -113,7 +113,7 @@ Browser-safe environment access. Exports `env.apiBaseUrl`, read from `VITE_API_B
 
 ### `api-client.ts`
 
-Typed FastAPI client for frontend data paths. Exports `apiClient.getMyWatchlist()` for `GET /v1/watchlists/me`, `apiClient.getQuote(symbol, range)` for `GET /v1/quotes/{symbol}`, response types (`Watchlist`, `Quote`, `QuoteBar`, `QuoteRange`), and `ApiError`. In local dev, attaches `X-Dev-User` from `VITE_DEV_USER_ID`.
+Typed FastAPI client for frontend data paths. Exports `apiClient.getMyWatchlist()` for `GET /v1/watchlists/me`, `apiClient.getQuote(symbol, range)` for `GET /v1/quotes/{symbol}`, `apiClient.getMyPortfolio()` for `GET /v1/portfolios/me`, response types (`Watchlist`, `Quote`, `QuoteBar`, `QuoteRange`, `Portfolio`, `PortfolioHolding`, `PortfolioTransaction`, `PortfolioTransactionType`), and `ApiError`. In local dev, attaches `X-Dev-User` from `VITE_DEV_USER_ID`.
 
 ### `useWatchlist.ts`
 
@@ -122,6 +122,10 @@ Dashboard hook for the PR-09 watchlist data path. Returns `WatchlistState`: load
 ### `useQuote.ts`
 
 Stock detail hook for the PR-10 quote data path. Returns `QuoteState`: loading, ready with `Quote`, empty (503 upstream), or error.
+
+### `usePortfolio.ts`
+
+Portfolio page hook for the PR-11 portfolio data path. Returns `PortfolioState`: loading, ready with `Portfolio`, or error with message.
 
 ## Fixtures (`fixtures/`)
 
@@ -148,19 +152,9 @@ Stock detail hook for the PR-10 quote data path. Returns `QuoteState`: loading, 
 
 All list-item types carry an `id: string` for stable React keys.
 
-### `fixtures/portfolio.ts`
+### `fixtures/portfolio.ts` — removed
 
-**Constants** (all typed):
-
-- `PORTFOLIO_KPI: PortfolioKpi[]` — 6 KPI items (total value, principal, unrealized P&L, today P&L, realized YTD, CAGR).
-- `HOLDINGS: Holding[]` — 6 rows (AAPL, NVDA, MSFT, 005930, TSLA, 000660). Each has `id`, symbol, name, quantity, average/current price, market value, PnL%, up flag, weight %, memo status, counts, optional thesis.
-- `TRANSACTIONS: Transaction[]` — 8 rows (buy/sell/dividend/deposit). Each has `id`, date, type, symbol, nullable quantity/price, amount, currency, note.
-- `BENCHMARKS: Benchmark[]` — 3 items (portfolio +12.4%, KOSPI +4.1%, S&P +8.2%). Each has `id`, label, return.
-- `PERFORMANCE_METRICS: PerformanceMetric[]` — 3 items (max drawdown -8.2%, Sharpe 1.42, beta 1.06). Each has `id`, label, value, optional positive flag.
-
-**Types** (one per concept): `PortfolioKpi`, `Holding`, `HoldingMemoStatus` (`"locked" | "memo" | "none"`), `Transaction`, `TransactionType` (`"buy" | "sell" | "dividend" | "deposit"`), `Benchmark`, `PerformanceMetric`.
-
-All list-item types carry an `id: string` for stable React keys.
+PR-11 wires `/portfolio` to live data via `lib/usePortfolio.ts` and the `apiClient.getMyPortfolio()` client. Static KPIs / benchmarks / performance metrics were removed alongside `PerformanceSummary` because performance analytics is explicitly out of scope until PR-13's cron populates market prices.
 
 ### `fixtures/analysis.ts`
 
@@ -312,18 +306,17 @@ Route-param-driven stock detail page. Uses `useParams` to read `symbol`, calls `
 
 **File**: `routes/stocks/StockDetailPage.tsx`, co-located `StockDetailPage.module.css`.
 
-### `portfolio/PortfolioPage` (path: `/portfolio`)
+### `portfolio/PortfolioPage` (path: `/portfolio`) — live data
 
-Static portfolio page composed from `routes/portfolio/sections/*` and `fixtures/portfolio.ts`. Top-level structure: `PageContainer(eyebrow="Portfolio", title="운용 / 포트폴리오", description=meta)` → `KpiStrip` → 2-col grid (`HoldingsTable` + `TransactionsTable`) → `PerformanceSummary`. Fixture-only, no API calls.
+Live-data portfolio page. Reads `usePortfolio()` (PR-11) and composes the result via `routes/portfolio/sections/*`. Top-level structure: `PageContainer(eyebrow="Portfolio", title="운용 / 포트폴리오", description=updated_at + currency)` → loading/error fallback `Card` OR `KpiStrip` + 2-col grid (`HoldingsTable` + `TransactionsTable`).
 
 **File**: `routes/portfolio/PortfolioPage.tsx`, co-located `PortfolioPage.module.css`.
 
 **Sections** (`routes/portfolio/sections/`):
 
-- `KpiStrip({ kpis })` — 6-column KPI strip using `KpiTile` primitives. Responsive: 6→3→2 columns. Uses class variants for positive/negative sentiment.
-- `HoldingsTable({ holdings })` — Card-wrapped `DataTable<Holding>` (density `compact`) with columns: symbol+name, qty, avg price, current price, market value, PnL%, weight, memo status. Renders `EmptyState` inside the Card when `holdings.length === 0`. Class variants for PnL color and memo status.
-- `TransactionsTable({ transactions })` — Card-wrapped `DataTable<Transaction>` (density `compact`) with columns: date, type/Badge, symbol, qty, price, amount, currency, note. Renders `EmptyState` inside the Card when `transactions.length === 0`. Transaction type mapped to Badge tone via `Record<TransactionType, BadgeTone>`.
-- `PerformanceSummary({ benchmarks, metrics })` — Card with benchmark legend (portfolio/KOSPI/S&P returns) and 3 metric tiles (max drawdown, Sharpe, beta) in a grid. Class variants for positive/negative/neutral sentiment.
+- `KpiStrip({ portfolio })` — 3 KPI tiles computed live from the portfolio: 투자원금 (∑ cost_basis), 보유 종목 count, 거래 내역 count + buy/sell breakdown. Uses `KpiTile` primitives.
+- `HoldingsTable({ holdings })` — Card-wrapped `DataTable<PortfolioHolding>` (density `compact`) with columns: symbol+name, exchange, quantity, avg cost, cost basis. Renders `EmptyState` inside the Card when `holdings.length === 0`. Market value / PnL columns intentionally absent — they require the deferred price join (PR-13).
+- `TransactionsTable({ transactions })` — Card-wrapped `DataTable<PortfolioTransaction>` (density `compact`) with columns: date, type/Badge, symbol, qty, price, amount, currency, note. Renders `EmptyState` inside the Card when `transactions.length === 0`. Transaction type mapped to Badge tone via `Record<PortfolioTransactionType, BadgeTone>`.
 
 ### `analysis/AnalysisPage` (path: `/analysis`)
 
