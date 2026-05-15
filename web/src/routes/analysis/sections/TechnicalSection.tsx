@@ -39,7 +39,11 @@ const columns: DataTableColumn<TechnicalIndicator>[] = [
   },
 ];
 
-export function TechnicalSection() {
+export function TechnicalSection({
+  onOpenIndicator,
+}: {
+  onOpenIndicator?: (row: TechnicalIndicator) => void;
+}) {
   return (
     <div className={styles.root}>
       <Card title="가격 추이">
@@ -52,6 +56,8 @@ export function TechnicalSection() {
           rows={TECHNICAL_INDICATORS}
           getRowKey={(r) => r.id}
           density="compact"
+          onRowClick={onOpenIndicator}
+          getRowAriaLabel={(r) => `${r.symbol} ${r.indicator} 상세`}
         />
       </Card>
     </div>

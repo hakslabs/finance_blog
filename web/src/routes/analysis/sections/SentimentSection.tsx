@@ -70,7 +70,13 @@ function regionRows(region: SentimentIndicator["region"]): SentimentIndicator[] 
   return SENTIMENT_INDICATORS.filter((s) => s.region === region);
 }
 
-export function SentimentSection() {
+export function SentimentSection({
+  onOpenIndicator,
+  onOpenGlossary,
+}: {
+  onOpenIndicator?: (row: SentimentIndicator) => void;
+  onOpenGlossary?: (row: IndicatorGlossary) => void;
+}) {
   const regions: SentimentIndicator["region"][] = ["US", "KR", "Global"];
 
   return (
@@ -91,6 +97,8 @@ export function SentimentSection() {
               rows={regionRows(region)}
               getRowKey={(r) => r.id}
               density="compact"
+              onRowClick={onOpenIndicator}
+              getRowAriaLabel={(r) => `${r.label} 심리 지표 상세`}
             />
           </Card>
         ))}
@@ -121,6 +129,8 @@ export function SentimentSection() {
             rows={INDICATOR_GLOSSARY}
             getRowKey={(r) => r.id}
             density="compact"
+            onRowClick={onOpenGlossary}
+            getRowAriaLabel={(r) => `${r.term} 지표 해설 상세`}
           />
         </Card>
       </div>

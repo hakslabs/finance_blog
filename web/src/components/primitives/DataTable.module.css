@@ -27,6 +27,15 @@
   font-variant-numeric: tabular-nums;
 }
 
+.interactiveRow {
+  cursor: pointer;
+}
+
+.interactiveRow:hover .td,
+.interactiveRow:focus-visible .td {
+  background: var(--surface-muted);
+}
+
 .right {
   text-align: right;
 }

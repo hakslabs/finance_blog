@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { PageContainer } from "../../components/layout/PageContainer";
 import { DataTable } from "../../components/primitives/DataTable";
 import { Badge } from "../../components/primitives/Badge";
@@ -63,6 +63,7 @@ const columns = [
 ];
 
 export function StocksPage() {
+  const navigate = useNavigate();
   return (
     <PageContainer
       eyebrow="Stocks"
@@ -75,6 +76,8 @@ export function StocksPage() {
         getRowKey={(row) => row.id}
         density="compact"
         emptyMessage="종목이 없습니다."
+        onRowClick={(row) => navigate(`/stocks/${encodeURIComponent(row.symbol)}`)}
+        getRowAriaLabel={(row) => `${row.symbol} 종목 상세`}
       />
     </PageContainer>
   );

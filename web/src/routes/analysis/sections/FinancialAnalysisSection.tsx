@@ -38,7 +38,11 @@ const columns: DataTableColumn<FinancialScore>[] = [
   },
 ];
 
-export function FinancialAnalysisSection() {
+export function FinancialAnalysisSection({
+  onOpenScore,
+}: {
+  onOpenScore?: (row: FinancialScore) => void;
+}) {
   return (
     <div className={styles.root}>
       <Card title="재무 비율 5년 추이">
@@ -51,6 +55,8 @@ export function FinancialAnalysisSection() {
           rows={FINANCIAL_SCORES}
           getRowKey={(r) => r.id}
           density="compact"
+          onRowClick={onOpenScore}
+          getRowAriaLabel={(r) => `${r.symbol} 재무 점수 상세`}
         />
       </Card>
     </div>

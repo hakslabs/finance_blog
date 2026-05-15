@@ -100,12 +100,14 @@ type ReportsTableProps = {
   reports: ReportListItem[];
   bookmarkedIds: Set<string>;
   onToggleBookmark: (id: string) => void;
+  onOpenReport?: (report: ReportListItem) => void;
 };
 
 export function ReportsTable({
   reports,
   bookmarkedIds,
   onToggleBookmark,
+  onOpenReport,
 }: ReportsTableProps) {
   const tableColumns = [
     {
@@ -118,7 +120,10 @@ export function ReportsTable({
             type="button"
             className={active ? styles.bookmarkActive : styles.bookmarkButton}
             aria-label={`${row.title} 관심글 ${active ? "해제" : "저장"}`}
-            onClick={() => onToggleBookmark(row.id)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleBookmark(row.id);
+            }}
           >
             <Star size={15} aria-hidden="true" fill={active ? "currentColor" : "none"} />
           </button>
@@ -137,6 +142,8 @@ export function ReportsTable({
           getRowKey={(row) => row.id}
           density="compact"
           emptyMessage="리포트가 없습니다."
+          onRowClick={onOpenReport}
+          getRowAriaLabel={(row) => `${row.title} 리포트 상세`}
         />
       ) : (
         <EmptyState

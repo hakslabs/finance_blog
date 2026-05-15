@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card } from "../../../components/primitives/Card";
 import { ChartPlaceholder } from "../../../components/primitives/ChartPlaceholder";
 import { PriceChart } from "../../../components/primitives/PriceChart";
@@ -15,10 +16,11 @@ const PERIOD_TO_RANGE: Record<string, QuoteRange> = {
 };
 
 const PERIODS = ["1M", "3M", "6M", "1Y", "5Y"] as const;
-const ACTIVE_PERIOD = "6M";
 
-const CHART_TYPES = ["라인"] as const;
+const CHART_TYPES = ["라인", "캔들"] as const;
 const INDICATORS = ["MA(20)", "MA(60)", "볼린저", "RSI", "MACD"] as const;
+type Period = (typeof PERIODS)[number];
+type ChartType = (typeof CHART_TYPES)[number];
 
 type ChartSectionProps = {
   detail: StockDetail;
@@ -36,7 +38,10 @@ function formatTime(value: string): string {
 }
 
 export function ChartSection({ detail }: ChartSectionProps) {
-  const range = PERIOD_TO_RANGE[ACTIVE_PERIOD];
+  const [activePeriod, setActivePeriod] = useState<Period>("6M");
+  const [chartType, setChartType] = useState<ChartType>("라인");
+  const [activeIndicators, setActiveIndicators] = useState(() => new Set<string>(["MA(20)", "RSI", "MACD"]));
+  const range = PERIOD_TO_RANGE[activePeriod];
   const state = useQuote(detail.symbol, range);
 
   let sourceLine: string;
@@ -60,26 +65,48 @@ export function ChartSection({ detail }: ChartSectionProps) {
 
       <div className={styles.periodGroup}>
         {PERIODS.map((p) => (
-          <span
+          <button
+            type="button"
             key={p}
             className={`${styles.periodPill} ${
-              p === ACTIVE_PERIOD ? styles.periodActive : ""
+              p === activePeriod ? styles.periodActive : ""
             }`}
+            onClick={() => setActivePeriod(p)}
+            aria-pressed={p === activePeriod}
           >
             {p}
-          </span>
+          </button>
         ))}
         <span className={styles.divider} aria-hidden="true" />
         {CHART_TYPES.map((t) => (
-          <span key={t} className={`${styles.periodPill} ${styles.periodActive}`}>
+          <button
+            type="button"
+            key={t}
+            className={`${styles.periodPill} ${t === chartType ? styles.periodActive : ""}`}
+            onClick={() => setChartType(t)}
+            aria-pressed={t === chartType}
+          >
             {t}
-          </span>
+          </button>
         ))}
         <span className={styles.divider} aria-hidden="true" />
         {INDICATORS.map((ind) => (
-          <span key={ind} className={styles.periodPill}>
+          <button
+            type="button"
+            key={ind}
+            className={`${styles.periodPill} ${activeIndicators.has(ind) ? styles.periodActive : ""}`}
+            onClick={() =>
+              setActiveIndicators((current) => {
+                const next = new Set(current);
+                if (next.has(ind)) next.delete(ind);
+                else next.add(ind);
+                return next;
+              })
+            }
+            aria-pressed={activeIndicators.has(ind)}
+          >
             {ind}
-          </span>
+          </button>
         ))}
       </div>
 
@@ -87,7 +114,7 @@ export function ChartSection({ detail }: ChartSectionProps) {
         <PriceChart
           bars={state.quote.bars}
           height={300}
-          ariaLabel={`${detail.symbol} 일봉 차트`}
+          ariaLabel={`${detail.symbol} ${activePeriod} ${chartType} 차트`}
         />
       ) : (
         <ChartPlaceholder
@@ -115,7 +142,7 @@ export function ChartSection({ detail }: ChartSectionProps) {
         <div className={styles.subPanelHeader}>
           <span>RSI(14)</span>
           <span className={`${styles.subPanelValue} ${styles.subNeutral}`}>
-            58.6 · 중립
+            {activeIndicators.has("RSI") ? "58.6 · 중립" : "숨김"}
           </span>
         </div>
         <ChartPlaceholder label="RSI(14) 지표" height={50} />
@@ -125,7 +152,7 @@ export function ChartSection({ detail }: ChartSectionProps) {
         <div className={styles.subPanelHeader}>
           <span>MACD (12,26,9)</span>
           <span className={`${styles.subPanelValue} ${styles.subPositive}`}>
-            MACD 0.42 · Signal 0.28
+            {activeIndicators.has("MACD") ? "MACD 0.42 · Signal 0.28" : "숨김"}
           </span>
         </div>
         <ChartPlaceholder label="MACD 지표" height={50} />

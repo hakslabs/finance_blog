@@ -47,7 +47,11 @@ const columns: DataTableColumn<QuantFactor>[] = [
   },
 ];
 
-export function QuantFactorSection() {
+export function QuantFactorSection({
+  onOpenFactor,
+}: {
+  onOpenFactor?: (row: QuantFactor) => void;
+}) {
   return (
     <div className={styles.root}>
       <Card title="팩터 누적 수익률 (12M)">
@@ -60,6 +64,8 @@ export function QuantFactorSection() {
           rows={QUANT_FACTORS}
           getRowKey={(r) => r.id}
           density="compact"
+          onRowClick={onOpenFactor}
+          getRowAriaLabel={(r) => `${r.factor} 팩터 상세`}
         />
       </Card>
     </div>

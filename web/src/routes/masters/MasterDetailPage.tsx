@@ -84,7 +84,25 @@ export function MasterDetailPage() {
 
       <div className={styles.detailGrid}>
         <Card title="상위 보유 종목" eyebrow="Portfolio">
-          <DataTable<MasterHolding> columns={holdingColumns} rows={master.holdings} getRowKey={(row) => row.id} density="compact" />
+          <DataTable<MasterHolding>
+            columns={holdingColumns}
+            rows={master.holdings}
+            getRowKey={(row) => row.id}
+            density="compact"
+            onRowClick={(row) =>
+              handleAction({
+                type: "detail",
+                detail: {
+                  id: `master-holding-${row.id}`,
+                  eyebrow: `${master.name} · 상위 보유`,
+                  title: `${row.symbol} · ${row.name}`,
+                  meta: `비중 ${row.weight} · 변화 ${row.change}`,
+                  summary: "거장의 최근 13F 기준 상위 보유 종목입니다.",
+                },
+              })
+            }
+            getRowAriaLabel={(row) => `${row.symbol} 보유 상세`}
+          />
         </Card>
         <Card title="섹터 분포 & 성과" eyebrow="Composition">
           <ChartPlaceholder label="섹터 트리맵 + 10년 성과" height={260} />
@@ -92,7 +110,32 @@ export function MasterDetailPage() {
       </div>
 
       <Card title="13F 분기 변화 — 최근 5분기">
-        <DataTable<MasterQuarterChange> columns={quarterColumns} rows={master.quarterChanges} getRowKey={(row) => row.id} density="compact" />
+        <DataTable<MasterQuarterChange>
+          columns={quarterColumns}
+          rows={master.quarterChanges}
+          getRowKey={(row) => row.id}
+          density="compact"
+          onRowClick={(row) =>
+            handleAction({
+              type: "detail",
+              detail: {
+                id: `master-quarter-${row.id}`,
+                eyebrow: `${master.name} · 13F 분기 변화`,
+                title: `${row.symbol} · ${row.name}`,
+                meta: `최근 ${row.latest} · 변화 ${row.change}`,
+                summary: "최근 5분기 보유 비중 변화입니다.",
+                sections: [
+                  {
+                    title: "분기별 비중",
+                    body: "13F 신고 기준 보유 비중입니다.",
+                    items: [`2025 Q1 ${row.q1}`, `Q2 ${row.q2}`, `Q3 ${row.q3}`, `Q4 ${row.q4}`, `2026 Q1 ${row.latest}`],
+                  },
+                ],
+              },
+            })
+          }
+          getRowAriaLabel={(row) => `${row.symbol} 13F 분기 변화 상세`}
+        />
       </Card>
 
       <div className={styles.detailGrid}>

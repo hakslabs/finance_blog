@@ -215,9 +215,25 @@
   display: flex;
   gap: 8px;
   justify-content: space-between;
+  width: 100%;
   padding: 6px 0;
+  color: inherit;
+  font: inherit;
   border-bottom: 1px solid var(--hairline);
   font-size: 0.75rem;
+  text-align: left;
+  background: transparent;
+  border-top: 0;
+  border-left: 0;
+  border-right: 0;
+  cursor: pointer;
+}
+
+.tickerRow:hover,
+.tickerRow:focus-visible,
+.relatedItem:hover,
+.relatedItem:focus-visible {
+  background: var(--surface-muted);
 }
 
 .tickerRow:last-child,
@@ -258,12 +274,24 @@
 }
 
 .memoBox {
+  display: block;
+  width: 100%;
   min-height: 80px;
   padding: 10px;
   border: 1px dashed var(--hairline);
   color: var(--faint);
+  font: inherit;
   font-size: 0.75rem;
   font-style: italic;
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+.memoBox:hover,
+.memoBox:focus-visible {
+  border-color: var(--accent);
+  color: var(--muted);
 }
 
 @media (max-width: 1120px) {

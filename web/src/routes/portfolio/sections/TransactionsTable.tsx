@@ -91,8 +91,10 @@ const columns: DataTableColumn<PortfolioTransaction>[] = [
 
 export function TransactionsTable({
   transactions,
+  onOpenTransaction,
 }: {
   transactions: PortfolioTransaction[];
+  onOpenTransaction?: (transaction: PortfolioTransaction) => void;
 }) {
   if (transactions.length === 0) {
     return (
@@ -112,6 +114,8 @@ export function TransactionsTable({
         rows={transactions}
         getRowKey={(row) => row.id}
         density="compact"
+        onRowClick={onOpenTransaction}
+        getRowAriaLabel={(row) => `${row.symbol ?? "현금"} 거래 상세`}
       />
     </Card>
   );

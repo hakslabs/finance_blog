@@ -49,7 +49,11 @@ const columns: DataTableColumn<SignalAlert>[] = [
   },
 ];
 
-export function SignalsSection() {
+export function SignalsSection({
+  onOpenAlert,
+}: {
+  onOpenAlert?: (row: SignalAlert) => void;
+}) {
   return (
     <div className={styles.root}>
       <Card title="신호 알림 (관심·보유종목)">
@@ -58,6 +62,8 @@ export function SignalsSection() {
           rows={SIGNAL_ALERTS}
           getRowKey={(r) => r.id}
           density="compact"
+          onRowClick={onOpenAlert}
+          getRowAriaLabel={(r) => `${r.ticker} ${r.type} 신호 상세`}
         />
       </Card>
     </div>

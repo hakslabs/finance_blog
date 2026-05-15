@@ -78,9 +78,9 @@ Exports `NAV_ITEMS: { label, path, icon? }[]` consumed by `Sidebar`.
 
 `<span>` chip. `tone: "neutral" | "accent" | "positive" | "negative" | "warning"`. Default `"neutral"`.
 
-### `DataTable<T>({ columns, rows, getRowKey, emptyMessage?, density? })`
+### `DataTable<T>({ columns, rows, getRowKey, emptyMessage?, density?, onRowClick?, getRowAriaLabel? })`
 
-Generic table. `columns: { key, header, render(row), align? }[]`. `getRowKey(row)` returns a stable id (use `row.id`). Shows `emptyMessage` when `rows.length === 0`. Prefer this over hand-built flex rows for tabular data.
+Generic table. `columns: { key, header, render(row), align? }[]`. `getRowKey(row)` returns a stable id (use `row.id`). Shows `emptyMessage` when `rows.length === 0`. `onRowClick` makes rows keyboard-focusable and opens route/detail behavior; pair it with `getRowAriaLabel` for accessible row actions. Prefer this over hand-built flex rows for tabular data.
 
 `density?: "comfortable" | "compact"` (default `"comfortable"`). Compact density: 6px 12px padding, 0.6875rem font, hairline rows. Exported as `TableDensity` type.
 
@@ -328,7 +328,7 @@ Composes the dashboard from `routes/dashboard/sections/*` and `fixtures/dashboar
 
 ### `stocks/StocksPage` (path: `/stocks`)
 
-Renders a `PageContainer(title="종목 목록")` with a `DataTable` using `density="compact"`. Rows are `STOCK_LIST` fixtures; each row's symbol links to `/stocks/${symbol}`. Columns: symbol+name, exchange (Badge), price, change (color-coded), marketCap, sector.
+Renders a `PageContainer(title="종목 목록")` with a `DataTable` using `density="compact"`. Rows are `STOCK_LIST` fixtures; each row navigates to `/stocks/${symbol}` and the symbol cell also carries a direct link. Columns: symbol+name, exchange (Badge), price, change (color-coded), marketCap, sector.
 
 **File**: `routes/stocks/StocksPage.tsx`, co-located `StocksPage.module.css`.
 
@@ -345,7 +345,7 @@ Route-param-driven stock detail page. Uses `useParams` to read `symbol`, calls `
 **Sections** (`routes/stocks/sections/`):
 
 - `OverviewSection({ detail })` — grid: price chart placeholder (ChartPlaceholder) + key stats card + technical signals card + company overview card + sector position card.
-- `ChartSection({ detail })` — full chart area with period pills, type pills, indicator pills. Main chart reads from `useQuote(detail.symbol, "6mo")` and renders `PriceChart` when ready; loading/empty/error states fall back to `ChartPlaceholder`. Source bar shows `last_refreshed_at` and a stale notice when present. Volume/RSI/MACD sub-panels remain `ChartPlaceholder` until later PRs wire indicators.
+- `ChartSection({ detail })` — full chart area with stateful period/type/indicator buttons. Main chart reads from `useQuote(detail.symbol, activeRange)` and renders `PriceChart` when ready; loading/empty/error states fall back to `ChartPlaceholder`. Source bar shows `last_refreshed_at` and a stale notice when present. Volume/RSI/MACD sub-panels remain `ChartPlaceholder` until later PRs wire indicators.
 - `FinancialsSection({ incomeStatement, balanceSheet, cashFlow, keyRatios })` — sub-tabs (손익/재무/현금, 연간/분기), income statement table, balance sheet + cash flow grid, key ratios table. All from fixture tables.
 - `ValuationSection({ metrics, peers, fairValues })` — 4-column metric cards (PER/PBR/EV/DY), PER-PBR trend chart placeholder + fair value estimates list, peer comparison table with highlight row.
 - `FilingsSection({ filings, nextEarnings, onOpenFiling? })` — earnings trend chart placeholder + next earnings card, clickable filing timeline table with form-type badges and price impact colors.
@@ -364,25 +364,25 @@ Live-data portfolio page. Reads `usePortfolio()` (PR-11) and composes the result
 **Sections** (`routes/portfolio/sections/`):
 
 - `KpiStrip({ portfolio })` — 3 KPI tiles computed live from the portfolio: 투자원금 (∑ cost_basis), 보유 종목 count, 거래 내역 count + buy/sell breakdown. Uses `KpiTile` primitives.
-- `HoldingsTable({ holdings })` — Card-wrapped `DataTable<PortfolioHolding>` (density `compact`) with columns: symbol+name, exchange, quantity, avg cost, cost basis. Renders `EmptyState` inside the Card when `holdings.length === 0`. Market value / PnL columns intentionally absent — they require the deferred price join (PR-13).
-- `TransactionsTable({ transactions })` — Card-wrapped `DataTable<PortfolioTransaction>` (density `compact`) with columns: date, type/Badge, symbol, qty, price, amount, currency, note. Renders `EmptyState` inside the Card when `transactions.length === 0`. Transaction type mapped to Badge tone via `Record<PortfolioTransactionType, BadgeTone>`.
+- `HoldingsTable({ holdings, onOpenHolding? })` — Card-wrapped `DataTable<PortfolioHolding>` (density `compact`) with columns: symbol+name, exchange, quantity, avg cost, cost basis. Rows open holding detail through `onRowClick`. Renders `EmptyState` inside the Card when `holdings.length === 0`. Market value / PnL columns intentionally absent — they require the deferred price join (PR-13).
+- `TransactionsTable({ transactions, onOpenTransaction? })` — Card-wrapped `DataTable<PortfolioTransaction>` (density `compact`) with columns: date, type/Badge, symbol, qty, price, amount, currency, note. Rows open transaction detail through `onRowClick`. Renders `EmptyState` inside the Card when `transactions.length === 0`. Transaction type mapped to Badge tone via `Record<PortfolioTransactionType, BadgeTone>`.
 
 ### `analysis/AnalysisPage` (path: `/analysis`)
 
-Static analysis hub composed from `routes/analysis/sections/*` and `fixtures/analysis.ts`. Top-level structure: `PageContainer(eyebrow="Analysis", title="분석", description=…)` → `<nav>` tab bar (8 tabs) → `<section>` containing the active tab's section component. Tab state held by `useState<AnalysisTab>`; tab `<button>` pattern reused from `/stocks/:symbol`. The page owns `useInteractionActions()` for tool detail panels. Fixture-only, no API calls.
+Static analysis hub composed from `routes/analysis/sections/*` and `fixtures/analysis.ts`. Top-level structure: `PageContainer(eyebrow="Analysis", title="분석", description=…)` → `<nav>` tab bar (8 tabs) → `<section>` containing the active tab's section component. Tab state held by `useState<AnalysisTab>`; tab `<button>` pattern reused from `/stocks/:symbol`. The page owns `useInteractionActions()` for tool and row detail panels. Fixture-only, no API calls.
 
 **File**: `routes/analysis/AnalysisPage.tsx`, co-located `AnalysisPage.module.css`.
 
 **Sections** (`routes/analysis/sections/`):
 
 - `MarketOverviewSection({ onOpenTool?, onSelectToolTab? })` — 시장 한눈에. 3-col top grid (`Card`: 시장 개요 with `ChartPlaceholder` + index row · `Card` with `DataTable<SectorReturn>` for sector rotation · `Card` with style rotation grid). Tool cards are generated from `ANALYSIS_TOOLS` registry and can either switch to the target tab or open `DetailPanel`. 2-col bottom grid: `Card` with recent signal list + `Card` with `DataTable<SavedScreen>`.
-- `SentimentSection()` — 시장 심리. Banner `Card`, balanced region grid with one `Card`+`DataTable<SentimentIndicator>` per region (US/KR/Global), then a 2-col chart/glossary row. Status mapped to `Badge` tone via `Record<SentimentStatus, BadgeTone>`. No SVG gauges — `DataTable` + `Badge` per C-11 (gauge primitive would require a separate promotion PR).
-- `TechnicalSection()` — 기술적 분석. `Card`+`ChartPlaceholder` for chart, `Card`+`DataTable<TechnicalIndicator>` with buy/sell/hold `Badge`.
-- `FinancialAnalysisSection()` — 재무 분석. `Card`+`ChartPlaceholder`, `Card`+`DataTable<FinancialScore>` with A-D grade `Badge`.
-- `QuantFactorSection()` — 퀀트 팩터. `Card`+`ChartPlaceholder`, `Card`+`DataTable<QuantFactor>` with spread color class.
-- `DcfSection()` — 적정주가 계산. `Card` with `KpiTile` grid (4 assumptions) + `Card`+`ChartPlaceholder` for scenario matrix.
-- `SectorFlowSection()` — 섹터 흐름. `Card`+`ChartPlaceholder`, `Card`+`DataTable<SectorMomentum>` with trend `Badge`.
-- `SignalsSection()` — 신호 알림. `Card`+`DataTable<SignalAlert>` with direction `Badge`.
+- `SentimentSection({ onOpenIndicator?, onOpenGlossary? })` — 시장 심리. Banner `Card`, balanced region grid with one `Card`+`DataTable<SentimentIndicator>` per region (US/KR/Global), then a 2-col chart/glossary row. Rows open detail through `onRowClick`. Status mapped to `Badge` tone via `Record<SentimentStatus, BadgeTone>`.
+- `TechnicalSection({ onOpenIndicator? })` — 기술적 분석. `Card`+`ChartPlaceholder` for chart, `Card`+`DataTable<TechnicalIndicator>` with buy/sell/hold `Badge`; rows open detail.
+- `FinancialAnalysisSection({ onOpenScore? })` — 재무 분석. `Card`+`ChartPlaceholder`, `Card`+`DataTable<FinancialScore>` with A-D grade `Badge`; rows open detail.
+- `QuantFactorSection({ onOpenFactor? })` — 퀀트 팩터. `Card`+`ChartPlaceholder`, `Card`+`DataTable<QuantFactor>` with spread color class; rows open detail.
+- `DcfSection({ onOpenAssumption? })` — 적정주가 계산. `Card` with clickable `KpiTile` grid (4 assumptions) + `Card`+`ChartPlaceholder` for scenario matrix.
+- `SectorFlowSection({ onOpenSector? })` — 섹터 흐름. `Card`+`ChartPlaceholder`, `Card`+`DataTable<SectorMomentum>` with trend `Badge`; rows open detail.
+- `SignalsSection({ onOpenAlert? })` — 신호 알림. `Card`+`DataTable<SignalAlert>` with direction `Badge`; rows open detail.
 
 ### `reports/ReportsPage` (path: `/reports`)
 
@@ -394,7 +394,7 @@ Static report library page from `wire-masters-learn.jsx` (`WireReports`). Top-le
 
 - `ReportFilters()` — static search/sort/category/region/period controls rendered as non-interactive filter chips.
 - `ReportKpiStrip({ kpis })` — 4-column KPI grid using `KpiTile`.
-- `ReportsTable({ reports, bookmarkedIds, onToggleBookmark })` — `Card` + `DataTable<ReportListItem>` (density `compact`) with local interest-star action, title/summary link, region/category `Badge`s, status `Badge`, tags, date. Empty list renders `EmptyState`.
+- `ReportsTable({ reports, bookmarkedIds, onToggleBookmark, onOpenReport? })` — `Card` + `DataTable<ReportListItem>` (density `compact`) with local interest-star action, row navigation, title/summary link, region/category `Badge`s, status `Badge`, tags, date. Empty list renders `EmptyState`.
 
 ### `reports/ReportDetailPage` (path: `/reports/:id`)
 
@@ -408,11 +408,11 @@ Route-param-driven report detail page. Uses `useParams` to read `id`, calls `get
 - `ReportSummary({ report })` — AI summary `Card`, 3 `KpiTile`s, key point list.
 - `ReportToc({ items })` — sticky table-of-contents `Card`.
 - `ReportBody({ report })` — body excerpt `Card` with reading-mode badges and `DataTable<InflationRow>` for the embedded inflation table.
-- `ReportSideRail({ report })` — related tickers, tags, related reports, memo prompt cards.
+- `ReportSideRail({ report, onOpenTicker?, onOpenRelatedReport?, onOpenMemo? })` — related tickers open detail, related reports route, memo prompt shows planned feedback.
 
 ### `masters/MastersPage` (path: `/masters`)
 
-Static masters list from `wire-masters-learn.jsx` (`WireMasters`). Renders `PageContainer` + `Card` + `DataTable<MasterListItem>` with route links to `/masters/:id`, strategy `Badge`s, AUM, holdings count, latest filing, CAGR.
+Static masters list from `wire-masters-learn.jsx` (`WireMasters`). Renders `PageContainer` + `Card` + `DataTable<MasterListItem>` with row navigation to `/masters/:id`, strategy `Badge`s, AUM, holdings count, latest filing, CAGR.
 
 **File**: `routes/masters/MastersPage.tsx`, co-located `MastersPage.module.css`.
 
@@ -430,7 +430,7 @@ Static learning page from `wire-masters-learn.jsx` (`WireLearn`) with three tabs
 
 ### `mypage/MyPage` (path: `/mypage`)
 
-Static mypage from `wire-mypage-admin.jsx` (`WireMyPageAll`, excluding admin). Renders identity strip with in-page quick tab switches, then mini-tabs for 개요 / 포트폴리오 / 관심글 / 활동 / 설정. The page acts as a user hub: saved reports, watchlist summaries, position thesis notes, transactions, activity, todos, and settings are reachable without bouncing to another route. Form-like settings stay static with no submission state.
+Static mypage from `wire-mypage-admin.jsx` (`WireMyPageAll`, excluding admin). Renders identity strip with in-page quick tab switches, then mini-tabs for 개요 / 포트폴리오 / 관심글 / 활동 / 설정. The page acts as a user hub: saved reports, watchlist summaries, position thesis notes, transactions, activity, todos, and settings are reachable without bouncing to another route. KPI tiles, todos, watchlist summaries, thesis cards, tables, and settings rows open shared `DetailPanel`; saved reports route to report detail. Form-like settings stay static with no submission state.
 
 **File**: `routes/mypage/MyPage.tsx`, co-located `MyPage.module.css`.
 

@@ -31,7 +31,11 @@ const columns: DataTableColumn<SectorMomentum>[] = [
   },
 ];
 
-export function SectorFlowSection() {
+export function SectorFlowSection({
+  onOpenSector,
+}: {
+  onOpenSector?: (row: SectorMomentum) => void;
+}) {
   return (
     <div className={styles.root}>
       <Card title="섹터 강도 히트맵">
@@ -44,6 +48,8 @@ export function SectorFlowSection() {
           rows={SECTOR_MOMENTUM}
           getRowKey={(r) => r.id}
           density="compact"
+          onRowClick={onOpenSector}
+          getRowAriaLabel={(r) => `${r.sector} 섹터 모멘텀 상세`}
         />
       </Card>
     </div>

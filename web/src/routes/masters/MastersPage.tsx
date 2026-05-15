@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { PageContainer } from "../../components/layout/PageContainer";
 import { Badge } from "../../components/primitives/Badge";
 import { Card } from "../../components/primitives/Card";
@@ -48,6 +48,7 @@ const columns = [
 ];
 
 export function MastersPage() {
+  const navigate = useNavigate();
   return (
     <PageContainer
       eyebrow="Masters"
@@ -61,6 +62,8 @@ export function MastersPage() {
           getRowKey={(row) => row.id}
           density="compact"
           emptyMessage="거장 목록이 없습니다."
+          onRowClick={(row) => navigate(`/masters/${encodeURIComponent(row.id)}`)}
+          getRowAriaLabel={(row) => `${row.name} 거장 상세`}
         />
       </Card>
     </PageContainer>

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PageContainer } from "../../components/layout/PageContainer";
+import { ActionNotice } from "../../components/interaction/ActionNotice";
+import { DetailPanel } from "../../components/interaction/DetailPanel";
 import { Badge } from "../../components/primitives/Badge";
 import { Card } from "../../components/primitives/Card";
 import { DataTable } from "../../components/primitives/DataTable";
@@ -9,6 +11,8 @@ import { REPORTS } from "../../fixtures/reports";
 import type { ReportListItem } from "../../fixtures/reports";
 import { useAuth } from "../../lib/auth-state";
 import { getUserDisplayName } from "../../lib/auth-user";
+import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
+import type { DetailContent } from "../../lib/interaction/action-intent";
 import {
   ACTIVITY_LOGS,
   MYPAGE_KPIS,
@@ -18,7 +22,15 @@ import {
   TRANSACTION_HISTORY,
   WATCHLIST_SUMMARIES,
 } from "../../fixtures/mypage";
-import type { ActivityLog, SettingRow, TransactionHistory } from "../../fixtures/mypage";
+import type {
+  ActivityLog,
+  MyPageKpi,
+  PositionThesis,
+  SettingRow,
+  TodoItem,
+  TransactionHistory,
+  WatchlistSummary,
+} from "../../fixtures/mypage";
 import styles from "./MyPage.module.css";
 
 type BadgeTone = "neutral" | "accent" | "positive" | "negative" | "warning";
@@ -87,11 +99,98 @@ const reportColumns = [
   { key: "bookmarks", header: "저장", align: "right" as const, render: (row: ReportListItem) => row.bookmarks },
 ];
 
+function simpleDetail(
+  eyebrow: string,
+  title: string,
+  meta: string,
+  items: string[],
+  summary = "마이페이지 항목 상세입니다."
+): DetailContent {
+  return {
+    id: `${eyebrow}-${title}`,
+    eyebrow,
+    title,
+    meta,
+    summary,
+    sections: [{ title: "상세 값", body: "현재 화면에 표시된 값을 정리합니다.", items }],
+  };
+}
+
+function kpiDetail(kpi: MyPageKpi): DetailContent {
+  return simpleDetail("마이페이지 KPI", kpi.label, kpi.value, [kpi.detail, kpi.warning ? "확인 필요" : "정상"]);
+}
+
+function todoDetail(todo: TodoItem): DetailContent {
+  return simpleDetail("오늘 할 일", todo.title, todo.meta, [
+    `상태: ${todo.done ? "완료" : "진행 필요"}`,
+    `분류: ${todo.category}`,
+    "실제 완료 저장은 todo 저장 PR에서 연결됩니다.",
+  ]);
+}
+
+function watchlistDetail(list: WatchlistSummary): DetailContent {
+  return simpleDetail("관심종목 리스트", list.name, `${list.count}개 · ${list.performance}`, [
+    "구성 종목 상세와 편집은 관심종목 쓰기 PR에서 연결됩니다.",
+  ]);
+}
+
+function transactionDetail(row: TransactionHistory): DetailContent {
+  return simpleDetail("거래 내역", `${row.symbol} ${row.type}`, row.date, [
+    `수량: ${row.quantity}`,
+    `단가: ${row.price}`,
+    `금액: ${row.amount} ${row.currency}`,
+    `수수료: ${row.fee}`,
+  ]);
+}
+
+function activityDetail(row: ActivityLog): DetailContent {
+  return simpleDetail("활동 로그", row.action, row.date, [`대상: ${row.target}`]);
+}
+
+function settingDetail(row: SettingRow): DetailContent {
+  return simpleDetail("계정 설정", row.label, row.status, [
+    `섹션: ${row.group}`,
+    `현재값: ${row.value}`,
+    "설정 저장은 프로필/설정 저장 PR에서 연결됩니다.",
+  ]);
+}
+
+function positionDetail(position: PositionThesis): DetailContent {
+  return {
+    id: `position-${position.id}`,
+    eyebrow: "내 포지션 · Thesis",
+    title: `${position.symbol} · ${position.name}`,
+    meta: `${position.returnPct} · 비중 ${position.weight}`,
+    tags: position.tags,
+    summary: position.thesis,
+    sections: [
+      {
+        title: "포지션",
+        body: "현재 보유와 매수 기준입니다.",
+        items: [
+          `편입: ${position.openedAt}`,
+          `수량: ${position.quantity}`,
+          `평단: ${position.averagePrice}`,
+          `현재가: ${position.currentPrice}`,
+          `Exit: ${position.exitPlan}`,
+        ],
+      },
+      { title: "판단 근거", body: "매수 thesis 조건입니다.", items: position.conditions },
+      {
+        title: "반응 메모",
+        body: "알림 발생 시 기록해야 할 반응입니다.",
+        items: position.alerts.map((alert) => `${alert.trigger}: ${alert.note}`),
+      },
+    ],
+  };
+}
+
 export function MyPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab");
   const initialTab = isMyPageTab(requestedTab) ? requestedTab : "overview";
   const [activeTab, setActiveTab] = useState<MyPageTab>(initialTab);
+  const { detail, notice, handleAction, closeDetail } = useInteractionActions();
   const auth = useAuth();
   const displayName =
     auth.status === "signed-in" ? getUserDisplayName(auth.user) : "사용자";
@@ -152,13 +251,19 @@ export function MyPage() {
         <>
           <div className={styles.kpiGrid}>
             {MYPAGE_KPIS.map((kpi) => (
-              <KpiTile
+              <button
                 key={kpi.id}
-                label={kpi.label}
-                value={kpi.value}
-                detail={kpi.detail}
-                trend={kpi.warning ? <span className={styles.warning}>확인 필요</span> : null}
-              />
+                type="button"
+                className={styles.kpiButton}
+                onClick={() => handleAction({ type: "detail", detail: kpiDetail(kpi) })}
+              >
+                <KpiTile
+                  label={kpi.label}
+                  value={kpi.value}
+                  detail={kpi.detail}
+                  trend={kpi.warning ? <span className={styles.warning}>확인 필요</span> : null}
+                />
+              </button>
             ))}
           </div>
 
@@ -166,17 +271,29 @@ export function MyPage() {
             <Card title="오늘 할 일" eyebrow="Dashboard sync">
               <div className={styles.todoList}>
                 {MY_TODOS.map((todo) => (
-                  <div key={todo.id} className={`${styles.todoRow} ${todo.done ? styles.todoDone : ""}`}>
+                  <button
+                    key={todo.id}
+                    type="button"
+                    className={`${styles.todoRow} ${todo.done ? styles.todoDone : ""}`}
+                    onClick={() => handleAction({ type: "detail", detail: todoDetail(todo) })}
+                  >
                     <span className={styles.checkbox} aria-hidden="true" />
                     <span>{todo.title}</span>
                     <Badge tone={todo.done ? "neutral" : "accent"}>{todo.category}</Badge>
                     <span>{todo.meta}</span>
-                  </div>
+                  </button>
                 ))}
               </div>
             </Card>
             <Card title="최근 활동">
-              <DataTable<ActivityLog> columns={activityColumns} rows={ACTIVITY_LOGS.slice(0, 4)} getRowKey={(row) => row.id} density="compact" />
+              <DataTable<ActivityLog>
+                columns={activityColumns}
+                rows={ACTIVITY_LOGS.slice(0, 4)}
+                getRowKey={(row) => row.id}
+                density="compact"
+                onRowClick={(row) => handleAction({ type: "detail", detail: activityDetail(row) })}
+                getRowAriaLabel={(row) => `${row.action} 활동 상세`}
+              />
             </Card>
           </div>
         </>
@@ -186,28 +303,46 @@ export function MyPage() {
         <div className={styles.stack}>
           <div className={styles.kpiGrid}>
             {MYPAGE_KPIS.slice(0, 3).map((kpi) => (
-              <KpiTile
+              <button
                 key={kpi.id}
-                label={kpi.label}
-                value={kpi.value}
-                detail={kpi.detail}
-                trend={kpi.warning ? <span className={styles.warning}>확인 필요</span> : null}
-              />
+                type="button"
+                className={styles.kpiButton}
+                onClick={() => handleAction({ type: "detail", detail: kpiDetail(kpi) })}
+              >
+                <KpiTile
+                  label={kpi.label}
+                  value={kpi.value}
+                  detail={kpi.detail}
+                  trend={kpi.warning ? <span className={styles.warning}>확인 필요</span> : null}
+                />
+              </button>
             ))}
           </div>
           <div className={styles.twoCol}>
             <Card title="관심종목 리스트">
               <div className={styles.simpleList}>
                 {WATCHLIST_SUMMARIES.map((list) => (
-                  <div key={list.id}>
+                  <button
+                    key={list.id}
+                    type="button"
+                    className={styles.simpleListButton}
+                    onClick={() => handleAction({ type: "detail", detail: watchlistDetail(list) })}
+                  >
                     <span>{list.name}</span>
                     <span>{list.count}개 · {list.performance}</span>
-                  </div>
+                  </button>
                 ))}
               </div>
             </Card>
             <Card title="거래 내역" eyebrow="Transactions">
-              <DataTable<TransactionHistory> columns={transactionColumns} rows={TRANSACTION_HISTORY} getRowKey={(row) => row.id} density="compact" />
+              <DataTable<TransactionHistory>
+                columns={transactionColumns}
+                rows={TRANSACTION_HISTORY}
+                getRowKey={(row) => row.id}
+                density="compact"
+                onRowClick={(row) => handleAction({ type: "detail", detail: transactionDetail(row) })}
+                getRowAriaLabel={(row) => `${row.symbol} 거래 상세`}
+              />
             </Card>
           </div>
         </div>
@@ -217,7 +352,12 @@ export function MyPage() {
         <Card title="내 포지션 · Thesis" eyebrow="Locked thesis + reaction memo">
           <div className={styles.positionList}>
             {POSITION_THESES.map((position) => (
-              <article key={position.id} className={position.positive ? styles.position : `${styles.position} ${styles.positionWarn}`}>
+              <button
+                key={position.id}
+                type="button"
+                className={position.positive ? styles.position : `${styles.position} ${styles.positionWarn}`}
+                onClick={() => handleAction({ type: "detail", detail: positionDetail(position) })}
+              >
                 <header>
                   <strong>{position.symbol}</strong>
                   <span>{position.name} · 편입 {position.openedAt} · {position.quantity} @ {position.averagePrice}</span>
@@ -236,7 +376,7 @@ export function MyPage() {
                     ))}
                   </div>
                 </div>
-              </article>
+              </button>
             ))}
           </div>
         </Card>
@@ -250,15 +390,27 @@ export function MyPage() {
               rows={REPORTS.filter((report) => SAVED_REPORT_IDS.has(report.id))}
               getRowKey={(row) => row.id}
               density="compact"
+              onRowClick={(row) =>
+                handleAction({
+                  type: "route",
+                  to: `/reports/${encodeURIComponent(row.id)}`,
+                })
+              }
+              getRowAriaLabel={(row) => `${row.title} 리포트로 이동`}
             />
           </Card>
           <Card title="관심종목 리스트">
             <div className={styles.simpleList}>
               {WATCHLIST_SUMMARIES.map((list) => (
-                <div key={list.id}>
+                <button
+                  key={list.id}
+                  type="button"
+                  className={styles.simpleListButton}
+                  onClick={() => handleAction({ type: "detail", detail: watchlistDetail(list) })}
+                >
                   <span>{list.name}</span>
                   <span>{list.count}개 · {list.performance}</span>
-                </div>
+                </button>
               ))}
             </div>
           </Card>
@@ -270,26 +422,47 @@ export function MyPage() {
           <Card title="오늘 할 일" eyebrow="Dashboard sync">
             <div className={styles.todoList}>
               {MY_TODOS.map((todo) => (
-                <div key={todo.id} className={`${styles.todoRow} ${todo.done ? styles.todoDone : ""}`}>
+                <button
+                  key={todo.id}
+                  type="button"
+                  className={`${styles.todoRow} ${todo.done ? styles.todoDone : ""}`}
+                  onClick={() => handleAction({ type: "detail", detail: todoDetail(todo) })}
+                >
                   <span className={styles.checkbox} aria-hidden="true" />
                   <span>{todo.title}</span>
                   <Badge tone={todo.done ? "neutral" : "accent"}>{todo.category}</Badge>
                   <span>{todo.meta}</span>
-                </div>
+                </button>
               ))}
             </div>
           </Card>
           <Card title="최근 활동">
-            <DataTable<ActivityLog> columns={activityColumns} rows={ACTIVITY_LOGS} getRowKey={(row) => row.id} density="compact" />
+            <DataTable<ActivityLog>
+              columns={activityColumns}
+              rows={ACTIVITY_LOGS}
+              getRowKey={(row) => row.id}
+              density="compact"
+              onRowClick={(row) => handleAction({ type: "detail", detail: activityDetail(row) })}
+              getRowAriaLabel={(row) => `${row.action} 활동 상세`}
+            />
           </Card>
         </div>
       ) : null}
 
       {activeTab === "settings" ? (
         <Card title="계정 설정" eyebrow="Static form summary">
-          <DataTable<SettingRow> columns={settingColumns} rows={SETTING_ROWS} getRowKey={(row) => row.id} density="compact" />
+          <DataTable<SettingRow>
+            columns={settingColumns}
+            rows={SETTING_ROWS}
+            getRowKey={(row) => row.id}
+            density="compact"
+            onRowClick={(row) => handleAction({ type: "detail", detail: settingDetail(row) })}
+            getRowAriaLabel={(row) => `${row.label} 설정 상세`}
+          />
         </Card>
       ) : null}
+      <DetailPanel detail={detail} onClose={closeDetail} />
+      <ActionNotice message={notice} />
     </PageContainer>
   );
 }

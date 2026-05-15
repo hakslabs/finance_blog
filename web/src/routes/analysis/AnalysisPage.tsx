@@ -3,7 +3,20 @@ import { PageContainer } from "../../components/layout/PageContainer";
 import { ActionNotice } from "../../components/interaction/ActionNotice";
 import { DetailPanel } from "../../components/interaction/DetailPanel";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
-import { ANALYSIS_TABS, type AnalysisTab, type AnalysisTool } from "../../fixtures/analysis";
+import {
+  ANALYSIS_TABS,
+  type AnalysisTab,
+  type AnalysisTool,
+  type DcfAssumption,
+  type FinancialScore,
+  type IndicatorGlossary,
+  type QuantFactor,
+  type SectorMomentum,
+  type SentimentIndicator,
+  type SignalAlert,
+  type TechnicalIndicator,
+} from "../../fixtures/analysis";
+import type { DetailContent } from "../../lib/interaction/action-intent";
 import { MarketOverviewSection } from "./sections/MarketOverviewSection";
 import { SentimentSection } from "./sections/SentimentSection";
 import { TechnicalSection } from "./sections/TechnicalSection";
@@ -25,14 +38,47 @@ function toolDetail(tool: AnalysisTool) {
   };
 }
 
+function rowDetail(kind: string, row: Record<string, unknown>): DetailContent {
+  const title =
+    String(row.title ?? row.symbol ?? row.ticker ?? row.factor ?? row.sector ?? row.label ?? row.term ?? kind);
+  const summary =
+    String(row.description ?? row.signal ?? row.type ?? row.detail ?? "선택한 항목의 분석 상세입니다.");
+  return {
+    id: `${kind}-${String(row.id ?? title)}`,
+    eyebrow: kind,
+    title,
+    meta: String(row.value ?? row.score ?? row.spread ?? row.time ?? ""),
+    tags: Object.entries(row)
+      .filter(([key, value]) => ["region", "statusLabel", "signalLabel", "trendLabel", "direction", "score"].includes(key) && value)
+      .map(([, value]) => String(value)),
+    summary,
+    sections: [
+      {
+        title: "화면 값",
+        body: "현재 표에 표시된 핵심 값입니다.",
+        items: Object.entries(row)
+          .filter(([, value]) => typeof value === "string" || typeof value === "number")
+          .slice(0, 8)
+          .map(([key, value]) => `${key}: ${String(value)}`),
+      },
+      {
+        title: "다음 연결",
+        body: "실제 계산식, 저장한 조건, 알림 설정은 후속 데이터/저장 PR에서 같은 상세 패널 안으로 연결됩니다.",
+      },
+    ],
+  };
+}
+
 function TabContent({
   tab,
   onOpenTool,
   onSelectToolTab,
+  onOpenDetail,
 }: {
   tab: AnalysisTab;
   onOpenTool: (tool: AnalysisTool) => void;
   onSelectToolTab: (tab: AnalysisTab) => void;
+  onOpenDetail: (detail: DetailContent) => void;
 }) {
   switch (tab) {
     case "시장 한눈에":
@@ -43,19 +89,24 @@ function TabContent({
         />
       );
     case "시장 심리":
-      return <SentimentSection />;
+      return (
+        <SentimentSection
+          onOpenIndicator={(row: SentimentIndicator) => onOpenDetail(rowDetail("시장 심리 지표", row))}
+          onOpenGlossary={(row: IndicatorGlossary) => onOpenDetail(rowDetail("지표 해설", row))}
+        />
+      );
     case "기술적 분석":
-      return <TechnicalSection />;
+      return <TechnicalSection onOpenIndicator={(row: TechnicalIndicator) => onOpenDetail(rowDetail("기술적 분석", row))} />;
     case "재무 분석":
-      return <FinancialAnalysisSection />;
+      return <FinancialAnalysisSection onOpenScore={(row: FinancialScore) => onOpenDetail(rowDetail("재무 분석", row))} />;
     case "퀀트 팩터":
-      return <QuantFactorSection />;
+      return <QuantFactorSection onOpenFactor={(row: QuantFactor) => onOpenDetail(rowDetail("퀀트 팩터", row))} />;
     case "적정주가 계산":
-      return <DcfSection />;
+      return <DcfSection onOpenAssumption={(row: DcfAssumption) => onOpenDetail(rowDetail("DCF 가정", row))} />;
     case "섹터 흐름":
-      return <SectorFlowSection />;
+      return <SectorFlowSection onOpenSector={(row: SectorMomentum) => onOpenDetail(rowDetail("섹터 흐름", row))} />;
     case "신호 알림":
-      return <SignalsSection />;
+      return <SignalsSection onOpenAlert={(row: SignalAlert) => onOpenDetail(rowDetail("신호 알림", row))} />;
     default:
       return null;
   }
@@ -92,6 +143,7 @@ export function AnalysisPage() {
           tab={activeTab}
           onOpenTool={(tool) => handleAction({ type: "detail", detail: toolDetail(tool) })}
           onSelectToolTab={setActiveTab}
+          onOpenDetail={(selectedDetail) => handleAction({ type: "detail", detail: selectedDetail })}
         />
       </section>
       <DetailPanel detail={detail} onClose={closeDetail} />

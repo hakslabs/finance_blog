@@ -61,8 +61,10 @@ const columns: DataTableColumn<PortfolioHolding>[] = [
 
 export function HoldingsTable({
   holdings,
+  onOpenHolding,
 }: {
   holdings: PortfolioHolding[];
+  onOpenHolding?: (holding: PortfolioHolding) => void;
 }) {
   if (holdings.length === 0) {
     return (
@@ -82,6 +84,8 @@ export function HoldingsTable({
         rows={holdings}
         getRowKey={(row) => `${row.exchange}:${row.symbol}`}
         density="compact"
+        onRowClick={onOpenHolding}
+        getRowAriaLabel={(row) => `${row.symbol} 보유 상세`}
       />
     </Card>
   );

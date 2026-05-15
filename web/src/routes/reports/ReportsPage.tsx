@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { PageContainer } from "../../components/layout/PageContainer";
 import { REPORT_KPIS, REPORTS } from "../../fixtures/reports";
 import { ReportFilters } from "./sections/ReportFilters";
@@ -13,6 +14,7 @@ const INITIAL_BOOKMARKED_REPORTS = new Set([
 ]);
 
 export function ReportsPage() {
+  const navigate = useNavigate();
   const [bookmarkedIds, setBookmarkedIds] = useState(INITIAL_BOOKMARKED_REPORTS);
   const [savedOnly, setSavedOnly] = useState(false);
   const reports = useMemo(
@@ -56,6 +58,7 @@ export function ReportsPage() {
         reports={reports}
         bookmarkedIds={bookmarkedIds}
         onToggleBookmark={toggleBookmark}
+        onOpenReport={(report) => navigate(`/reports/${encodeURIComponent(report.id)}`)}
       />
     </PageContainer>
   );
