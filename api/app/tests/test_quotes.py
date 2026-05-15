@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models.quotes import Bar, Quote
+from app.repos.prices import get_price_repo
 from app.routes import quotes as quotes_route
 from app.settings import Settings, get_settings
 
@@ -59,9 +60,14 @@ def _sample_quote() -> Quote:
 @pytest.fixture(autouse=True)
 def _reset_cache():
     quotes_route._clear_cache()
+    # PR-13: route reads price_bars_daily first. Tests cover the provider
+    # fallback path, so disable the DB-cache repo by default. Individual
+    # tests can re-override to exercise the DB-backed path.
+    app.dependency_overrides[get_price_repo] = lambda: None
     yield
     quotes_route._clear_cache()
     app.dependency_overrides.pop(get_settings, None)
+    app.dependency_overrides.pop(get_price_repo, None)
 
 
 def test_requires_dev_header(client: TestClient) -> None:

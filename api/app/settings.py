@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     alphavantage_api_key: Optional[str] = Field(
         default=None, alias="ALPHA_VANTAGE_API_KEY"
     )
+    cron_secret: Optional[str] = Field(default=None, alias="CRON_SECRET")
 
     @field_validator("cors_origins", mode="before")
     @classmethod

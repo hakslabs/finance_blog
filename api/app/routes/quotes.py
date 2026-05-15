@@ -1,11 +1,20 @@
-"""GET /v1/quotes/{symbol} — first real market data path.
+"""GET /v1/quotes/{symbol} — DB-backed market data path.
 
-Caching: in-process TTL of 60s per (symbol, range) pair. On provider
-failure, return the most recent cached payload with `stale=true`. When
-there is no cache yet, return 503 `upstream_unavailable` per API.md.
+PR-13 makes the DB (`price_bars_daily`) the primary cache. The flow:
 
-Fallback: Polygon → Alpha Vantage. Single attempt each; no parallel
-fan-out per data-sources.md (fallback is a circuit, not a race).
+1. Try the price_bars_daily repo. If it returns a Quote, that's the
+   answer, with `last_refreshed_at` from the most recent succeeded
+   `ingestion_runs` row.
+2. If the symbol is not in `instruments` or no bars exist yet (first
+   deploy, or a brand-new symbol), fall back to the live provider path
+   (Polygon → Alpha Vantage), gated by an in-process 60s TTL so a burst
+   of cold-start requests doesn't fan out to Polygon's 5/min ceiling.
+3. If both fail, return the most recent in-process cache with
+   `stale=true`, or 503 if there is nothing to fall back to.
+
+Vercel Functions are stateless across requests, so the in-process TTL
+is best-effort. The DB-backed path is the load-bearing cache; the TTL
+just absorbs concurrent retries inside one warm function.
 """
 
 from __future__ import annotations
@@ -18,6 +27,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.auth import get_current_user_id
 from app.models.quotes import Quote, Range
+from app.repos.prices import PriceRepo, get_price_repo
 from app.settings import Settings, get_settings
 from app.sources import alphavantage, polygon
 
@@ -42,7 +52,7 @@ def _clear_cache() -> None:
     _CACHE.clear()
 
 
-async def _fetch_fresh(symbol: str, range_: Range, settings: Settings) -> Quote:
+async def _fetch_provider(symbol: str, range_: Range, settings: Settings) -> Quote:
     """Try Polygon, fall back to Alpha Vantage once."""
     polygon_error: Exception | None = None
     if settings.polygon_api_key:
@@ -77,11 +87,16 @@ async def get_quote(
     range_: Range = Query("6mo", alias="range"),
     _user_id=Depends(get_current_user_id),
     settings: Settings = Depends(get_settings),
+    price_repo: Optional[PriceRepo] = Depends(get_price_repo),
 ) -> Quote:
     if interval != "1d":
-        # PR-10 ships daily only; 1h lands when a provider for it is wired.
         raise HTTPException(status_code=400, detail="bad_request")
     symbol = symbol.upper()
+
+    if price_repo is not None:
+        db_quote = await price_repo.fetch_quote(symbol, range_)
+        if db_quote is not None:
+            return db_quote
 
     cached = _cache_get(symbol, range_)
     if cached is not None:
@@ -95,7 +110,7 @@ async def get_quote(
             return cached[1]
 
         try:
-            fresh = await _fetch_fresh(symbol, range_, settings)
+            fresh = await _fetch_provider(symbol, range_, settings)
         except HTTPException as exc:
             if exc.status_code == 503 and cached is not None:
                 _, stale_quote = cached

@@ -90,9 +90,33 @@ PR-11 deliberately ships **no** `positions` table. Holdings are derived in the F
 
 This avoids trigger or cron complexity and keeps the derivation auditable against the raw ledger. Promote to a stored snapshot only when read latency or analytics needs justify it.
 
+## PR-13 Landed Tables
+
+Migration: `supabase/migrations/0003_prices_ingestion.sql`. Detailed design: `docs/design-docs/prices-ingestion-schema.md`.
+
+### `price_bars_daily`
+
+Persisted daily OHLCV per instrument.
+
+- Composite primary key `(instrument_id, t)` doubles as the upsert key — ingestion uses PostgREST `Prefer: resolution=merge-duplicates`.
+- `t` is a `date` (exchange-local trading session), not a `timestamptz`. KR and US sessions on the same calendar date are still distinct rows because `instrument_id` differs.
+- `numeric(18, 6)` preserves cent precision and survives split-adjusted backfills.
+- `source` column tracks which provider wrote the row (`polygon`, `alphavantage`, etc.) so the reconciliation job can re-fetch fallback rows from the primary provider.
+- Public-read RLS (`select` to `anon` + `authenticated`); writes only via `service_role`.
+- No partitioning until ~10M rows (current trajectory: ~14 MB/year for 720 symbols, so this is years away).
+
+### `ingestion_runs`
+
+Operational ledger for the cron-driven ingestion. One row per invocation.
+
+- Inserted at job start in `running` state, transitioned to `succeeded` / `failed` / `partial` on finish. Crashes between insert and transition leave a `running` row, which is itself an alerting signal.
+- `(job_name, started_at desc)` index supports the hot read: "latest run for this job".
+- `select` to `authenticated`; no public write policies (only the cron's service-role calls write).
+- No JSON metadata blob by design — extend with typed columns when something becomes load-bearing.
+
 ## Deferred Tables
 
-These domains remain unmigrated: `positions` (intentionally not added — see above), `investment_theses`, `price_bars_daily` / `ingestion_runs` (deferred to PR-10/PR-13 per `docs/design-docs/prices-ingestion-schema.md`), `fundamentals`, `economic_events`, `managers`, `filings_13f`, `filing_holdings`, `reports`, `report_documents`, `report_summaries`, `learning_articles`.
+These domains remain unmigrated: `positions` (intentionally not added — see PR-11 above), `investment_theses`, `fundamentals`, `economic_events`, `managers`, `filings_13f`, `filing_holdings`, `reports`, `report_documents`, `report_summaries`, `learning_articles`.
 
 Add each table only when a later PR introduces the endpoint or data path that needs it.
 

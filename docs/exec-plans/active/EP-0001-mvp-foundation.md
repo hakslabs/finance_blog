@@ -178,19 +178,19 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 
 ### PR-12 — Deployment and env docs
 
-- [x] Scope: Vercel deploy for the frontend (root dir = `web`, SPA rewrite, asset cache); Fly.io selected as the backend target (multi-stage Dockerfile via `uv sync --frozen`, `fly.toml` with `auto_stop_machines`, `/health` HTTP check, NRT region). `docs/DEPLOYMENT.md` carries the env matrix per `APP_ENV`, the secret-handling rules pointing at `docs/SECURITY.md`, and the rollback flow.
+- [x] Scope: **Single Vercel project** hosts both the Vite/React app and the FastAPI backend as Python serverless functions (`api/index.py` re-exports the ASGI app; `vercel.json` rewrites `/api/(.*) → /api/index/$1`). Daily ingestion runs as a Vercel Cron Job. `docs/DEPLOYMENT.md` carries the setup steps, env matrix, secret-handling rules pointing at `docs/SECURITY.md`, cron schedule, and rollback flow. **Note:** the earlier Fly.io/Dockerfile direction was reversed when the user opted for Vercel-only automation; those files are removed.
 - [x] Required Reading: `docs/SECURITY.md`, `docs/references/vercel-llms.txt`, `vercel-labs/agent-skills:deploy-to-vercel`, `vercel-labs/agent-skills:vercel-cli-with-tokens`.
-- [x] Files: `docs/DEPLOYMENT.md`, `web/vercel.json`, `api/Dockerfile`, `api/.dockerignore`, `api/fly.toml`.
-- [x] Acceptance: Local equivalent verified: Docker image builds cleanly, container with `APP_ENV=prod` serves `/health=200` and rejects `X-Dev-User` with 401 (auth gate honored). Vite production bundle scanned and contains **no** `POLYGON_API_KEY` / `SUPABASE_SERVICE_ROLE_KEY` / `ALPHA_VANTAGE_API_KEY` / `SUPABASE_JWT_SECRET` strings. Pushing to Vercel + Fly is left to the operator per the runbook; PR-14 lifts the single-user gate on the resulting URL.
+- [x] Files: `vercel.json`, `api/index.py`, `api/requirements.txt`, `docs/DEPLOYMENT.md`, `.env.example` (CRON_SECRET slot).
+- [x] Acceptance: Vite production bundle contains **no** `POLYGON_API_KEY` / `SUPABASE_SERVICE_ROLE_KEY` / `ALPHA_VANTAGE_API_KEY` / `SUPABASE_JWT_SECRET` strings. Backend reachable locally at `/v1/*`, same surface reachable on Vercel at `/api/v1/*` via the rewrite (no test for it locally; verified by the runbook's `curl` checklist after first deploy). PR-14 lifts the single-user gate on the resulting URL.
 - [x] Out Of Scope: custom domain, observability stack, CI-driven deploys.
 
-### PR-13 — Scheduled refresh proof of concept (deferred phase)
+### PR-13 — Scheduled refresh + persisted prices
 
-- [ ] Scope: One cron job that refreshes the PR-10 quote source on a schedule, writing into `ingestion_runs` with status, counts, and timestamps. UI surfaces `last_refreshed_at` from this row.
-- [ ] Required Reading: `docs/RELIABILITY.md`, `docs/references/scheduled-jobs-llms.txt`.
-- [ ] Files: cron entrypoint, `ingestion_runs` migration, UI badge.
-- [ ] Acceptance: Two consecutive scheduled runs produce two `ingestion_runs` rows; UI shows the latest timestamp; failure path writes a failed row without crashing the dashboard.
-- [ ] Out Of Scope: backfill, multi-source orchestration, retries beyond a single attempt.
+- [x] Scope: Migration `0003_prices_ingestion.sql` adds `price_bars_daily` and `ingestion_runs` per `docs/design-docs/prices-ingestion-schema.md`. Ingestion job (`api/app/jobs/refresh_us_daily.py`) calls Polygon grouped-daily (1 API call → ~12k US symbols), filters to tracked instruments, upserts into `price_bars_daily` via PostgREST merge-duplicates, and wraps the work in a `running` → `succeeded|failed` `ingestion_runs` row. Cron endpoint `GET /v1/internal/cron/refresh-us-daily` is bearer-gated by `CRON_SECRET` (auto-supplied by Vercel Cron). Quote route now reads `price_bars_daily` first (via `api/app/repos/prices.py`) and only falls back to the live provider on cache miss; `last_refreshed_at` is sourced from the latest succeeded `ingestion_runs` row.
+- [x] Required Reading: `docs/RELIABILITY.md`, `docs/references/scheduled-jobs-llms.txt`, `docs/design-docs/prices-ingestion-schema.md`.
+- [x] Files: `supabase/migrations/0003_prices_ingestion.sql`, `api/app/jobs/refresh_us_daily.py`, `api/app/routes/cron.py`, `api/app/repos/prices.py`, `api/app/routes/quotes.py` (modified to prefer DB cache), `api/app/settings.py` (CRON_SECRET slot), `vercel.json` (crons[] entry), `.env.example`.
+- [x] Acceptance: Job verified end-to-end against remote Supabase — 1 Polygon call returned 12,134 bars, filtered to 3 tracked US instruments (AAPL/MSFT/SPY), 3 rows upserted per day; running it for 4 days yields 12 rows visible in `price_bars_daily` and 4 success rows in `ingestion_runs`. Subsequent rate-limit failures during a wider backfill produced `failed` rows with the error message preserved — the API didn't crash and `last_refreshed_at` still reflects the last successful run. `/v1/quotes/AAPL` now serves directly from DB without hitting Polygon on the warm path.
+- [x] Out Of Scope: KR ingestion (KRX cron lands when KR is in scope), historical backfill in production (keep on the laptop per DEPLOYMENT.md), retries beyond a single attempt, UI badge changes (existing `last_refreshed_at` chip already surfaces the value).
 
 ### PR-14 — Supabase Auth (final PR)
 

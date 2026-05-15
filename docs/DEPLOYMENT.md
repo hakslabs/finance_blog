@@ -1,153 +1,182 @@
 # Deployment
 
-This is the operator runbook for getting Finance_lab onto the internet. Two services ship: the Vite/React app to **Vercel**, and the FastAPI service to **Fly.io**. Both are deployed by you, not by an agent. The agent owns the configs (`web/vercel.json`, `api/Dockerfile`, `api/fly.toml`) and this runbook; you own the secrets and the deploy CLI sessions.
+Finance_lab ships as a **single Vercel project** that hosts both the Vite/React app and the FastAPI backend (as Python serverless functions). One git push deploys everything. The daily price-bar ingestion runs as a Vercel Cron Job — there is no separate server to babysit.
 
-**Blocking gate.** Per EP-0001 PR-12 and PR-14, the deployed URL is for **you only** until PR-14 ships real auth. The interim `X-Dev-User` header path lets anyone with the URL act as the dev user. Do not share the preview URL until PR-14 is merged.
+**Blocking gate.** Per EP-0001 PR-14, the deployed URL is for **you only** until PR-14 ships real auth. The interim `X-Dev-User` header path lets anyone with the URL act as the dev user. Do not share the preview URL until PR-14 is merged.
 
 ## Architecture
 
 ```
-browser  →  https://<vercel-project>.vercel.app   (Vercel static + SPA shell)
-                       ↓ VITE_API_BASE_URL
-              https://finance-lab-api.fly.dev     (Fly.io FastAPI service)
-                       ↓ service-role key (server-only)
-                  Supabase Postgres + Auth
+browser
+  │
+  │  same-origin requests
+  ▼
+https://<vercel>.vercel.app
+  ├── static SPA shell                    (vite build → web/dist)
+  └── /api/*  →  api/index.py             (Vercel Python function, FastAPI ASGI)
+                  │
+                  ├──  Supabase REST       (data: profiles, watchlists, portfolios, prices)
+                  └──  Polygon / AlphaVantage (only on cache miss)
+
+Vercel Cron Jobs (defined in vercel.json):
+  daily 22:30 UTC  →  GET /api/v1/internal/cron/refresh-us-daily
+                       (Vercel attaches Authorization: Bearer ${CRON_SECRET})
+                       FastAPI runs the Polygon grouped-daily fetch and
+                       upserts price_bars_daily.
 ```
 
-Provider keys (Polygon, Alpha Vantage, Supabase service-role, JWT secret) live **only** in the Fly app's secret store. They never reach the browser. See `docs/SECURITY.md` for the rule and the rationale.
+Provider keys (Polygon, Alpha Vantage, Supabase service-role, JWT secret) live **only** in the Vercel project's environment variables, scoped to server-side functions. Anything browser-side is prefixed `VITE_` and considered public.
 
-## Environment Matrix
+## One-time setup
 
-`APP_ENV` is the single switch the backend uses to gate the dev-header path and surface docs routes.
+1. Push the repo to GitHub.
+2. https://vercel.com/new → import the repo.
+3. **Framework Preset:** leave as auto-detect (Vite is detected from `web/`).
+4. **Root Directory:** keep as the repo root (do not change).
+5. **Build & Output Settings:** `vercel.json` at the repo root carries the build command (`cd web && npm install && npm run build`) and output directory (`web/dist`). The Vercel UI will show these as derived from the config — leave them on auto.
+6. Add the environment variables in the next section.
+7. Click **Deploy**.
 
-| Variable                       | local                                  | preview (Vercel preview + Fly)         | prod (Vercel prod + Fly)               | Used by              |
-| ------------------------------ | -------------------------------------- | -------------------------------------- | -------------------------------------- | -------------------- |
-| `APP_ENV`                      | `local`                                | `preview`                              | `prod`                                 | api                  |
-| `LOG_LEVEL`                    | `info`                                 | `info`                                 | `warn`                                 | api                  |
-| `CORS_ORIGINS`                 | (defaulted; localhost only)            | `https://*-finance-lab.vercel.app`     | `https://finance-lab.vercel.app`       | api                  |
-| `SUPABASE_URL`                 | `.env`                                 | Fly secret                             | Fly secret                             | api                  |
-| `SUPABASE_SERVICE_ROLE_KEY`    | `.env`                                 | Fly secret                             | Fly secret                             | api                  |
-| `SUPABASE_JWT_SECRET`          | (unused until PR-14)                   | Fly secret (PR-14)                     | Fly secret (PR-14)                     | api                  |
-| `POLYGON_API_KEY`              | `.env`                                 | Fly secret                             | Fly secret                             | api                  |
-| `ALPHA_VANTAGE_API_KEY`        | `.env`                                 | Fly secret                             | Fly secret                             | api                  |
-| `VITE_API_BASE_URL`            | `http://localhost:8000`                | `https://finance-lab-api.fly.dev`      | `https://finance-lab-api.fly.dev`      | web (build-time)     |
-| `VITE_DEV_USER_ID`             | `00000000-0000-4000-8000-000000000001` | **unset**                              | **unset**                              | web (build-time)     |
-| `VITE_SUPABASE_URL`            | `.env`                                 | Vercel env                             | Vercel env                             | web (PR-14)          |
-| `VITE_SUPABASE_ANON_KEY`       | `.env`                                 | Vercel env                             | Vercel env                             | web (PR-14)          |
+The first deploy can take ~2 min while Vercel installs Python deps from `api/requirements.txt`. Subsequent code-only deploys are ~30s.
+
+## Environment variables
+
+Add these in the Vercel project → Settings → Environment Variables, applied to **Production**, **Preview**, and **Development** unless noted otherwise.
+
+### Server-only (Python functions can read these; never reach browser)
+
+| Variable                       | Notes                                                                    |
+| ------------------------------ | ------------------------------------------------------------------------ |
+| `APP_ENV`                      | `preview` for preview deploys, `prod` for production. Gates the dev-header path. |
+| `SUPABASE_URL`                 | Same value used locally.                                                 |
+| `SUPABASE_SERVICE_ROLE_KEY`    | Server-only. Never put in a `VITE_` variable.                            |
+| `SUPABASE_JWT_SECRET`          | Required from PR-14 onward.                                              |
+| `POLYGON_API_KEY`              | US OHLCV provider.                                                       |
+| `ALPHA_VANTAGE_API_KEY`        | US OHLCV fallback.                                                       |
+| `CRON_SECRET`                  | Any high-entropy string. Vercel forwards this as the `Authorization` header on every cron invocation; the FastAPI cron route rejects mismatches with 401. |
+
+### Browser-bundled (build-time, embedded into the JS bundle)
+
+| Variable                | Value                                          | Notes |
+| ----------------------- | ---------------------------------------------- | ----- |
+| `VITE_API_BASE_URL`     | `/api`                                         | Relative URL so the SPA hits its own origin's `/api/*`. |
+| `VITE_DEV_USER_ID`      | **unset on Vercel**                            | Setting this would defeat the dev-header gate. |
+| `VITE_SUPABASE_URL`     | Public Supabase URL                            | Used from PR-14 once the browser participates in auth. |
+| `VITE_SUPABASE_ANON_KEY`| Supabase anon key (public-safe by design)      | Used from PR-14.                                |
 
 Rules:
 
-- Anything prefixed `VITE_` is **shipped to the browser bundle**. Never put a server-only secret there.
-- Setting `VITE_DEV_USER_ID` outside of `local` would defeat the dev-header gate; leave it empty in Vercel preview/prod project settings.
-- `CORS_ORIGINS` accepts a comma-separated list. The backend splits on commas (see `api/app/settings.py`).
-- Fly secrets are write-only via `fly secrets set`. They never appear in `fly.toml` or in this repo.
+- Anything prefixed `VITE_` is **shipped to the browser bundle**. Never put a server-only secret there. (See `docs/SECURITY.md`.)
+- `CORS_ORIGINS` from the local stack is **not needed** in Vercel — the browser and API are same-origin once deployed.
 
-See `.env.example` for the authoritative variable list and `docs/ENV.md` if a more detailed per-variable description exists.
+## Deploy
 
-## Vercel — Frontend
+After the initial setup, every push to the connected branch triggers a deploy automatically:
 
-### One-time setup
+- Push to `main` → production deploy at `https://<project>.vercel.app`.
+- Push to any other branch → preview deploy at `https://<project>-<hash>-<scope>.vercel.app`.
 
-1. `npm i -g vercel` (or `npx vercel ...` works without install).
-2. From the repo root, run `vercel link` and answer:
-   - Scope: your account / team.
-   - Project name: `finance-lab` (or whatever you'll use as the canonical domain).
-   - Root directory: **`web`** (this is the critical answer — the repo is a monorepo).
-3. The link writes `.vercel/` (gitignored).
-
-`web/vercel.json` declares the framework preset (`vite`), build/install commands, output directory (`dist`), the SPA catch-all rewrite, and an asset cache header. You do not need to set these in the Vercel UI; the JSON wins.
-
-### Environment variables
-
-In the Vercel project dashboard → Settings → Environment Variables, add at least:
-
-- `VITE_API_BASE_URL` — set to your Fly app's URL (see next section). Apply to **Preview** and **Production**.
-
-Do **not** add `VITE_DEV_USER_ID` to Vercel.
-
-### Deploy
+Manual deploy from CLI also works:
 
 ```sh
-# Preview (every push to a non-main branch gets one automatically when GitHub is connected)
-vercel
-
-# Production
-vercel --prod
+npm i -g vercel
+vercel             # preview
+vercel --prod      # production
 ```
 
-Output URL prints on the last line. Open it; the dashboard's `WatchlistCard` should hit the Fly backend.
+## Vercel Cron
 
-## Fly.io — Backend
+`vercel.json` declares one cron job:
 
-### One-time setup
+```jsonc
+"crons": [
+  {
+    "path": "/api/v1/internal/cron/refresh-us-daily",
+    "schedule": "30 22 * * 1-5"   // 22:30 UTC, Mon–Fri (~18:30 ET ≈ post-market close)
+  }
+]
+```
+
+Vercel sends a `GET` to this path with `Authorization: Bearer ${CRON_SECRET}`. The FastAPI route runs the Polygon grouped-daily fetch (1 API call covering all US-listed symbols), filters to tracked instruments, upserts into `price_bars_daily`, and writes a row to `ingestion_runs`.
+
+The job is **idempotent** via the composite primary key `(instrument_id, t)` — re-running for the same date is safe.
+
+**Cron job constraints on Hobby tier:**
+
+- Up to 2 cron jobs total (we use 1).
+- Daily granularity (one trigger per day per job).
+- Function timeout: 10s. The current job fits well under this since it's one fetch + one batched upsert.
+
+## Verify
+
+After the first deploy:
 
 ```sh
-brew install flyctl              # or curl -L https://fly.io/install.sh | sh
-fly auth login                   # opens browser
+# Static + SPA
+curl -sS https://<project>.vercel.app/ | head        # serves index.html
+
+# API health
+curl -sS https://<project>.vercel.app/api/health     # {"status":"ok",...}
+
+# API gate (must reject when APP_ENV=prod)
+curl -sS -o /dev/null -w "%{http_code}\n" \
+  -H "X-Dev-User: 00000000-0000-4000-8000-000000000001" \
+  https://<project>.vercel.app/api/v1/watchlists/me   # 401
+
+# Cron auth gate
+curl -sS https://<project>.vercel.app/api/v1/internal/cron/refresh-us-daily
+# → 401 unauthenticated (no bearer) or 503 cron_disabled (env var missing)
+```
+
+Then in the browser at the deployed URL:
+
+- Dashboard `WatchlistCard` should render with the seeded watchlist (only visible because the dev-header gate is open in `APP_ENV=preview`; in `APP_ENV=prod` it stays closed until PR-14).
+- `/stocks/AAPL` chart renders from `price_bars_daily` (populated by the cron, or seeded once via the manual backfill below).
+- `/portfolio` shows the dev portfolio.
+
+DevTools → Network → check the JS bundle's source: searching for `POLYGON_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ALPHA_VANTAGE_API_KEY`, or `SUPABASE_JWT_SECRET` must yield **zero** hits.
+
+## Manual ingestion / backfill
+
+The cron handles steady-state. For the first deploy or for ad-hoc backfills:
+
+```sh
+# From your laptop, with .env loaded:
 cd api
-fly launch --no-deploy           # accepts api/fly.toml; pick "yes" to keep existing config
+uv run python -m app.jobs.refresh_us_daily          # writes yesterday's bars
 ```
 
-`fly launch` will ask whether to create a Postgres or Redis; answer **no** to both. We use Supabase for storage and an in-process TTL cache.
-
-If `fly launch` rewrites `fly.toml` to a different `app` name (because `finance-lab-api` is taken globally), keep the name it chose — it's globally unique across Fly. Update `VITE_API_BASE_URL` in Vercel to match.
-
-### Set secrets
+For multi-day backfill, throttle to Polygon's free-tier 5/min ceiling:
 
 ```sh
-fly secrets set \
-  SUPABASE_URL="https://<ref>.supabase.co" \
-  SUPABASE_SERVICE_ROLE_KEY="<...>" \
-  POLYGON_API_KEY="<...>" \
-  ALPHA_VANTAGE_API_KEY="<...>" \
-  CORS_ORIGINS="https://finance-lab.vercel.app,https://finance-lab-git-main-<scope>.vercel.app"
-# When PR-14 lands, add:
-# SUPABASE_JWT_SECRET="<...>"
+uv run python -c "
+import asyncio, time
+from datetime import date, timedelta
+from app.jobs.refresh_us_daily import run
+from app.settings import get_settings
+
+async def main():
+    s = get_settings()
+    for i in range(60):
+        target = date.today() - timedelta(days=i + 1)
+        try:
+            print(await run(s, target=target))
+        except Exception as e:
+            print(target, 'fail', e)
+        await asyncio.sleep(13)   # respect 5/min
+
+asyncio.run(main())
+"
 ```
-
-Verify with `fly secrets list` (names only — values never read back).
-
-### Deploy
-
-```sh
-fly deploy
-```
-
-The build runs `api/Dockerfile`: stage 1 resolves dependencies via `uv sync --frozen`, stage 2 carries only `/opt/venv` + `app/`. First deploy takes ~2 minutes; subsequent code-only deploys are ~30 seconds because Fly caches the dependency layer.
-
-### Verify
-
-```sh
-fly status                                                            # Machines: started
-curl -sS https://<app>.fly.dev/health                                  # → {"status":"ok",...}
-curl -sS https://<app>.fly.dev/v1/watchlists/me                        # → 401 (no auth header in prod)
-fly logs                                                              # tail recent logs
-```
-
-The dev header **must** be rejected on Fly because `APP_ENV=prod` in the Dockerfile. A `200` from `/v1/watchlists/me` with an `X-Dev-User` header would be a deployment bug — file an issue and roll back.
-
-## End-to-End Verification
-
-Once both sides are deployed:
-
-1. Visit the Vercel preview URL.
-2. Dashboard `WatchlistCard` should render the **same** 4 instruments seen locally (AAPL/MSFT/SPY/005930.KS). If it shows the empty state or a 401, the browser is hitting the backend without an authenticated request — expected behavior until PR-14. The data path itself is verified by exercising the endpoint with a server-side `curl` while authenticated, not by the public preview.
-3. `/stocks/AAPL` chart should render — that endpoint is read-only and not yet gated.
-
-Acceptance is met when:
-
-- Frontend reachable on a Vercel preview URL.
-- Backend reachable on the Fly URL (`/health` returns 200).
-- Frontend bundle in the browser DevTools network tab contains **no** provider keys (search for `POLYGON_` / `SUPABASE_SERVICE_ROLE_KEY` in the JS — must not be present).
 
 ## Rollback
 
-- **Frontend:** Vercel dashboard → Deployments → previous deployment → "Promote to Production". Instant.
-- **Backend:** `fly releases` to list, `fly releases rollback <version>` to revert. Takes ~30s.
+- **Frontend or backend regression:** Vercel dashboard → Deployments → previous deployment → **Promote to Production**. Instant. Both the SPA bundle and the Python function roll back atomically because they ship together.
+- **Migration regression:** revert the offending migration via `psql` against `SUPABASE_DB_URL`, or push a forward fix. Supabase has no built-in migration rollback for hosted projects.
 
 ## Out Of Scope (deferred)
 
 - Custom domain (CNAME + cert): post-PR-14.
-- Observability stack (Sentry, Logflare): PR-13 may add a `SENTRY_DSN_API` when ingestion failures start mattering.
-- CI-driven deploy (GitHub Actions calling `vercel deploy` / `fly deploy`): the manual loop is fine for the solo phase. Revisit when a second contributor joins.
-- Auto-deploy from `main`: deliberately disabled until PR-14 lifts the single-user gate.
+- Observability (Sentry, Logflare): wire `SENTRY_DSN_API` later when ingestion failures start mattering.
+- KR price ingestion via KRX OpenAPI: a second cron + job lands when the KR data path is in scope.
+- Long backfills (>5 days) as Vercel functions: 10s timeout is too tight; keep backfills on the laptop.
