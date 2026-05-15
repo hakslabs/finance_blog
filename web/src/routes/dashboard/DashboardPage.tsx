@@ -1,4 +1,5 @@
 import { PageContainer } from "../../components/layout/PageContainer";
+import { getUserDisplayName, useAuth } from "../../lib/auth-state";
 import { useWatchlist } from "../../lib/useWatchlist";
 import {
   ECONOMIC_EVENTS,
@@ -32,10 +33,14 @@ import { TopMoversCard } from "./sections/TopMoversCard";
 import { WatchlistCard } from "./sections/WatchlistCard";
 
 export function DashboardPage() {
+  const auth = useAuth();
   const watchlistState = useWatchlist();
+  const greetingName =
+    auth.status === "signed-in" ? getUserDisplayName(auth.user) : GREETING_NAME;
+
   return (
     <PageContainer
-      title={`좋은 아침입니다, ${GREETING_NAME} 님`}
+      title={`좋은 아침입니다, ${greetingName} 님`}
       description={
         <GreetingMeta
           date={MARKET_STATUS.date}

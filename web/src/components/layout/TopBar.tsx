@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { useAuth } from "../../lib/auth-state";
+import { getUserInitial, useAuth } from "../../lib/auth-state";
 import { getCurrentNavItem } from "./navigation";
 import styles from "./TopBar.module.css";
 
@@ -50,23 +50,35 @@ export function TopBar() {
         >
           <span aria-hidden="true">!</span>
         </button>
-        <Link
-          to="/mypage"
-          className={styles.avatar}
-          aria-label="마이페이지로 이동"
-          title="마이페이지"
-        >
-          {auth.status === "signed-in" ? auth.user.email?.charAt(0).toUpperCase() : ""}
-        </Link>
-        <button
-          className={styles.iconButton}
-          type="button"
-          aria-label="로그아웃"
-          title="로그아웃"
-          onClick={() => void auth.signOut()}
-        >
-          <span aria-hidden="true">↗</span>
-        </button>
+        {auth.status === "signed-in" ? (
+          <>
+            <Link
+              to="/mypage"
+              className={styles.avatar}
+              aria-label="마이페이지로 이동"
+              title="마이페이지"
+            >
+              {getUserInitial(auth.user)}
+            </Link>
+            <button
+              className={styles.iconButton}
+              type="button"
+              aria-label="로그아웃"
+              title="로그아웃"
+              onClick={() => void auth.signOut()}
+            >
+              <span aria-hidden="true">↗</span>
+            </button>
+          </>
+        ) : (
+          <button
+            className={styles.loginButton}
+            type="button"
+            onClick={() => void auth.signInWithGoogle()}
+          >
+            로그인
+          </button>
+        )}
       </div>
     </header>
   );

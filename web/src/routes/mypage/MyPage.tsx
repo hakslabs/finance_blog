@@ -3,6 +3,7 @@ import { Badge } from "../../components/primitives/Badge";
 import { Card } from "../../components/primitives/Card";
 import { DataTable } from "../../components/primitives/DataTable";
 import { KpiTile } from "../../components/primitives/KpiTile";
+import { getUserDisplayName, useAuth } from "../../lib/auth-state";
 import {
   ACTIVITY_LOGS,
   MYPAGE_KPIS,
@@ -47,6 +48,15 @@ const settingColumns = [
 ];
 
 export function MyPage() {
+  const auth = useAuth();
+  const displayName =
+    auth.status === "signed-in" ? getUserDisplayName(auth.user) : "사용자";
+  const email = auth.status === "signed-in" ? auth.user.email ?? "이메일 없음" : "";
+  const createdAt =
+    auth.status === "signed-in"
+      ? new Date(auth.user.created_at).toLocaleDateString("ko-KR")
+      : "";
+
   return (
     <PageContainer
       eyebrow="My Page"
@@ -56,9 +66,9 @@ export function MyPage() {
       <Card>
         <div className={styles.identity}>
           <div className={styles.avatar} aria-hidden="true" />
-          <strong>홍길동</strong>
-          <span>hong@example.com · 일반회원 · 가입 21개월차</span>
-          <span>마지막 활동 12분 전</span>
+          <strong>{displayName}</strong>
+          <span>{email} · 일반회원 · 가입일 {createdAt}</span>
+          <span>Google OAuth로 로그인됨</span>
         </div>
       </Card>
 
