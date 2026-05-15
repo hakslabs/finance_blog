@@ -12,10 +12,12 @@ const SOURCE_CLASS: Record<TodoSource, string> = {
 export function ActionPrompts({
   todos,
   onOpenTodo,
+  onToggleTodo,
   onOpenAll,
 }: {
   todos: TodoItem[];
   onOpenTodo?: (todo: TodoItem) => void;
+  onToggleTodo?: (todo: TodoItem) => void;
   onOpenAll?: () => void;
 }) {
   const doneCount = todos.filter((t) => t.done).length;
@@ -37,24 +39,32 @@ export function ActionPrompts({
       </div>
       <div className={styles.grid}>
         {todos.map((todo) => (
-          <button
-            type="button"
+          <div
             key={todo.id}
             className={todo.done ? styles.itemDone : styles.item}
-            onClick={() => onOpenTodo?.(todo)}
           >
-            <span
+            <button
+              type="button"
               className={todo.done ? styles.checkboxChecked : styles.checkbox}
+              aria-label={`${todo.task} ${todo.done ? "미완료로 변경" : "완료로 변경"}`}
+              aria-pressed={todo.done}
+              onClick={() => onToggleTodo?.(todo)}
             />
-            <span
-              className={todo.done ? styles.taskTextDone : styles.taskText}
+            <button
+              type="button"
+              className={styles.todoBody}
+              onClick={() => onOpenTodo?.(todo)}
             >
-              {todo.task}
-            </span>
-            <span className={SOURCE_CLASS[todo.source]}>{todo.source}</span>
-            <span className={styles.categoryTag}>{todo.category}</span>
-            <span className={styles.metaText}>{todo.meta}</span>
-          </button>
+              <span
+                className={todo.done ? styles.taskTextDone : styles.taskText}
+              >
+                {todo.task}
+              </span>
+              <span className={SOURCE_CLASS[todo.source]}>{todo.source}</span>
+              <span className={styles.categoryTag}>{todo.category}</span>
+              <span className={styles.metaText}>{todo.meta}</span>
+            </button>
+          </div>
         ))}
       </div>
     </Card>

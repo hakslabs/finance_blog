@@ -130,7 +130,7 @@ Shared hook that executes `ActionIntent` and owns selected detail plus transient
 
 ### `DetailPanel({ detail, onClose })`
 
-Right-side dialog for item detail. Used for news, todos, events, analysis tools, glossary terms, filings, master changes, and other text/detail surfaces that do not justify a dedicated route.
+Centered dialog for item detail. Used for news, todos, events, analysis tools, glossary terms, filings, master changes, and other text/detail surfaces that do not justify a dedicated route. `DetailSection` supports body text plus optional `items` and compact bar-chart rows for dashboard drilldowns.
 
 ### `ActionNotice({ message })`
 
@@ -188,7 +188,7 @@ Portfolio page hook for the PR-11 portfolio data path. Returns `PortfolioState`:
 - `FEAR_GREED: FearGreedData[]` (length 2: 한국, 미국)
 - `MACRO_INDICATORS: MacroIndicator[]`
 - `WATCHLIST: WatchlistItem[]`
-- `TOP_MOVERS: TopMover[]`
+- `TOP_MOVERS_KR: TopMover[]`, `TOP_MOVERS_US: TopMover[]`, `TOP_MOVERS` aliasing the KR default
 - `NEWS: NewsItem[]`
 - `ECONOMIC_EVENTS: EconomicEvent[]`
 - `RETURN_DATA: ReturnSeries`
@@ -302,16 +302,16 @@ Used by routes that haven't been implemented yet. Wraps content in `PageContaine
 
 ### `dashboard/DashboardPage` (paths: `/`, `/dashboard`)
 
-Composes the dashboard from `routes/dashboard/sections/*` and `fixtures/dashboard.ts`. Top-level structure: `PageContainer(title=greeting, description=GreetingMeta, actions=GreetingActions)` → `NoticeBanner` → `ActionPrompts` → `IndicatorStrip` → 4× `.pair` grids of sibling section cards. The page owns `useInteractionActions()` and passes action callbacks to sections so notices, todos, news, events, and return contributors open `DetailPanel` or planned notices.
+Composes the dashboard from `routes/dashboard/sections/*` and `fixtures/dashboard.ts`. Top-level structure: `PageContainer(title=time-aware greeting, description=GreetingMeta, actions=GreetingActions)` → `NoticeBanner` → `ActionPrompts` → `IndicatorStrip` → 4× `.pair` grids of sibling section cards. The page owns `useDashboardClock()` for greeting/market session state, local todo completion state, and `useInteractionActions()` so notices, todos, F&G gauges, macro indicators, news, events, and return contributors open `DetailPanel` or planned notices.
 
 **Sections** (`routes/dashboard/sections/`):
 
-- `GreetingActions({ summary })` + `GreetingMeta({ date, day, time, nyseOpensIn })` — slotted into `PageContainer.actions` / `description`.
+- `GreetingActions({ summary })` + `GreetingMeta({ currentTimeLabel, marketStatus })` — slotted into `PageContainer.actions` / `description`.
 - `NoticeBanner({ notice, onOpen? })`.
-- `ActionPrompts({ todos, onOpenTodo?, onOpenAll? })` — todo grid, 2-col → 1-col responsive.
-- `IndicatorStrip({ fearGreed, macros, marketTime })` — renders **two** sibling `<Card>`s (F&G gauges + macro grid); place inside a `.pair` wrapper in the page.
+- `ActionPrompts({ todos, onOpenTodo?, onToggleTodo?, onOpenAll? })` — todo grid, 2-col → 1-col responsive; checkbox toggles local completion while row body opens detail.
+- `IndicatorStrip({ fearGreed, macros, marketTime, onOpenFearGreed?, onOpenMacro? })` — renders **two** sibling `<Card>`s (clickable F&G gauges + clickable macro grid); place inside a `.pair` wrapper in the page.
 - `WatchlistCard({ state })` — renders signed-out/config-error/loading/error/empty/ready states from `useWatchlist()`; loading uses the shared `Skeleton` primitive.
-- `TopMoversCard({ movers })`.
+- `TopMoversCard({ moversByMarket, initialMarket, sessions })` — market-aware KR/US movers with MTS-style market switch and current-session badge.
 - `NewsList({ items, onOpenNews?, onSaveNews?, onAddNote? })`.
 - `EconomicEventsList({ events, onOpenEvent? })`.
 - `ReturnsChart({ data, onOpenContributor?, onSendReview? })`.
@@ -322,6 +322,7 @@ Composes the dashboard from `routes/dashboard/sections/*` and `fixtures/dashboar
 
 - `sections/sparkline.ts` — four precomputed SVG path strings: `SPARK_MACRO_UP/DOWN` (40×14) and `SPARK_ROW_UP/DOWN` (28×14).
 - `dashboardInteractions.ts` — pure mappers from dashboard fixture records to shared `DetailContent`.
+- `useDashboardClock.ts` — dashboard-only time/session hook. Produces KST-aware greeting text, formatted current time, KR/US session status, and the default market for `TopMoversCard`.
 - `sections/_card.module.css` — shared card-header pieces consumed via `composes: x from "./_card.module.css"`. Exports class names `title`, `subtitle`, `titleBlock`, `headerLeft`, `headerRowBordered`, `footerRowBordered`. Add a class here only when its declarations are byte-identical across 3+ sections.
 - `sections/_table.module.css` — shared table scaffolding for row-based sections (Watchlist, TopMovers). Exports `tableHead`, `thGrow`, `thFixed`, `row` (with `:last-child` border reset), `symbol`, `symbolCode`, `symbolName`, `cellPrice`, `cellChange`, `cellChangePos`, `cellChangeNeg`. Section-specific column widths stay in the section module.
 

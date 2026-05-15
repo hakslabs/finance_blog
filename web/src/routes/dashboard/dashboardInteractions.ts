@@ -1,5 +1,13 @@
 import type { ActionIntent, DetailContent } from "../../lib/interaction/action-intent";
-import type { EconomicEvent, NewsItem, Notice, ReturnContributor, TodoItem } from "../../fixtures/dashboard";
+import type {
+  EconomicEvent,
+  FearGreedData,
+  MacroIndicator,
+  NewsItem,
+  Notice,
+  ReturnContributor,
+  TodoItem,
+} from "../../fixtures/dashboard";
 
 export function noticeDetail(notice: Notice): DetailContent {
   return {
@@ -32,7 +40,62 @@ export function todoDetail(todo: TodoItem): DetailContent {
     sections: [
       {
         title: "처리 방식",
-        body: "세부 검토는 마이페이지 활동 탭에서 이어가고, 메모 저장은 메모/Thesis 저장 PR에서 영구화됩니다.",
+        body: todo.done
+          ? "완료 처리된 항목입니다. 체크 표시를 다시 누르면 미완료로 되돌릴 수 있습니다."
+          : "행 왼쪽 체크 표시로 완료 상태를 바로 바꿀 수 있고, 세부 검토는 마이페이지 활동 탭에서 이어갑니다.",
+      },
+    ],
+  };
+}
+
+export function fearGreedDetail(data: FearGreedData): DetailContent {
+  return {
+    id: data.id,
+    eyebrow: `시장 심리 · ${data.market}`,
+    title: `${data.market} 공포 · 탐욕 지수`,
+    meta: `${data.value} · ${data.label}`,
+    tags: [data.marketCode, data.label],
+    summary: data.subtext,
+    sections: [
+      {
+        title: "최근 흐름",
+        body: "최근 5개 관측치를 0–100 스케일로 비교합니다.",
+        chart: data.history.map((value, index) => ({
+          label: `D-${data.history.length - index - 1}`,
+          value,
+          tone: value >= 65 ? "positive" : value <= 35 ? "negative" : "accent",
+        })),
+      },
+      {
+        title: "주요 원인",
+        body: "현재 점수에 영향을 준 대표 요인입니다.",
+        items: data.drivers,
+      },
+    ],
+  };
+}
+
+export function macroDetail(macro: MacroIndicator): DetailContent {
+  return {
+    id: macro.id,
+    eyebrow: `핵심 경제지표 · ${macro.market}`,
+    title: macro.label,
+    meta: `${macro.value} · ${macro.change}`,
+    tags: [macro.localName, macro.up ? "상승" : "하락"],
+    summary: macro.detail,
+    sections: [
+      {
+        title: "최근 흐름",
+        body: "화면용 샘플 흐름입니다. 실제 시계열은 경제지표 API 연결 PR에서 교체됩니다.",
+        chart: macro.history.map((value, index) => ({
+          label: `T-${macro.history.length - index - 1}`,
+          value,
+          tone: macro.up ? "positive" : "negative",
+        })),
+      },
+      {
+        title: "확인 포인트",
+        body: "해당 지표가 보유 종목, 환율, 섹터 흐름에 어떤 영향을 주는지 함께 확인합니다.",
       },
     ],
   };

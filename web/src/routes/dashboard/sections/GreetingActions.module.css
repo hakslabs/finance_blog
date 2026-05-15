@@ -46,6 +46,10 @@
   color: var(--positive);
 }
 
+.metaNeutral {
+  color: var(--muted);
+}
+
 .metaFaint {
   color: var(--faint);
 }

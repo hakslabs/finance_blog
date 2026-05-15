@@ -1,6 +1,12 @@
 export type DetailSection = {
   title: string;
   body: string;
+  items?: string[];
+  chart?: {
+    label: string;
+    value: number;
+    tone?: "positive" | "negative" | "warning" | "accent" | "neutral";
+  }[];
 };
 
 export type DetailContent = {

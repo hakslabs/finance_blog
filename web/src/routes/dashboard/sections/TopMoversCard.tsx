@@ -1,18 +1,53 @@
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "../../../components/primitives/Badge";
 import { Card } from "../../../components/primitives/Card";
 import type { TopMover } from "../../../fixtures/dashboard";
+import type { MarketCode } from "../useDashboardClock";
 import styles from "./TopMoversCard.module.css";
 
-export function TopMoversCard({ movers }: { movers: TopMover[] }) {
+type Props = {
+  moversByMarket: Record<MarketCode, TopMover[]>;
+  initialMarket: MarketCode;
+  sessions: {
+    code: MarketCode;
+    label: string;
+    open: boolean;
+    statusLabel: string;
+  }[];
+};
+
+export function TopMoversCard({ moversByMarket, initialMarket, sessions }: Props) {
+  const [manualMarket, setManualMarket] = useState<MarketCode | null>(null);
+  const selectedMarket = manualMarket ?? initialMarket;
+
+  const movers = moversByMarket[selectedMarket];
+  const session = useMemo(
+    () => sessions.find((item) => item.code === selectedMarket),
+    [selectedMarket, sessions]
+  );
+
   return (
     <Card className={styles.card}>
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <h2 className={styles.title}>실시간 상위 거래</h2>
-          <Badge tone="positive">KRX 개장 중</Badge>
+          <Badge tone={session?.open ? "positive" : "neutral"}>
+            {session?.statusLabel ?? "장 상태 확인"}
+          </Badge>
         </div>
-        <span className={styles.headerRight}>거래대금 순</span>
+        <div className={styles.marketSwitch} aria-label="시장 선택">
+          {sessions.map((item) => (
+            <button
+              key={item.code}
+              type="button"
+              className={item.code === selectedMarket ? styles.marketButtonActive : styles.marketButton}
+              onClick={() => setManualMarket(item.code)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
       </div>
       <div className={styles.tableHead}>
         <div className={styles.thRank}>#</div>
@@ -37,7 +72,7 @@ export function TopMoversCard({ movers }: { movers: TopMover[] }) {
       ))}
       <div className={styles.footer}>
         <Link className={styles.footerAction} to="/stocks">전체 보기 →</Link>
-        <span>21:30 NYSE 개장 시 자동 전환</span>
+        <span>{session?.label ?? "선택 시장"} · 거래대금 순 · 현재 시간 기준 기본 시장 자동 선택</span>
       </div>
     </Card>
   );

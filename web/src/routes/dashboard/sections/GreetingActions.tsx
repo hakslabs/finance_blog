@@ -27,21 +27,28 @@ export function GreetingActions({ summary }: Props) {
 }
 
 export function GreetingMeta({
-  date,
-  day,
-  time,
-  nyseOpensIn,
+  currentTimeLabel,
+  marketStatus,
 }: {
-  date: string;
-  day: string;
-  time: string;
-  nyseOpensIn: string;
+  currentTimeLabel: string;
+  marketStatus: {
+    label: string;
+    statusLabel: string;
+    open: boolean;
+  }[];
 }) {
+  const openMarket = marketStatus.find((market) => market.open);
   return (
     <>
-      오늘의 투자 상황판 · {date} {day} {time}{" "}
-      <b className={styles.metaPositive}>● KRX 개장 중</b>{" "}
-      <span className={styles.metaFaint}>/ NYSE 개장까지 {nyseOpensIn}</span>
+      오늘의 투자 상황판 · {currentTimeLabel}{" "}
+      {openMarket ? (
+        <b className={styles.metaPositive}>● {openMarket.statusLabel}</b>
+      ) : (
+        <b className={styles.metaNeutral}>● 정규장 대기</b>
+      )}{" "}
+      <span className={styles.metaFaint}>
+        / {marketStatus.map((market) => `${market.label} ${market.statusLabel}`).join(" · ")}
+      </span>
     </>
   );
 }

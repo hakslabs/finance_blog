@@ -26,6 +26,14 @@ const FG_SEGMENTS: FgBand[] = FG_BANDS.map((b, idx) => ({
   label: b.label,
 }));
 
+const FG_LABEL_CLASS: Record<FgBand["label"], string> = {
+  "Extreme Fear": styles.fgExtremeFear,
+  Fear: styles.fgFear,
+  Neutral: styles.fgNeutral,
+  Greed: styles.fgGreed,
+  "Extreme Greed": styles.fgExtremeGreed,
+};
+
 function fgArc(
   from: number,
   to: number,
@@ -57,14 +65,24 @@ const FG_ARCS = FG_SEGMENTS.map((s) => ({
   key: `${s.from}-${s.to}`,
 }));
 
-function FearGreedGauge({ data }: { data: FearGreedData }) {
+function FearGreedGauge({
+  data,
+  onOpen,
+}: {
+  data: FearGreedData;
+  onOpen?: (data: FearGreedData) => void;
+}) {
   const band = activeBand(data.value);
   const ang = Math.PI - (data.value / 100) * Math.PI;
   const nx = GAUGE_CX + (GAUGE_R - 5) * Math.cos(ang);
   const ny = GAUGE_CY - (GAUGE_R - 5) * Math.sin(ang);
 
   return (
-    <div className={styles.gaugeWrap}>
+    <button
+      type="button"
+      className={styles.gaugeWrap}
+      onClick={() => onOpen?.(data)}
+    >
       <span className={styles.gaugeMarketLabel}>{data.market}</span>
       <svg
         className={styles.gaugeSvg}
@@ -94,11 +112,11 @@ function FearGreedGauge({ data }: { data: FearGreedData }) {
       </svg>
       <div className={styles.gaugeValue}>
         <div className={styles.gaugeNumber}>{data.value}</div>
-        <div className={styles.gaugeLabel} style={{ color: band.color }}>
+        <div className={[styles.gaugeLabel, FG_LABEL_CLASS[band.label]].join(" ")}>
           {band.label}
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -106,10 +124,14 @@ export function IndicatorStrip({
   fearGreed,
   macros,
   marketTime,
+  onOpenFearGreed,
+  onOpenMacro,
 }: {
   fearGreed: FearGreedData[];
   macros: MacroIndicator[];
   marketTime: string;
+  onOpenFearGreed?: (data: FearGreedData) => void;
+  onOpenMacro?: (macro: MacroIndicator) => void;
 }) {
   return (
     <>
@@ -120,11 +142,11 @@ export function IndicatorStrip({
         </div>
         <div className={styles.fgGauges}>
           <div className={styles.fgHalfFirst}>
-            <FearGreedGauge data={fearGreed[0]} />
+            <FearGreedGauge data={fearGreed[0]} onOpen={onOpenFearGreed} />
             <div className={styles.fgSubtext}>{fearGreed[0].subtext}</div>
           </div>
           <div className={styles.fgHalf}>
-            <FearGreedGauge data={fearGreed[1]} />
+            <FearGreedGauge data={fearGreed[1]} onOpen={onOpenFearGreed} />
             <div className={styles.fgSubtext}>{fearGreed[1].subtext}</div>
           </div>
         </div>
@@ -139,7 +161,12 @@ export function IndicatorStrip({
         </div>
         <div className={styles.macroGrid}>
           {macros.map((m) => (
-            <div key={m.label} className={styles.macroCell}>
+            <button
+              type="button"
+              key={m.id}
+              className={styles.macroCell}
+              onClick={() => onOpenMacro?.(m)}
+            >
               <div className={styles.macroCellTop}>
                 <span className={styles.macroCellLabel}>{m.label}</span>
                 <span className={styles.macroCellLocalName}>{m.localName}</span>
@@ -166,7 +193,7 @@ export function IndicatorStrip({
                   />
                 </svg>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </Card>

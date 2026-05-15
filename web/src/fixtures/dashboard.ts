@@ -4,11 +4,15 @@
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export type MacroIndicator = {
+  id: string;
   label: string;
   localName: string;
+  market: "KR" | "US" | "GLOBAL";
   value: string;
   change: string;
   up: boolean;
+  detail: string;
+  history: number[];
 };
 
 export type WatchlistItem = {
@@ -28,6 +32,7 @@ export type TopMover = {
   rank: number;
   symbol: string;
   name: string;
+  market: "KR" | "US";
   price: string;
   change: string;
   up: boolean;
@@ -73,10 +78,14 @@ export type TodoItem = {
 };
 
 export type FearGreedData = {
+  id: string;
   market: string;
+  marketCode: "KR" | "US";
   value: number;
   label: string;
   subtext: string;
+  drivers: string[];
+  history: number[];
 };
 
 export type PortfolioAsset = {
@@ -155,7 +164,7 @@ export const MARKET_STATUS: MarketStatus = {
 };
 
 export const NOTICE: Notice = {
-  tag: "공고",
+  tag: "공지사항",
   title: "v3 출시 — 마이페이지 · Thesis 도입",
   description:
     "매수 시점 thesis와 알람 반응 메모로 복기 흐름이 자연스러워졌습니다.",
@@ -207,26 +216,34 @@ export const TODOS: TodoItem[] = [
 
 export const FEAR_GREED: FearGreedData[] = [
   {
+    id: "fg-kr",
     market: "한국",
+    marketCode: "KR",
     value: 56,
     label: "Neutral",
     subtext: "외인 5거래일 순매수",
+    drivers: ["외국인 코스피 5거래일 순매수", "반도체 대형주 거래대금 증가", "원/달러 하락으로 위험선호 회복"],
+    history: [44, 48, 51, 53, 56],
   },
   {
+    id: "fg-us",
     market: "미국",
+    marketCode: "US",
     value: 68,
     label: "Greed",
     subtext: "VIX 14.2 · 안도 과열",
+    drivers: ["VIX 14선으로 변동성 완화", "대형 기술주 신고가 비중 확대", "하이일드 스프레드 안정"],
+    history: [57, 61, 65, 66, 68],
   },
 ];
 
 export const MACRO_INDICATORS: MacroIndicator[] = [
-  { label: "KOSPI", localName: "코스피", value: "2,684.32", change: "+0.69%", up: true },
-  { label: "S&P 500", localName: "미국", value: "5,812.44", change: "+0.38%", up: true },
-  { label: "USD/KRW", localName: "원/달러", value: "1,387.20", change: "−0.22%", up: false },
-  { label: "WTI", localName: "국제유가", value: "$71.84", change: "+0.59%", up: true },
-  { label: "GOLD", localName: "금", value: "$2,318.4", change: "+0.41%", up: true },
-  { label: "BTC", localName: "비트코인", value: "$61,240", change: "−1.32%", up: false },
+  { id: "macro-kospi", label: "KOSPI", localName: "코스피", market: "KR", value: "2,684.32", change: "+0.69%", up: true, detail: "한국 주식시장 대표 지수입니다. 보유 한국 주식의 당일 방향성을 볼 때 우선 확인합니다.", history: [47, 49, 50, 52, 55, 58] },
+  { id: "macro-sp500", label: "S&P 500", localName: "미국", market: "US", value: "5,812.44", change: "+0.38%", up: true, detail: "미국 대형주 대표 지수입니다. 글로벌 위험선호와 성장주 분위기를 함께 봅니다.", history: [51, 52, 54, 55, 57, 59] },
+  { id: "macro-usdkrw", label: "USD/KRW", localName: "원/달러", market: "KR", value: "1,387.20", change: "−0.22%", up: false, detail: "원화 환율입니다. 해외주식 환산손익과 외국인 수급에 영향을 줍니다.", history: [64, 63, 61, 60, 58, 56] },
+  { id: "macro-wti", label: "WTI", localName: "국제유가", market: "GLOBAL", value: "$71.84", change: "+0.59%", up: true, detail: "국제유가입니다. 에너지, 운송, 물가 기대 흐름을 함께 점검합니다.", history: [46, 45, 48, 49, 50, 53] },
+  { id: "macro-gold", label: "GOLD", localName: "금", market: "GLOBAL", value: "$2,318.4", change: "+0.41%", up: true, detail: "금 가격입니다. 안전자산 선호와 실질금리 부담을 확인하는 보조 지표입니다.", history: [54, 55, 56, 56, 57, 58] },
+  { id: "macro-btc", label: "BTC", localName: "비트코인", market: "GLOBAL", value: "$61,240", change: "−1.32%", up: false, detail: "고위험 자산 선호를 빠르게 보여주는 지표입니다. 주식시장 심리와 함께 봅니다.", history: [68, 66, 64, 62, 60, 57] },
 ];
 
 export const WATCHLIST: WatchlistItem[] = [
@@ -304,14 +321,25 @@ export const WATCHLIST: WatchlistItem[] = [
   },
 ];
 
-export const TOP_MOVERS: TopMover[] = [
-  { rank: 1, symbol: "005930", name: "삼성전자", price: "78,400", change: "+0.51%", up: true, volume: "8.2M" },
-  { rank: 2, symbol: "000660", name: "SK하이닉스", price: "198,500", change: "−1.24%", up: false, volume: "3.1M" },
-  { rank: 3, symbol: "373220", name: "LG엔솔", price: "362,000", change: "+0.83%", up: true, volume: "0.4M" },
-  { rank: 4, symbol: "207940", name: "삼성바이오", price: "821,000", change: "+1.42%", up: true, volume: "0.2M" },
-  { rank: 5, symbol: "035420", name: "NAVER", price: "189,400", change: "−0.31%", up: false, volume: "0.9M" },
-  { rank: 6, symbol: "005380", name: "현대차", price: "241,500", change: "+2.11%", up: true, volume: "1.2M" },
+export const TOP_MOVERS_KR: TopMover[] = [
+  { rank: 1, symbol: "005930", name: "삼성전자", market: "KR", price: "78,400", change: "+0.51%", up: true, volume: "8.2M" },
+  { rank: 2, symbol: "000660", name: "SK하이닉스", market: "KR", price: "198,500", change: "−1.24%", up: false, volume: "3.1M" },
+  { rank: 3, symbol: "373220", name: "LG엔솔", market: "KR", price: "362,000", change: "+0.83%", up: true, volume: "0.4M" },
+  { rank: 4, symbol: "207940", name: "삼성바이오", market: "KR", price: "821,000", change: "+1.42%", up: true, volume: "0.2M" },
+  { rank: 5, symbol: "035420", name: "NAVER", market: "KR", price: "189,400", change: "−0.31%", up: false, volume: "0.9M" },
+  { rank: 6, symbol: "005380", name: "현대차", market: "KR", price: "241,500", change: "+2.11%", up: true, volume: "1.2M" },
 ];
+
+export const TOP_MOVERS_US: TopMover[] = [
+  { rank: 1, symbol: "NVDA", name: "NVIDIA", market: "US", price: "912.18", change: "+3.42%", up: true, volume: "42.1M" },
+  { rank: 2, symbol: "TSLA", name: "Tesla", market: "US", price: "218.40", change: "−2.10%", up: false, volume: "38.4M" },
+  { rank: 3, symbol: "AAPL", name: "Apple", market: "US", price: "184.32", change: "+1.24%", up: true, volume: "31.9M" },
+  { rank: 4, symbol: "AMD", name: "AMD", market: "US", price: "156.71", change: "+2.08%", up: true, volume: "29.7M" },
+  { rank: 5, symbol: "MSFT", name: "Microsoft", market: "US", price: "424.10", change: "+0.82%", up: true, volume: "18.5M" },
+  { rank: 6, symbol: "AMZN", name: "Amazon", market: "US", price: "184.06", change: "−0.44%", up: false, volume: "16.8M" },
+];
+
+export const TOP_MOVERS = TOP_MOVERS_KR;
 
 export const NEWS: NewsItem[] = [
   {

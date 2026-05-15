@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { PageContainer } from "../../components/layout/PageContainer";
 import { ActionNotice } from "../../components/interaction/ActionNotice";
 import { DetailPanel } from "../../components/interaction/DetailPanel";
@@ -10,7 +11,6 @@ import {
   FEAR_GREED,
   GREETING_NAME,
   MACRO_INDICATORS,
-  MARKET_STATUS,
   NEWS,
   NOTICE,
   PORTFOLIO_COMPOSITION,
@@ -18,7 +18,8 @@ import {
   RETURN_DATA,
   TODOS,
   TOP_HOLDINGS,
-  TOP_MOVERS,
+  TOP_MOVERS_KR,
+  TOP_MOVERS_US,
 } from "../../fixtures/dashboard";
 import styles from "./DashboardPage.module.css";
 import { ActionPrompts } from "./sections/ActionPrompts";
@@ -35,24 +36,33 @@ import { PortfolioSummaryCard } from "./sections/PortfolioSummaryCard";
 import { ReturnsChart } from "./sections/ReturnsChart";
 import { TopMoversCard } from "./sections/TopMoversCard";
 import { WatchlistCard } from "./sections/WatchlistCard";
-import { eventDetail, newsDetail, noticeDetail, returnContributorDetail, todoDetail } from "./dashboardInteractions";
+import {
+  eventDetail,
+  fearGreedDetail,
+  macroDetail,
+  newsDetail,
+  noticeDetail,
+  returnContributorDetail,
+  todoDetail,
+} from "./dashboardInteractions";
+import { useDashboardClock } from "./useDashboardClock";
 
 export function DashboardPage() {
   const auth = useAuth();
   const watchlistState = useWatchlist();
   const { detail, notice, handleAction, closeDetail } = useInteractionActions();
+  const dashboardClock = useDashboardClock();
+  const [todos, setTodos] = useState(TODOS);
   const greetingName =
     auth.status === "signed-in" ? getUserDisplayName(auth.user) : GREETING_NAME;
 
   return (
     <PageContainer
-      title={`좋은 아침입니다, ${greetingName} 님`}
+      title={`${dashboardClock.greeting}, ${greetingName} 님`}
       description={
         <GreetingMeta
-          date={MARKET_STATUS.date}
-          day={MARKET_STATUS.day}
-          time={MARKET_STATUS.time}
-          nyseOpensIn={MARKET_STATUS.nyseOpensIn}
+          currentTimeLabel={dashboardClock.currentTimeLabel}
+          marketStatus={dashboardClock.sessions}
         />
       }
       actions={<GreetingActions summary={PORTFOLIO_SUMMARY} />}
@@ -63,8 +73,15 @@ export function DashboardPage() {
           onOpen={() => handleAction({ type: "detail", detail: noticeDetail(NOTICE) })}
         />
         <ActionPrompts
-          todos={TODOS}
+          todos={todos}
           onOpenTodo={(todo) => handleAction({ type: "detail", detail: todoDetail(todo) })}
+          onToggleTodo={(todo) =>
+            setTodos((current) =>
+              current.map((item) =>
+                item.id === todo.id ? { ...item, done: !item.done } : item
+              )
+            )
+          }
           onOpenAll={() => handleAction({ type: "route", to: "/mypage?tab=activity" })}
         />
 
@@ -72,13 +89,19 @@ export function DashboardPage() {
           <IndicatorStrip
             fearGreed={FEAR_GREED}
             macros={MACRO_INDICATORS}
-            marketTime={MARKET_STATUS.time}
+            marketTime={dashboardClock.currentTimeLabel}
+            onOpenFearGreed={(item) => handleAction({ type: "detail", detail: fearGreedDetail(item) })}
+            onOpenMacro={(item) => handleAction({ type: "detail", detail: macroDetail(item) })}
           />
         </div>
 
         <div className={styles.pair}>
           <WatchlistCard state={watchlistState} />
-          <TopMoversCard movers={TOP_MOVERS} />
+          <TopMoversCard
+            moversByMarket={{ KR: TOP_MOVERS_KR, US: TOP_MOVERS_US }}
+            initialMarket={dashboardClock.primaryMarket}
+            sessions={dashboardClock.sessions}
+          />
         </div>
 
         <div className={styles.pair}>

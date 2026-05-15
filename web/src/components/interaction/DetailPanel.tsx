@@ -50,6 +50,32 @@ export function DetailPanel({ detail, onClose }: DetailPanelProps) {
               <section key={section.title}>
                 <h3>{section.title}</h3>
                 <p>{section.body}</p>
+                {section.items?.length ? (
+                  <ul className={styles.itemList}>
+                    {section.items.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                ) : null}
+                {section.chart?.length ? (
+                  <div className={styles.chartList} aria-label={`${section.title} chart`}>
+                    {section.chart.map((point) => (
+                      <div key={point.label} className={styles.chartRow}>
+                        <span className={styles.chartLabel}>{point.label}</span>
+                        <span className={styles.chartTrack}>
+                          <span
+                            className={[
+                              styles.chartBar,
+                              styles[`chartBar_${point.tone ?? "neutral"}`],
+                            ].join(" ")}
+                            style={{ width: `${Math.max(4, Math.min(point.value, 100))}%` }}
+                          />
+                        </span>
+                        <span className={styles.chartValue}>{point.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </section>
             ))}
           </div>
