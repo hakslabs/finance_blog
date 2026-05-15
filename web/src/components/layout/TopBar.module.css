@@ -31,6 +31,7 @@
 }
 
 .search {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -58,6 +59,73 @@
   outline: 0;
 }
 
+.searchMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  left: 0;
+  z-index: 35;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 14px 28px rgb(26 24 21 / 12%);
+}
+
+.searchResult {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 2px 10px;
+  width: 100%;
+  padding: 9px 10px;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
+  cursor: pointer;
+}
+
+.searchResult:last-child {
+  border-bottom: 0;
+}
+
+.searchResult:hover,
+.searchResult:focus-visible {
+  background: var(--bg);
+  outline: 0;
+}
+
+.searchGroup {
+  grid-row: 1 / span 2;
+  align-self: center;
+  color: var(--accent);
+  font-size: 0.625rem;
+  font-weight: 800;
+}
+
+.searchLabel {
+  overflow: hidden;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.searchMeta {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.6875rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.searchEmpty {
+  padding: 12px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
 .actions {
   position: relative;
   display: flex;
@@ -81,6 +149,18 @@
 
 .chip span {
   white-space: nowrap;
+}
+
+.chipButton {
+  composes: chip;
+  cursor: pointer;
+}
+
+.chipButton:hover,
+.chipButton:focus-visible {
+  color: var(--ink);
+  border-color: var(--line);
+  outline: 0;
 }
 
 .iconButton {
@@ -171,6 +251,28 @@
 .menuHeader span:last-child {
   color: var(--muted);
   font-weight: 500;
+}
+
+.markAllButton {
+  padding: 0;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.markAllButton:hover,
+.markAllButton:focus-visible {
+  color: var(--ink);
+  outline: 0;
+}
+
+.markAllButton:disabled {
+  color: var(--faint);
+  cursor: default;
 }
 
 .notificationItem {
@@ -314,7 +416,14 @@
     padding: 10px 14px 0;
   }
 
-  .chip {
+  .chip,
+  .chipButton {
+    width: 32px;
+    padding: 0;
+  }
+
+  .chip span,
+  .chipButton span {
     display: none;
   }
 

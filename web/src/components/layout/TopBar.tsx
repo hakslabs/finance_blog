@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   Bell,
   Bookmark,
@@ -12,9 +12,12 @@ import {
   User,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { MASTERS } from "../../fixtures/masters";
+import { REPORTS } from "../../fixtures/reports";
+import { STOCK_LIST } from "../../fixtures/stocks";
 import { useAuth } from "../../lib/auth-state";
 import { getUserDisplayName, getUserEmail, getUserInitial } from "../../lib/auth-user";
-import { getCurrentNavItem } from "./navigation";
+import { getCurrentNavItem, primaryNavItems, utilityNavItems } from "./navigation";
 import styles from "./TopBar.module.css";
 
 const TRANSIENT_NOTICE_MS = 2400;
@@ -23,6 +26,64 @@ const INITIAL_NOTIFICATIONS = [
   "NVDA Thesis 조건 검토",
 ] as const;
 
+type Currency = "KRW" | "USD";
+type SearchResult = {
+  id: string;
+  group: string;
+  label: string;
+  meta: string;
+  to: string;
+};
+
+const NAV_SEARCH_ITEMS: SearchResult[] = [...primaryNavItems, ...utilityNavItems].map((item) => ({
+  id: `nav-${item.path}`,
+  group: "메뉴",
+  label: item.label,
+  meta: item.labelEn,
+  to: item.path,
+}));
+
+const STOCK_SEARCH_ITEMS: SearchResult[] = STOCK_LIST.map((stock) => ({
+  id: `stock-${stock.id}`,
+  group: "종목",
+  label: stock.symbol,
+  meta: `${stock.name} · ${stock.exchange}`,
+  to: `/stocks/${encodeURIComponent(stock.symbol)}`,
+}));
+
+const REPORT_SEARCH_ITEMS: SearchResult[] = REPORTS.slice(0, 8).map((report) => ({
+  id: `report-${report.id}`,
+  group: "리포트",
+  label: report.title,
+  meta: `${report.source} · ${report.category}`,
+  to: `/reports/${encodeURIComponent(report.id)}`,
+}));
+
+const MASTER_SEARCH_ITEMS: SearchResult[] = MASTERS.map((master) => ({
+  id: `master-${master.id}`,
+  group: "고수",
+  label: master.name,
+  meta: `${master.firm} · ${master.style}`,
+  to: `/masters/${encodeURIComponent(master.id)}`,
+}));
+
+const SEARCH_ITEMS = [
+  ...NAV_SEARCH_ITEMS,
+  ...STOCK_SEARCH_ITEMS,
+  ...REPORT_SEARCH_ITEMS,
+  ...MASTER_SEARCH_ITEMS,
+];
+
+function getSearchResults(query: string): SearchResult[] {
+  const normalized = query.trim().toLowerCase();
+  const base = normalized
+    ? SEARCH_ITEMS.filter((item) =>
+        `${item.group} ${item.label} ${item.meta}`.toLowerCase().includes(normalized),
+      )
+    : SEARCH_ITEMS.filter((item) => item.group === "메뉴").slice(0, 7);
+  return base.slice(0, 8);
+}
+
 export function TopBar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -30,12 +91,17 @@ export function TopBar() {
   const auth = useAuth();
   const [accountOpen, setAccountOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currency, setCurrency] = useState<Currency>("KRW");
   const [unreadNotifications, setUnreadNotifications] = useState<number>(
     INITIAL_NOTIFICATIONS.length,
   );
   const [notice, setNotice] = useState<string | null>(null);
   const accountRef = useRef<HTMLDivElement | null>(null);
   const notificationsRef = useRef<HTMLDivElement | null>(null);
+  const searchRef = useRef<HTMLFormElement | null>(null);
+  const searchResults = useMemo(() => getSearchResults(searchQuery), [searchQuery]);
 
   useEffect(() => {
     if (!notice) return undefined;
@@ -52,28 +118,31 @@ export function TopBar() {
       if (!notificationsRef.current?.contains(target)) {
         setNotificationsOpen(false);
       }
+      if (!searchRef.current?.contains(target)) {
+        setSearchOpen(false);
+      }
     }
 
-    if (accountOpen || notificationsOpen) {
+    if (accountOpen || notificationsOpen || searchOpen) {
       window.addEventListener("pointerdown", onPointerDown);
     }
     return () => window.removeEventListener("pointerdown", onPointerDown);
-  }, [accountOpen, notificationsOpen]);
+  }, [accountOpen, notificationsOpen, searchOpen]);
 
   function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const rawQuery = String(data.get("symbol-search") ?? "").trim();
-    if (!rawQuery) {
-      navigate("/stocks");
+    const result = searchResults[0];
+    if (result) {
+      navigate(result.to);
+      setSearchOpen(false);
       return;
     }
-    navigate(`/stocks/${encodeURIComponent(rawQuery.toUpperCase())}`);
+    navigate("/stocks");
+    setSearchOpen(false);
   }
 
   function toggleNotifications() {
     setNotificationsOpen((open) => !open);
-    setUnreadNotifications(0);
   }
 
   async function handleTopBarSignIn() {
@@ -104,24 +173,58 @@ export function TopBar() {
         </span>
       </div>
 
-      <form className={styles.search} onSubmit={handleSearch}>
-        <span className="sr-only">종목 또는 티커 검색</span>
+      <form className={styles.search} onSubmit={handleSearch} ref={searchRef}>
+        <span className="sr-only">메뉴, 종목, 리포트, 고수 검색</span>
         <Search size={15} aria-hidden="true" strokeWidth={1.8} />
         <input
           type="search"
-          name="symbol-search"
-          placeholder="종목 / 티커 검색…"
+          name="global-search"
+          placeholder="메뉴 / 종목 / 리포트 / 고수 검색…"
           autoComplete="off"
           spellCheck={false}
           className={styles.searchInput}
+          value={searchQuery}
+          onFocus={() => setSearchOpen(true)}
+          onChange={(event) => {
+            setSearchQuery(event.target.value);
+            setSearchOpen(true);
+          }}
         />
+        {searchOpen ? (
+          <div className={styles.searchMenu} role="listbox" aria-label="검색 결과">
+            {searchResults.map((result) => (
+              <button
+                key={result.id}
+                type="button"
+                className={styles.searchResult}
+                onClick={() => {
+                  navigate(result.to);
+                  setSearchOpen(false);
+                }}
+              >
+                <span className={styles.searchGroup}>{result.group}</span>
+                <span className={styles.searchLabel}>{result.label}</span>
+                <span className={styles.searchMeta}>{result.meta}</span>
+              </button>
+            ))}
+            {searchResults.length === 0 ? (
+              <div className={styles.searchEmpty}>검색 결과가 없습니다.</div>
+            ) : null}
+          </div>
+        ) : null}
       </form>
 
       <div className={styles.actions}>
-        <span className={styles.chip} translate="no">
+        <button
+          type="button"
+          className={styles.chipButton}
+          translate="no"
+          aria-label={`기준 통화 ${currency}, ${currency === "KRW" ? "USD" : "KRW"}로 변경`}
+          onClick={() => setCurrency((value) => (value === "KRW" ? "USD" : "KRW"))}
+        >
           <CircleDollarSign size={15} aria-hidden="true" strokeWidth={1.8} />
-          <span>KRW 기준</span>
-        </span>
+          <span>{currency}</span>
+        </button>
         <Link
           className={styles.actionButton}
           aria-label="저장한 항목 보기"
@@ -149,7 +252,14 @@ export function TopBar() {
             <div className={styles.notificationMenu} role="menu">
               <div className={styles.menuHeader}>
                 <span>알림</span>
-                <span>{unreadNotifications > 0 ? `${unreadNotifications}개 신규` : "모두 확인"}</span>
+                <button
+                  type="button"
+                  className={styles.markAllButton}
+                  disabled={unreadNotifications === 0}
+                  onClick={() => setUnreadNotifications(0)}
+                >
+                  모두 확인
+                </button>
               </div>
               {INITIAL_NOTIFICATIONS.map((item) => (
                 <Link

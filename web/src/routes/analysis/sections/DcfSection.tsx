@@ -6,8 +6,10 @@ import styles from "./DcfSection.module.css";
 
 export function DcfSection({
   onOpenAssumption,
+  onOpenChart,
 }: {
   onOpenAssumption?: (row: DcfAssumption) => void;
+  onOpenChart?: (label: string) => void;
 }) {
   return (
     <div className={styles.root}>
@@ -32,7 +34,11 @@ export function DcfSection({
       </Card>
 
       <Card title="DCF 시나리오 · 적정주가 분포">
-        <ChartPlaceholder label="할인율 · 성장률 시나리오 매트릭스" height={200} />
+        <ChartPlaceholder
+          label="할인율 · 성장률 시나리오 매트릭스"
+          height={200}
+          onOpen={() => onOpenChart?.("할인율 · 성장률 시나리오 매트릭스")}
+        />
       </Card>
     </div>
   );

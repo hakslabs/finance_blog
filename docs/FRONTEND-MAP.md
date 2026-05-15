@@ -40,7 +40,7 @@ Left navigation. Items come from `navigation.ts`. Desktop sidebar can collapse t
 
 ### `TopBar()`
 
-Top utility bar. Reads auth context for login/account state. Submits the symbol search box to `/stocks/:symbol`, opens the account menu for signed-in users, shows a compact currency chip, routes saved items to `/mypage?tab=saved`, and keeps the notification dot tied to unread local UI state.
+Top utility bar. Reads auth context for login/account state. Global search covers menus, stocks, reports, and masters, then routes to the selected result. The currency chip toggles KRW/USD in local UI state, saved items route to `/mypage?tab=saved`, and the notification menu supports a local "모두 확인" action that clears the unread dot.
 
 ### `AuthGate({ children })`
 
@@ -92,9 +92,9 @@ Inline empty placeholder. Emits styled `<p>` for title/description (no `<h2>`). 
 
 Single KPI block — label, big value, optional detail line and trend node.
 
-### `ChartPlaceholder({ label, height? })`
+### `ChartPlaceholder({ label, height?, onOpen? })`
 
-Stub chart box for routes that don't yet have real chart implementations. `height` defaults to 240px.
+Stub chart box for routes that don't yet have real chart implementations. `height` defaults to 240px. Pass `onOpen` when the placeholder should behave as a chart-detail entry point.
 
 ### `Skeleton({ variant?, className?, label? })`
 
@@ -270,9 +270,9 @@ All list-item types carry an `id: string` for stable React keys.
 **Constants** (all typed):
 
 - `LEARN_TABS` — readonly tuple: `입문서·칼럼 | 용어 사전 | 리포트 라이브러리`. Exported as `LearnTab` type.
-- `LEARN_CATEGORIES: LearnCategory[]` — 6 guide categories.
-- `GUIDE_ARTICLES: GuideArticle[]` — 4 recommended guide rows.
-- `GLOSSARY_TERMS: GlossaryTerm[]` — 6 glossary terms rendered through `DataTable`.
+- `LEARN_CATEGORIES: LearnCategory[]` — 6 guide categories with focus text and learning path keywords.
+- `GUIDE_ARTICLES: GuideArticle[]` — 8 recommended guide rows with objectives, key concepts, examples, and checklists for detail panels.
+- `GLOSSARY_TERMS: GlossaryTerm[]` — 12 glossary terms rendered through `DataTable`, each carrying examples, pitfalls, related terms, and optional formula text.
 
 **Types**: `LearnTab`, `LearnCategory`, `GuideArticle`, `GlossaryTerm`.
 
@@ -357,7 +357,7 @@ Route-param-driven stock detail page. Uses `useParams` to read `symbol`, calls `
 
 ### `portfolio/PortfolioPage` (path: `/portfolio`) — live data
 
-Live-data portfolio page. Reads `usePortfolio()` (PR-11) and composes the result via `routes/portfolio/sections/*`. Top-level structure: `PageContainer(eyebrow="Portfolio", title="운용 / 포트폴리오", description=updated_at + currency)` → loading fallback `Card` with `Skeleton` OR error fallback `Card` OR `KpiStrip` + 2-col grid (`HoldingsTable` + `TransactionsTable`).
+Live-data portfolio page. Reads `usePortfolio()` (PR-11) and composes the result via `routes/portfolio/sections/*`. Top-level structure: `PageContainer(eyebrow="Portfolio", title="운용 / 포트폴리오", description=updated_at + currency)` → loading fallback `Card` with `Skeleton` OR error fallback `Card` OR portfolio command controls + `KpiStrip` + thesis/alert board + 2-col grid (`HoldingsTable` + `TransactionsTable`). The command controls are local UI drafts until write APIs land: stock search uses `STOCK_LIST`, transaction entry prepends a local transaction, and thesis/target/stop-loss rules open shared `DetailPanel`.
 
 **File**: `routes/portfolio/PortfolioPage.tsx`, co-located `PortfolioPage.module.css`.
 
@@ -375,13 +375,13 @@ Static analysis hub composed from `routes/analysis/sections/*` and `fixtures/ana
 
 **Sections** (`routes/analysis/sections/`):
 
-- `MarketOverviewSection({ onOpenTool?, onSelectToolTab? })` — 시장 한눈에. 3-col top grid (`Card`: 시장 개요 with `ChartPlaceholder` + index row · `Card` with `DataTable<SectorReturn>` for sector rotation · `Card` with style rotation grid). Tool cards are generated from `ANALYSIS_TOOLS` registry and can either switch to the target tab or open `DetailPanel`. 2-col bottom grid: `Card` with recent signal list + `Card` with `DataTable<SavedScreen>`.
-- `SentimentSection({ onOpenIndicator?, onOpenGlossary? })` — 시장 심리. Banner `Card`, balanced region grid with one `Card`+`DataTable<SentimentIndicator>` per region (US/KR/Global), then a 2-col chart/glossary row. Rows open detail through `onRowClick`. Status mapped to `Badge` tone via `Record<SentimentStatus, BadgeTone>`.
-- `TechnicalSection({ onOpenIndicator? })` — 기술적 분석. `Card`+`ChartPlaceholder` for chart, `Card`+`DataTable<TechnicalIndicator>` with buy/sell/hold `Badge`; rows open detail.
-- `FinancialAnalysisSection({ onOpenScore? })` — 재무 분석. `Card`+`ChartPlaceholder`, `Card`+`DataTable<FinancialScore>` with A-D grade `Badge`; rows open detail.
-- `QuantFactorSection({ onOpenFactor? })` — 퀀트 팩터. `Card`+`ChartPlaceholder`, `Card`+`DataTable<QuantFactor>` with spread color class; rows open detail.
-- `DcfSection({ onOpenAssumption? })` — 적정주가 계산. `Card` with clickable `KpiTile` grid (4 assumptions) + `Card`+`ChartPlaceholder` for scenario matrix.
-- `SectorFlowSection({ onOpenSector? })` — 섹터 흐름. `Card`+`ChartPlaceholder`, `Card`+`DataTable<SectorMomentum>` with trend `Badge`; rows open detail.
+- `MarketOverviewSection({ onOpenTool?, onSelectToolTab?, onOpenIndex?, onOpenSector?, onOpenStyle?, onOpenSignal?, onOpenScreen?, onOpenChart? })` — 시장 한눈에. 3-col top grid (`Card`: 시장 개요 with clickable `ChartPlaceholder` + clickable index row · `Card` with `DataTable<SectorReturn>` for sector rotation · `Card` with clickable style rotation grid). Tool cards are generated from `ANALYSIS_TOOLS` registry and can either switch to the target tab or open `DetailPanel`. 2-col bottom grid: `Card` with recent signal list + `Card` with `DataTable<SavedScreen>`; all rows open detail.
+- `SentimentSection({ onOpenIndicator?, onOpenGlossary?, onOpenChart? })` — 시장 심리. Banner `Card`, balanced region grid with one `Card`+`DataTable<SentimentIndicator>` per region (US/KR/Global), then a 2-col chart/glossary row. Rows and chart placeholder open detail. Status mapped to `Badge` tone via `Record<SentimentStatus, BadgeTone>`.
+- `TechnicalSection({ onOpenIndicator?, onOpenChart? })` — 기술적 분석. Clickable `Card`+`ChartPlaceholder` for chart, `Card`+`DataTable<TechnicalIndicator>` with buy/sell/hold `Badge`; rows open detail.
+- `FinancialAnalysisSection({ onOpenScore?, onOpenChart? })` — 재무 분석. Clickable `Card`+`ChartPlaceholder`, `Card`+`DataTable<FinancialScore>` with A-D grade `Badge`; rows open detail.
+- `QuantFactorSection({ onOpenFactor?, onOpenChart? })` — 퀀트 팩터. Clickable `Card`+`ChartPlaceholder`, `Card`+`DataTable<QuantFactor>` with spread color class; rows open detail.
+- `DcfSection({ onOpenAssumption?, onOpenChart? })` — 적정주가 계산. `Card` with clickable `KpiTile` grid (4 assumptions) + clickable `Card`+`ChartPlaceholder` for scenario matrix.
+- `SectorFlowSection({ onOpenSector?, onOpenChart? })` — 섹터 흐름. Clickable `Card`+`ChartPlaceholder`, `Card`+`DataTable<SectorMomentum>` with trend `Badge`; rows open detail.
 - `SignalsSection({ onOpenAlert? })` — 신호 알림. `Card`+`DataTable<SignalAlert>` with direction `Badge`; rows open detail.
 
 ### `reports/ReportsPage` (path: `/reports`)
@@ -424,7 +424,7 @@ Route-param-driven master detail page. Uses `getMaster(id)` fixture lookup and `
 
 ### `learn/LearnPage` (path: `/learn`)
 
-Static learning page from `wire-masters-learn.jsx` (`WireLearn`) with three tabs: `입문서·칼럼`, `용어 사전`, `리포트 라이브러리`. Tab state is local `useState<LearnTab>`. Guides, glossary rows, and report-library rows open shared `DetailPanel` through `useInteractionActions()`.
+Static learning page from `wire-masters-learn.jsx` (`WireLearn`) with three tabs: `입문서·칼럼`, `용어 사전`, `리포트 라이브러리`. Tab state is local `useState<LearnTab>`. Categories, guides, glossary rows, and report-library rows open shared `DetailPanel` through `useInteractionActions()`; guide and glossary details read structured fields from `fixtures/learn.ts` rather than page-local hardcoded blurbs.
 
 **File**: `routes/learn/LearnPage.tsx`, co-located `LearnPage.module.css`.
 

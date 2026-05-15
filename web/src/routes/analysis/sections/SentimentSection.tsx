@@ -73,9 +73,11 @@ function regionRows(region: SentimentIndicator["region"]): SentimentIndicator[] 
 export function SentimentSection({
   onOpenIndicator,
   onOpenGlossary,
+  onOpenChart,
 }: {
   onOpenIndicator?: (row: SentimentIndicator) => void;
   onOpenGlossary?: (row: IndicatorGlossary) => void;
+  onOpenChart?: (label: string) => void;
 }) {
   const regions: SentimentIndicator["region"][] = ["US", "KR", "Global"];
 
@@ -106,7 +108,11 @@ export function SentimentSection({
 
       <div className={styles.bottomGrid}>
         <Card title="종합 심리 지수 · 12개월 추이">
-          <ChartPlaceholder label="US · KR · Global 합성 심리 추이" height={140} />
+          <ChartPlaceholder
+            label="US · KR · Global 합성 심리 추이"
+            height={140}
+            onOpen={() => onOpenChart?.("US · KR · Global 합성 심리 추이")}
+          />
           <div className={styles.legendRow}>
             <span className={styles.legendItem}>
               <span className={`${styles.legendSwatch} ${styles.swatchDown}`} aria-hidden="true" />

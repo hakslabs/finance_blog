@@ -28,6 +28,18 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.indexCell:hover,
+.indexCell:focus-visible {
+  color: var(--accent);
+  outline: 0;
 }
 
 .indexSep {
@@ -66,8 +78,16 @@
   padding: 10px;
   text-align: center;
   border: 1px solid var(--hairline);
+  color: inherit;
   font-family: var(--mono);
   font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.styleCell:hover,
+.styleCell:focus-visible {
+  border-color: var(--accent);
+  outline: 0;
 }
 
 .styleCellPos {

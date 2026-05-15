@@ -33,13 +33,19 @@ const columns: DataTableColumn<SectorMomentum>[] = [
 
 export function SectorFlowSection({
   onOpenSector,
+  onOpenChart,
 }: {
   onOpenSector?: (row: SectorMomentum) => void;
+  onOpenChart?: (label: string) => void;
 }) {
   return (
     <div className={styles.root}>
       <Card title="섹터 강도 히트맵">
-        <ChartPlaceholder label="섹터 × 기간 상대강도 매트릭스" height={200} />
+        <ChartPlaceholder
+          label="섹터 × 기간 상대강도 매트릭스"
+          height={200}
+          onOpen={() => onOpenChart?.("섹터 × 기간 상대강도 매트릭스")}
+        />
       </Card>
 
       <Card title="섹터 모멘텀">

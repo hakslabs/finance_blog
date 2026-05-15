@@ -35,13 +35,24 @@
 }
 
 .categoryRow {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 10px;
+  width: 100%;
   padding: 8px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   border: 1px solid var(--hairline);
   background: var(--bg);
   font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.categoryRow:hover,
+.categoryRow:focus-visible {
+  border-color: var(--accent);
+  outline: 0;
 }
 
 .categoryRow span:last-child,
@@ -49,6 +60,13 @@
 .articleMeta span {
   color: var(--muted);
   font-size: 0.6875rem;
+}
+
+.categoryRow small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 0.6875rem;
+  line-height: 1.35;
 }
 
 .article {

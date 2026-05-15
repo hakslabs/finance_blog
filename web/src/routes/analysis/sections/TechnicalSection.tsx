@@ -41,13 +41,19 @@ const columns: DataTableColumn<TechnicalIndicator>[] = [
 
 export function TechnicalSection({
   onOpenIndicator,
+  onOpenChart,
 }: {
   onOpenIndicator?: (row: TechnicalIndicator) => void;
+  onOpenChart?: (label: string) => void;
 }) {
   return (
     <div className={styles.root}>
       <Card title="가격 추이">
-        <ChartPlaceholder label="기술적 지표 종합 차트" height={200} />
+        <ChartPlaceholder
+          label="기술적 지표 종합 차트"
+          height={200}
+          onOpen={() => onOpenChart?.("기술적 지표 종합 차트")}
+        />
       </Card>
 
       <Card title="기술적 지표 스캔">

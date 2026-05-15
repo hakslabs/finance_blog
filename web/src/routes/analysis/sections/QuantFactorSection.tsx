@@ -49,13 +49,19 @@ const columns: DataTableColumn<QuantFactor>[] = [
 
 export function QuantFactorSection({
   onOpenFactor,
+  onOpenChart,
 }: {
   onOpenFactor?: (row: QuantFactor) => void;
+  onOpenChart?: (label: string) => void;
 }) {
   return (
     <div className={styles.root}>
       <Card title="팩터 누적 수익률 (12M)">
-        <ChartPlaceholder label="Value · Momentum · Quality · Size · LowVol" height={180} />
+        <ChartPlaceholder
+          label="Value · Momentum · Quality · Size · LowVol"
+          height={180}
+          onOpen={() => onOpenChart?.("Value · Momentum · Quality · Size · LowVol")}
+        />
       </Card>
 
       <Card title="팩터 분위 수익률">

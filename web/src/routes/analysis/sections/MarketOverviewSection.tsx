@@ -16,6 +16,8 @@ import {
   type SectorReturn,
   type RecentSignal,
   type SavedScreen,
+  type MarketIndex,
+  type StyleCell,
   type AnalysisTab,
   type AnalysisTool,
 } from "../../../fixtures/analysis";
@@ -96,18 +98,39 @@ const screenColumns: DataTableColumn<SavedScreen>[] = [
 export function MarketOverviewSection({
   onOpenTool,
   onSelectToolTab,
+  onOpenIndex,
+  onOpenSector,
+  onOpenStyle,
+  onOpenSignal,
+  onOpenScreen,
+  onOpenChart,
 }: {
   onOpenTool?: (tool: AnalysisTool) => void;
   onSelectToolTab?: (tab: AnalysisTab) => void;
+  onOpenIndex?: (row: MarketIndex) => void;
+  onOpenSector?: (row: SectorReturn) => void;
+  onOpenStyle?: (row: StyleCell) => void;
+  onOpenSignal?: (row: RecentSignal) => void;
+  onOpenScreen?: (row: SavedScreen) => void;
+  onOpenChart?: (label: string) => void;
 }) {
   return (
     <div className={styles.root}>
       <div className={styles.topGrid}>
         <Card title="시장 개요">
-          <ChartPlaceholder label="S&P 500 · KOSPI 추이" height={140} />
+          <ChartPlaceholder
+            label="S&P 500 · KOSPI 추이"
+            height={140}
+            onOpen={() => onOpenChart?.("S&P 500 · KOSPI 추이")}
+          />
           <div className={styles.indexRow}>
             {MARKET_INDICES.map((mi, i) => (
-              <span key={mi.id} className={styles.indexCell}>
+              <button
+                type="button"
+                key={mi.id}
+                className={styles.indexCell}
+                onClick={() => onOpenIndex?.(mi)}
+              >
                 {i > 0 ? <span className={styles.indexSep} aria-hidden="true">|</span> : null}
                 <span>
                   {mi.label} · {mi.value}{" "}
@@ -115,7 +138,7 @@ export function MarketOverviewSection({
                     {mi.change}
                   </span>
                 </span>
-              </span>
+              </button>
             ))}
           </div>
         </Card>
@@ -126,6 +149,8 @@ export function MarketOverviewSection({
             rows={SECTOR_ROTATION}
             getRowKey={(r) => r.id}
             density="compact"
+            onRowClick={onOpenSector}
+            getRowAriaLabel={(r) => `${r.sector} 섹터 로테이션 상세`}
           />
         </Card>
 
@@ -136,21 +161,25 @@ export function MarketOverviewSection({
             <span className={styles.styleHeader}>소형</span>
             <span className={styles.styleHeader}>그로스</span>
             {STYLE_GROWTH.map((c) => (
-              <span
+              <button
+                type="button"
                 key={c.id}
                 className={`${styles.styleCell} ${c.up ? styles.styleCellPos : styles.styleCellNeg}`}
+                onClick={() => onOpenStyle?.(c)}
               >
                 {c.value}
-              </span>
+              </button>
             ))}
             <span className={styles.styleHeader}>밸류</span>
             {STYLE_VALUE.map((c) => (
-              <span
+              <button
+                type="button"
                 key={c.id}
                 className={`${styles.styleCell} ${c.up ? styles.styleCellPos : styles.styleCellNeg}`}
+                onClick={() => onOpenStyle?.(c)}
               >
                 {c.value}
-              </span>
+              </button>
             ))}
           </div>
           <p className={styles.styleNote}>이번 분기 대형 그로스 우위</p>
@@ -189,6 +218,8 @@ export function MarketOverviewSection({
             rows={RECENT_SIGNALS}
             getRowKey={(r) => r.id}
             density="compact"
+            onRowClick={onOpenSignal}
+            getRowAriaLabel={(r) => `${r.ticker} 최근 신호 상세`}
           />
         </Card>
 
@@ -198,6 +229,8 @@ export function MarketOverviewSection({
             rows={SAVED_SCREENS}
             getRowKey={(r) => r.id}
             density="compact"
+            onRowClick={onOpenScreen}
+            getRowAriaLabel={(r) => `${r.name} 저장 스크린 상세`}
           />
         </Card>
       </div>

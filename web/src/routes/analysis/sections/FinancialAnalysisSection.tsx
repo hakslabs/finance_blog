@@ -40,13 +40,19 @@ const columns: DataTableColumn<FinancialScore>[] = [
 
 export function FinancialAnalysisSection({
   onOpenScore,
+  onOpenChart,
 }: {
   onOpenScore?: (row: FinancialScore) => void;
+  onOpenChart?: (label: string) => void;
 }) {
   return (
     <div className={styles.root}>
       <Card title="재무 비율 5년 추이">
-        <ChartPlaceholder label="PER · PBR · ROE 5년 추이" height={200} />
+        <ChartPlaceholder
+          label="PER · PBR · ROE 5년 추이"
+          height={200}
+          onOpen={() => onOpenChart?.("PER · PBR · ROE 5년 추이")}
+        />
       </Card>
 
       <Card title="재무 점수 (관심·보유종목)">

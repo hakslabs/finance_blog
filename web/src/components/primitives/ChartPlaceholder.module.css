@@ -17,3 +17,15 @@
   );
   border: 1px dashed var(--faint);
 }
+
+.placeholderButton {
+  composes: placeholder;
+  width: 100%;
+  cursor: pointer;
+}
+
+.placeholderButton:hover,
+.placeholderButton:focus-visible {
+  color: var(--ink);
+  border-color: var(--accent);
+}
