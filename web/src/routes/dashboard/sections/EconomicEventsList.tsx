@@ -17,7 +17,13 @@ const TYPE_LABEL: Record<EventType, string> = {
 
 const IMPORTANCE_LEVELS = [1, 2, 3] as const;
 
-export function EconomicEventsList({ events }: { events: EconomicEvent[] }) {
+export function EconomicEventsList({
+  events,
+  onOpenEvent,
+}: {
+  events: EconomicEvent[];
+  onOpenEvent?: (event: EconomicEvent) => void;
+}) {
   return (
     <Card className={styles.card}>
       <div className={styles.header}>
@@ -30,7 +36,12 @@ export function EconomicEventsList({ events }: { events: EconomicEvent[] }) {
         <Badge tone="neutral">2주</Badge>
       </div>
       {events.map((e) => (
-        <div key={e.id} className={styles.row}>
+        <button
+          key={e.id}
+          type="button"
+          className={styles.row}
+          onClick={() => onOpenEvent?.(e)}
+        >
           <div className={styles.dateBox}>
             <span className={styles.dayName}>{e.dayOfWeek}</span>
             <span className={styles.dayNum}>{e.dateLabel.split("/")[1]}</span>
@@ -64,7 +75,7 @@ export function EconomicEventsList({ events }: { events: EconomicEvent[] }) {
               )}
             </div>
           </div>
-        </div>
+        </button>
       ))}
     </Card>
   );

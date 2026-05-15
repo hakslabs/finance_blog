@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { PageContainer } from "../../components/layout/PageContainer";
+import { ActionNotice } from "../../components/interaction/ActionNotice";
+import { DetailPanel } from "../../components/interaction/DetailPanel";
 import { Card } from "../../components/primitives/Card";
 import { Badge } from "../../components/primitives/Badge";
 import { EmptyState } from "../../components/primitives/EmptyState";
-import type { StockDetail, StockTab } from "../../fixtures/stocks";
+import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
+import type { FilingItem, NewsItem, StockDetail, StockTab } from "../../fixtures/stocks";
 import { getStockDetail, STOCK_TABS } from "../../fixtures/stocks";
 import { OverviewSection } from "./sections/OverviewSection";
 import { ChartSection } from "./sections/ChartSection";
@@ -17,7 +20,43 @@ import { ConsensusSection } from "./sections/ConsensusSection";
 import styles from "./StockDetailPage.module.css";
 
 /** Render the active tab's section component for a given StockDetail. */
-function TabContent({ detail, tab }: { detail: StockDetail; tab: StockTab }) {
+function stockNewsDetail(news: NewsItem, symbol: string) {
+  return {
+    id: news.id,
+    eyebrow: `${symbol} News · ${news.source}`,
+    title: news.title,
+    meta: news.timeAgo,
+    summary: news.summary,
+    sections: [
+      {
+        title: "다음 연결",
+        body: "원문 링크, 뉴스 저장, 내 해석 메모는 저장/메모 PR에서 연결됩니다.",
+      },
+    ],
+  };
+}
+
+function filingDetail(filing: FilingItem, symbol: string) {
+  return {
+    id: filing.id,
+    eyebrow: `${symbol} Filing · ${filing.formType}`,
+    title: filing.title,
+    meta: `${filing.date} · 가격 영향 ${filing.priceImpact}`,
+    summary: "공시 요약, 원문 링크, 내 메모를 한 패널에서 볼 수 있도록 연결하는 상세 보기입니다.",
+  };
+}
+
+function TabContent({
+  detail,
+  tab,
+  onOpenNews,
+  onOpenFiling,
+}: {
+  detail: StockDetail;
+  tab: StockTab;
+  onOpenNews: (news: NewsItem) => void;
+  onOpenFiling: (filing: FilingItem) => void;
+}) {
   switch (tab) {
     case "개요":
       return <OverviewSection detail={detail} />;
@@ -42,10 +81,14 @@ function TabContent({ detail, tab }: { detail: StockDetail; tab: StockTab }) {
       );
     case "공시·실적":
       return (
-        <FilingsSection filings={detail.filings} nextEarnings={detail.nextEarnings} />
+        <FilingsSection
+          filings={detail.filings}
+          nextEarnings={detail.nextEarnings}
+          onOpenFiling={onOpenFiling}
+        />
       );
     case "뉴스":
-      return <NewsSection news={detail.news} />;
+      return <NewsSection news={detail.news} onOpenNews={onOpenNews} />;
     case "수급":
       return (
         <SupplyDemandSection
@@ -160,6 +203,7 @@ export function StockDetailPage() {
   const rawSymbol = symbol ?? "";
   const displaySymbol = rawSymbol.toUpperCase();
   const [activeTab, setActiveTab] = useState<StockTab>("개요");
+  const { detail: panelDetail, notice, handleAction, closeDetail } = useInteractionActions();
 
   const detail = getStockDetail(rawSymbol);
 
@@ -225,13 +269,20 @@ export function StockDetailPage() {
 
           {/* Tab content */}
           <section aria-label={`${activeTab} 탭`}>
-            <TabContent detail={detail} tab={activeTab} />
+            <TabContent
+              detail={detail}
+              tab={activeTab}
+              onOpenNews={(news) => handleAction({ type: "detail", detail: stockNewsDetail(news, detail.symbol) })}
+              onOpenFiling={(filing) => handleAction({ type: "detail", detail: filingDetail(filing, detail.symbol) })}
+            />
           </section>
         </main>
 
         {/* Right sidebar */}
         <SimilarStocksSidebar detail={detail} />
       </div>
+      <DetailPanel detail={panelDetail} onClose={closeDetail} />
+      <ActionNotice message={notice} />
     </PageContainer>
   );
 }

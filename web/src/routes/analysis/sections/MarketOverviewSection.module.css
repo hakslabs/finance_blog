@@ -110,7 +110,9 @@
   width: 28px;
   height: 28px;
   border: 1px solid var(--line);
-  font-size: 14px;
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -129,10 +131,27 @@
   color: var(--muted);
 }
 
-.toolOpen {
-  font-size: 0.6875rem;
+.toolActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   margin-top: 8px;
+}
+
+.toolActions button {
+  min-height: 28px;
+  padding: 0 8px;
   color: var(--accent);
+  font: inherit;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  cursor: pointer;
+}
+
+.toolActions button:hover {
+  border-color: var(--line);
 }
 
 .bottomGrid {

@@ -2,11 +2,20 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
   padding: 8px 12px;
+  color: inherit;
+  text-align: left;
   background: var(--surface);
   border: 1px solid var(--hairline);
   border-left: 3px solid var(--accent);
   border-radius: 2px;
+  cursor: pointer;
+}
+
+.banner:hover {
+  border-color: var(--line);
+  border-left-color: var(--accent);
 }
 
 .tag {

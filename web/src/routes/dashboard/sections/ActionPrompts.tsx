@@ -9,7 +9,15 @@ const SOURCE_CLASS: Record<TodoSource, string> = {
   Thesis: styles.sourceThesis,
 };
 
-export function ActionPrompts({ todos }: { todos: TodoItem[] }) {
+export function ActionPrompts({
+  todos,
+  onOpenTodo,
+  onOpenAll,
+}: {
+  todos: TodoItem[];
+  onOpenTodo?: (todo: TodoItem) => void;
+  onOpenAll?: () => void;
+}) {
   const doneCount = todos.filter((t) => t.done).length;
   return (
     <Card className={styles.card}>
@@ -20,18 +28,20 @@ export function ActionPrompts({ todos }: { todos: TodoItem[] }) {
             시장 이벤트 + 내 포지션 기반 추천
           </span>
         </div>
-        <div className={styles.progress}>
+        <button type="button" className={styles.progress} onClick={onOpenAll}>
           <span className={styles.progressText}>
             완료 {doneCount} / {todos.length}
           </span>
           <Badge tone="accent">마이페이지 →</Badge>
-        </div>
+        </button>
       </div>
       <div className={styles.grid}>
         {todos.map((todo) => (
-          <div
+          <button
+            type="button"
             key={todo.id}
             className={todo.done ? styles.itemDone : styles.item}
+            onClick={() => onOpenTodo?.(todo)}
           >
             <span
               className={todo.done ? styles.checkboxChecked : styles.checkbox}
@@ -44,7 +54,7 @@ export function ActionPrompts({ todos }: { todos: TodoItem[] }) {
             <span className={SOURCE_CLASS[todo.source]}>{todo.source}</span>
             <span className={styles.categoryTag}>{todo.category}</span>
             <span className={styles.metaText}>{todo.meta}</span>
-          </div>
+          </button>
         ))}
       </div>
     </Card>

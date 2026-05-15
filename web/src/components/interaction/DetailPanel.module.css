@@ -1,0 +1,97 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  justify-content: flex-end;
+  background: rgb(26 24 21 / 18%);
+}
+
+.panel {
+  width: min(520px, 100vw);
+  height: 100%;
+  padding: 18px;
+  overflow-y: auto;
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  box-shadow: -16px 0 34px rgb(26 24 21 / 12%);
+}
+
+.header {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.35;
+}
+
+.meta {
+  margin: 8px 0 0;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+}
+
+.close {
+  min-height: 32px;
+  padding: 0 10px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 800;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.summary {
+  margin: 16px 0 0;
+  color: var(--ink);
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.sections {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.sections section {
+  padding-top: 14px;
+  border-top: 1px solid var(--hairline);
+}
+
+.sections h3 {
+  margin: 0 0 6px;
+  font-size: 0.8125rem;
+}
+
+.sections p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  line-height: 1.7;
+}

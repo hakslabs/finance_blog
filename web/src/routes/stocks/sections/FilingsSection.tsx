@@ -13,9 +13,10 @@ const FILING_TONE_CLASS: Record<FilingItem["tone"], string> = {
 type FilingsSectionProps = {
   filings: FilingItem[];
   nextEarnings: EarningsEvent;
+  onOpenFiling?: (filing: FilingItem) => void;
 };
 
-export function FilingsSection({ filings, nextEarnings }: FilingsSectionProps) {
+export function FilingsSection({ filings, nextEarnings, onOpenFiling }: FilingsSectionProps) {
   return (
     <div className={styles.container}>
       <div className={styles.filingsGrid}>
@@ -66,7 +67,12 @@ export function FilingsSection({ filings, nextEarnings }: FilingsSectionProps) {
       <Card title="공시 타임라인" eyebrow="EDGAR / DART">
         <div className={styles.filingList}>
           {filings.map((f) => (
-            <div key={f.id} className={styles.filingRow}>
+            <button
+              key={f.id}
+              type="button"
+              className={styles.filingRow}
+              onClick={() => onOpenFiling?.(f)}
+            >
               <span className={styles.filingDate}>{f.date}</span>
               <span className={styles.filingTitle}>
                 <Badge tone="neutral">{f.formType}</Badge>
@@ -77,7 +83,7 @@ export function FilingsSection({ filings, nextEarnings }: FilingsSectionProps) {
               >
                 {f.priceImpact}
               </span>
-            </div>
+            </button>
           ))}
         </div>
         <p className={styles.sourceNote}>

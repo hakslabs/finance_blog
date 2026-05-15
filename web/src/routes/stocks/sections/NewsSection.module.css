@@ -36,6 +36,22 @@
   padding: 10px;
 }
 
+.newsCardButton {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.newsCardButton:hover .newsTitle {
+  color: var(--accent);
+}
+
 .newsMeta {
   display: flex;
   gap: 6px;

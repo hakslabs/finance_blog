@@ -65,17 +65,96 @@ export type AnalysisTool = {
   icon: string;
   title: string;
   description: string;
+  targetTab: AnalysisTab;
+  detailSections: { title: string; body: string }[];
 };
 
 export const ANALYSIS_TOOLS: AnalysisTool[] = [
-  { id: "tool-chart", icon: "📈", title: "실시간 차트", description: "TradingView급 캔들·이평·볼린저·RSI·MACD" },
-  { id: "tool-financial", icon: "📊", title: "재무제표 시각화", description: "BS / IS / CF — 5년 추이 & 동종업계 비교" },
-  { id: "tool-screener", icon: "🔍", title: "퀀트 스크리너", description: "PER · PBR · ROE · 모멘텀 · 퀄리티 팩터 필터" },
-  { id: "tool-dcf", icon: "💰", title: "DCF 밸류에이션 계산기", description: "가정 슬라이더로 적정주가 추정" },
-  { id: "tool-signal", icon: "🔔", title: "기술적 신호 알림", description: "골든크로스 · RSI 과매수 · 거래량 급증" },
-  { id: "tool-ratio", icon: "⚖️", title: "재무 비율 비교", description: "동종업계 / 섹터 평균 대비 백분위" },
-  { id: "tool-heat", icon: "🟩", title: "히트맵", description: "시총 가중 트리맵 · S&P 500 / KOSPI" },
-  { id: "tool-sentiment", icon: "🎯", title: "시장 심리", description: "VIX · F&G · V-KOSPI · ADR · 9개 지표" },
+  {
+    id: "tool-chart",
+    icon: "CH",
+    title: "실시간 차트",
+    description: "캔들·이평·볼린저·RSI·MACD",
+    targetTab: "기술적 분석",
+    detailSections: [
+      { title: "제공 기능", body: "기간 전환, 주요 보조지표, 기술적 신호 테이블을 한 화면에서 확인합니다." },
+      { title: "후속 연결", body: "실시간 캔들/보조지표 계산은 가격 데이터 확장 PR에서 API 기반으로 바뀝니다." },
+    ],
+  },
+  {
+    id: "tool-financial",
+    icon: "FS",
+    title: "재무제표 시각화",
+    description: "BS / IS / CF 5년 추이와 동종업계 비교",
+    targetTab: "재무 분석",
+    detailSections: [
+      { title: "제공 기능", body: "PER, PBR, ROE, 순이익률, 부채비율을 표와 차트로 비교합니다." },
+      { title: "후속 연결", body: "재무제표 원천 API와 시계열 차트는 재무 데이터 PR에서 연결됩니다." },
+    ],
+  },
+  {
+    id: "tool-screener",
+    icon: "SC",
+    title: "퀀트 스크리너",
+    description: "PER · PBR · ROE · 모멘텀 · 퀄리티 필터",
+    targetTab: "퀀트 팩터",
+    detailSections: [
+      { title: "제공 기능", body: "팩터별 상위/하위 그룹 수익률과 스프레드를 비교합니다." },
+      { title: "편집 구조", body: "새 팩터는 registry 항목 추가로 화면에 자동 반영되도록 유지합니다." },
+    ],
+  },
+  {
+    id: "tool-dcf",
+    icon: "DC",
+    title: "DCF 밸류에이션 계산기",
+    description: "가정 슬라이더로 적정주가 추정",
+    targetTab: "적정주가 계산",
+    detailSections: [
+      { title: "제공 기능", body: "성장률, 영구 성장률, WACC 가정을 바꿔 적정가 민감도를 확인합니다." },
+      { title: "후속 연결", body: "입력값 저장과 시나리오 비교는 저장 PR 이후 연결합니다." },
+    ],
+  },
+  {
+    id: "tool-signal",
+    icon: "AL",
+    title: "기술적 신호 알림",
+    description: "골든크로스 · RSI 과매수 · 거래량 급증",
+    targetTab: "신호 알림",
+    detailSections: [
+      { title: "제공 기능", body: "관심종목과 보유종목에서 발생한 기술적 신호를 우선순위로 봅니다." },
+      { title: "후속 연결", body: "실시간 알림 발송과 읽음 처리는 알림 백엔드 PR에서 연결됩니다." },
+    ],
+  },
+  {
+    id: "tool-ratio",
+    icon: "RA",
+    title: "재무 비율 비교",
+    description: "동종업계 / 섹터 평균 대비 백분위",
+    targetTab: "재무 분석",
+    detailSections: [
+      { title: "제공 기능", body: "기업별 밸류에이션과 수익성 지표를 섹터 평균과 비교합니다." },
+    ],
+  },
+  {
+    id: "tool-heat",
+    icon: "HM",
+    title: "히트맵",
+    description: "시총 가중 트리맵 · S&P 500 / KOSPI",
+    targetTab: "섹터 흐름",
+    detailSections: [
+      { title: "제공 기능", body: "섹터별 모멘텀과 시장 지도 흐름을 묶어서 확인합니다." },
+    ],
+  },
+  {
+    id: "tool-sentiment",
+    icon: "SN",
+    title: "시장 심리",
+    description: "VIX · F&G · V-KOSPI · ADR · 9개 지표",
+    targetTab: "시장 심리",
+    detailSections: [
+      { title: "제공 기능", body: "미국, 한국, 글로벌 지표를 섞지 않고 시장별로 묶어서 비교합니다." },
+    ],
+  },
 ];
 
 export type RecentSignal = {

@@ -16,6 +16,8 @@ import {
   type SectorReturn,
   type RecentSignal,
   type SavedScreen,
+  type AnalysisTab,
+  type AnalysisTool,
 } from "../../../fixtures/analysis";
 import styles from "./MarketOverviewSection.module.css";
 
@@ -91,7 +93,13 @@ const screenColumns: DataTableColumn<SavedScreen>[] = [
   },
 ];
 
-export function MarketOverviewSection() {
+export function MarketOverviewSection({
+  onOpenTool,
+  onSelectToolTab,
+}: {
+  onOpenTool?: (tool: AnalysisTool) => void;
+  onSelectToolTab?: (tab: AnalysisTab) => void;
+}) {
   return (
     <div className={styles.root}>
       <div className={styles.topGrid}>
@@ -158,7 +166,14 @@ export function MarketOverviewSection() {
               </div>
               <div className={styles.toolTitle}>{tool.title}</div>
               <div className={styles.toolDesc}>{tool.description}</div>
-              <div className={styles.toolOpen}>열기 →</div>
+              <div className={styles.toolActions}>
+                <button type="button" onClick={() => onSelectToolTab?.(tool.targetTab)}>
+                  도구 열기
+                </button>
+                <button type="button" onClick={() => onOpenTool?.(tool)}>
+                  상세
+                </button>
+              </div>
             </Card>
           ))}
         </div>

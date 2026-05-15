@@ -54,8 +54,19 @@
 .article {
   display: flex;
   gap: 10px;
+  width: 100%;
   padding-bottom: 8px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+  border: 0;
   border-bottom: 1px solid var(--hairline);
+}
+
+.article:hover p {
+  color: var(--accent);
 }
 
 .article:last-child {
@@ -94,6 +105,22 @@
   gap: 2px;
   font-family: var(--mono);
   font-weight: 700;
+}
+
+.termButton,
+.textButton {
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.termButton:hover,
+.textButton:hover {
+  color: var(--accent);
 }
 
 .term span {

@@ -68,10 +68,26 @@
   min-width: 0;
 }
 
-.newsTitle {
+.newsTitle,
+.newsTitleButton {
   font-size: 0.71875rem;
   line-height: 1.35;
   color: var(--ink);
+}
+
+.newsTitleButton {
+  display: block;
+  width: 100%;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.newsTitleButton:hover {
+  color: var(--accent);
 }
 
 .meta {
@@ -127,6 +143,10 @@
   font-size: 0.59375rem;
   cursor: pointer;
   flex-shrink: 0;
+  padding: 0;
+  font: inherit;
+  background: transparent;
+  border: 0;
 }
 
 .actionHasNote {

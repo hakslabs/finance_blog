@@ -41,8 +41,19 @@
   display: flex;
   gap: 12px;
   align-items: baseline;
+  width: 100%;
   padding: 6px 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
   border-bottom: 1px solid var(--hairline);
+  cursor: pointer;
+}
+
+.filingRow:hover .filingTitle {
+  color: var(--accent);
 }
 
 .filingRow:last-child {

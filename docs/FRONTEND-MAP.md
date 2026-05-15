@@ -15,6 +15,7 @@ web/src/
   App.tsx                 # Router; one <Route> per page
   main.tsx                # Vite entry
   components/
+    interaction/          # Cross-page action/detail/planned-feedback UX
     layout/               # Page chrome (shell, sidebar, container)
     primitives/           # Cross-page reusable building blocks
   fixtures/               # Static typed sample data; one file per route domain
@@ -117,6 +118,24 @@ Defaults — use these _before_ writing route-local alternatives. See `docs/FRON
 
 If you bypass a default, document the blocker in the PR description before implementing the replacement.
 
+## Interaction (`components/interaction/`, `lib/interaction/`)
+
+### `ActionIntent`
+
+Discriminated action schema for repeated click behavior: route navigation, detail panel, planned-feature notice, or external link. Prefer this over page-local ad hoc click handling when behavior may repeat.
+
+### `useInteractionActions()`
+
+Shared hook that executes `ActionIntent` and owns selected detail plus transient planned-action notice state. Route pages call it once and pass callbacks to sections.
+
+### `DetailPanel({ detail, onClose })`
+
+Right-side dialog for item detail. Used for news, todos, events, analysis tools, glossary terms, filings, master changes, and other text/detail surfaces that do not justify a dedicated route.
+
+### `ActionNotice({ message })`
+
+Transient status toast for planned write-backed actions such as save, follow, memo, or notification actions before the backend write path exists.
+
 ## Lib (`lib/`)
 
 ### `env.ts`
@@ -192,7 +211,7 @@ PR-11 wires `/portfolio` to live data via `lib/usePortfolio.ts` and the `apiClie
 - `MARKET_INDICES: MarketIndex[]` — 3 items (S&P 500, KOSPI, VIX).
 - `SECTOR_ROTATION: SectorReturn[]` — 7 sectors, 1M returns.
 - `STYLE_ROTATION: StyleCell[]` — 4 cells (대형/소형 × 그로스/밸류).
-- `ANALYSIS_TOOLS: AnalysisTool[]` — 8 tool cards.
+- `ANALYSIS_TOOLS: AnalysisTool[]` — 8 tool registry entries with target tab and detail sections. Adding a tool should be a data change, not a hardcoded card change.
 - `RECENT_SIGNALS: RecentSignal[]` — 5 signals.
 - `SAVED_SCREENS: SavedScreen[]` — 4 screens.
 - `SENTIMENT_INDICATORS: SentimentIndicator[]` — 9 indicators across US/KR/Global.
@@ -283,25 +302,26 @@ Used by routes that haven't been implemented yet. Wraps content in `PageContaine
 
 ### `dashboard/DashboardPage` (paths: `/`, `/dashboard`)
 
-Composes the dashboard from `routes/dashboard/sections/*` and `fixtures/dashboard.ts`. Top-level structure: `PageContainer(title=greeting, description=GreetingMeta, actions=GreetingActions)` → `NoticeBanner` → `ActionPrompts` → `IndicatorStrip` → 4× `.pair` grids of sibling section cards.
+Composes the dashboard from `routes/dashboard/sections/*` and `fixtures/dashboard.ts`. Top-level structure: `PageContainer(title=greeting, description=GreetingMeta, actions=GreetingActions)` → `NoticeBanner` → `ActionPrompts` → `IndicatorStrip` → 4× `.pair` grids of sibling section cards. The page owns `useInteractionActions()` and passes action callbacks to sections so notices, todos, news, events, and return contributors open `DetailPanel` or planned notices.
 
 **Sections** (`routes/dashboard/sections/`):
 
 - `GreetingActions({ summary })` + `GreetingMeta({ date, day, time, nyseOpensIn })` — slotted into `PageContainer.actions` / `description`.
-- `NoticeBanner({ notice })`.
-- `ActionPrompts({ todos })` — todo grid, 2-col → 1-col responsive.
+- `NoticeBanner({ notice, onOpen? })`.
+- `ActionPrompts({ todos, onOpenTodo?, onOpenAll? })` — todo grid, 2-col → 1-col responsive.
 - `IndicatorStrip({ fearGreed, macros, marketTime })` — renders **two** sibling `<Card>`s (F&G gauges + macro grid); place inside a `.pair` wrapper in the page.
 - `WatchlistCard({ state })` — renders signed-out/config-error/loading/error/empty/ready states from `useWatchlist()`; loading uses the shared `Skeleton` primitive.
 - `TopMoversCard({ movers })`.
-- `NewsList({ items })`.
-- `EconomicEventsList({ events })`.
-- `ReturnsChart({ data })`.
+- `NewsList({ items, onOpenNews?, onSaveNews?, onAddNote? })`.
+- `EconomicEventsList({ events, onOpenEvent? })`.
+- `ReturnsChart({ data, onOpenContributor?, onSendReview? })`.
 - `PortfolioSummaryCard({ assets, holdings, totalAssetsShort })`.
 - `HeatmapCard({ title, sub, seed })` — `seed: number` drives the deterministic cell colors.
 
 **Shared helpers**:
 
 - `sections/sparkline.ts` — four precomputed SVG path strings: `SPARK_MACRO_UP/DOWN` (40×14) and `SPARK_ROW_UP/DOWN` (28×14).
+- `dashboardInteractions.ts` — pure mappers from dashboard fixture records to shared `DetailContent`.
 - `sections/_card.module.css` — shared card-header pieces consumed via `composes: x from "./_card.module.css"`. Exports class names `title`, `subtitle`, `titleBlock`, `headerLeft`, `headerRowBordered`, `footerRowBordered`. Add a class here only when its declarations are byte-identical across 3+ sections.
 - `sections/_table.module.css` — shared table scaffolding for row-based sections (Watchlist, TopMovers). Exports `tableHead`, `thGrow`, `thFixed`, `row` (with `:last-child` border reset), `symbol`, `symbolCode`, `symbolName`, `cellPrice`, `cellChange`, `cellChangePos`, `cellChangeNeg`. Section-specific column widths stay in the section module.
 
@@ -313,7 +333,7 @@ Renders a `PageContainer(title="종목 목록")` with a `DataTable` using `densi
 
 ### `stocks/StockDetailPage` (path: `/stocks/:symbol`)
 
-Route-param-driven stock detail page. Uses `useParams` to read `symbol`, calls `getStockDetail(symbol)` for fixture lookup. Unknown symbols render `PageContainer` + `EmptyState` + link back to `/stocks`. Known symbols render:
+Route-param-driven stock detail page. Uses `useParams` to read `symbol`, calls `getStockDetail(symbol)` for fixture lookup, and owns `useInteractionActions()` for tab-local detail surfaces. Unknown symbols render `PageContainer` + `EmptyState` + link back to `/stocks`. Known symbols render:
 
 - **Header**: PageContainer with eyebrow "리서치 / 종목", title = company name, description = Badges (symbol, exchange, sector) + price/change/lastUpdated.
 - **Key stats strip**: Card with 8 inline stats (marketCap, volume, 52W range, PER, PBR, ROE, dividendYield, beta).
@@ -327,8 +347,8 @@ Route-param-driven stock detail page. Uses `useParams` to read `symbol`, calls `
 - `ChartSection({ detail })` — full chart area with period pills, type pills, indicator pills. Main chart reads from `useQuote(detail.symbol, "6mo")` and renders `PriceChart` when ready; loading/empty/error states fall back to `ChartPlaceholder`. Source bar shows `last_refreshed_at` and a stale notice when present. Volume/RSI/MACD sub-panels remain `ChartPlaceholder` until later PRs wire indicators.
 - `FinancialsSection({ incomeStatement, balanceSheet, cashFlow, keyRatios })` — sub-tabs (손익/재무/현금, 연간/분기), income statement table, balance sheet + cash flow grid, key ratios table. All from fixture tables.
 - `ValuationSection({ metrics, peers, fairValues })` — 4-column metric cards (PER/PBR/EV/DY), PER-PBR trend chart placeholder + fair value estimates list, peer comparison table with highlight row.
-- `FilingsSection({ filings, nextEarnings })` — earnings trend chart placeholder + next earnings card, filing timeline table with form-type badges and price impact colors.
-- `NewsSection({ news })` — filter pills, news grid (cards with time/source/title/summary), AI summary sidebar card.
+- `FilingsSection({ filings, nextEarnings, onOpenFiling? })` — earnings trend chart placeholder + next earnings card, clickable filing timeline table with form-type badges and price impact colors.
+- `NewsSection({ news, onOpenNews? })` — filter pills, clickable news grid (cards with time/source/title/summary), AI summary sidebar card.
 - `SupplyDemandSection({ kpis, holders, insiders })` — notice banner, 4 KPI cards, short interest chart + insider trades grid, institutional holders table (13F data).
 - `ConsensusSection({ consensus, reports, gurus })` — 4 KPI cards (rating/target/upside/analysts), target distribution + opinion distribution charts, analyst reports table, guru holdings grid.
 
@@ -348,14 +368,14 @@ Live-data portfolio page. Reads `usePortfolio()` (PR-11) and composes the result
 
 ### `analysis/AnalysisPage` (path: `/analysis`)
 
-Static analysis hub composed from `routes/analysis/sections/*` and `fixtures/analysis.ts`. Top-level structure: `PageContainer(eyebrow="Analysis", title="분석", description=…)` → `<nav>` tab bar (8 tabs) → `<section>` containing the active tab's section component. Tab state held by `useState<AnalysisTab>`; tab `<button>` pattern reused from `/stocks/:symbol`. Fixture-only, no API calls.
+Static analysis hub composed from `routes/analysis/sections/*` and `fixtures/analysis.ts`. Top-level structure: `PageContainer(eyebrow="Analysis", title="분석", description=…)` → `<nav>` tab bar (8 tabs) → `<section>` containing the active tab's section component. Tab state held by `useState<AnalysisTab>`; tab `<button>` pattern reused from `/stocks/:symbol`. The page owns `useInteractionActions()` for tool detail panels. Fixture-only, no API calls.
 
 **File**: `routes/analysis/AnalysisPage.tsx`, co-located `AnalysisPage.module.css`.
 
 **Sections** (`routes/analysis/sections/`):
 
-- `MarketOverviewSection()` — 시장 한눈에. 3-col top grid (`Card`: 시장 개요 with `ChartPlaceholder` + index row · `Card` with `DataTable<SectorReturn>` for sector rotation · `Card` with style rotation grid). 4-col tools grid as `Card`s. 2-col bottom grid: `Card` with recent signal list + `Card` with `DataTable<SavedScreen>`. Badge in card action slot.
-- `SentimentSection()` — 시장 심리. Banner `Card`, then one `Card`+`DataTable<SentimentIndicator>` per region (US/KR/Global). Status mapped to `Badge` tone via `Record<SentimentStatus, BadgeTone>`. Composite history `Card` with `ChartPlaceholder` and legend. Glossary `Card` with `DataTable<IndicatorGlossary>`. No SVG gauges — `DataTable` + `Badge` per C-11 (gauge primitive would require a separate promotion PR).
+- `MarketOverviewSection({ onOpenTool?, onSelectToolTab? })` — 시장 한눈에. 3-col top grid (`Card`: 시장 개요 with `ChartPlaceholder` + index row · `Card` with `DataTable<SectorReturn>` for sector rotation · `Card` with style rotation grid). Tool cards are generated from `ANALYSIS_TOOLS` registry and can either switch to the target tab or open `DetailPanel`. 2-col bottom grid: `Card` with recent signal list + `Card` with `DataTable<SavedScreen>`.
+- `SentimentSection()` — 시장 심리. Banner `Card`, balanced region grid with one `Card`+`DataTable<SentimentIndicator>` per region (US/KR/Global), then a 2-col chart/glossary row. Status mapped to `Badge` tone via `Record<SentimentStatus, BadgeTone>`. No SVG gauges — `DataTable` + `Badge` per C-11 (gauge primitive would require a separate promotion PR).
 - `TechnicalSection()` — 기술적 분석. `Card`+`ChartPlaceholder` for chart, `Card`+`DataTable<TechnicalIndicator>` with buy/sell/hold `Badge`.
 - `FinancialAnalysisSection()` — 재무 분석. `Card`+`ChartPlaceholder`, `Card`+`DataTable<FinancialScore>` with A-D grade `Badge`.
 - `QuantFactorSection()` — 퀀트 팩터. `Card`+`ChartPlaceholder`, `Card`+`DataTable<QuantFactor>` with spread color class.
@@ -397,13 +417,13 @@ Static masters list from `wire-masters-learn.jsx` (`WireMasters`). Renders `Page
 
 ### `masters/MasterDetailPage` (path: `/masters/:id`)
 
-Route-param-driven master detail page. Uses `getMaster(id)` fixture lookup. Unknown ids render `EmptyState` with a link back to `/masters`. Known ids render KPI summary tiles, holdings table, `ChartPlaceholder` for sector/performance, 13F quarterly changes table, principles, and recent changes.
+Route-param-driven master detail page. Uses `getMaster(id)` fixture lookup and `useInteractionActions()` for follow/planned state and recent-change detail panels. Unknown ids render `EmptyState` with a link back to `/masters`. Known ids render KPI summary tiles, holdings table, `ChartPlaceholder` for sector/performance, 13F quarterly changes table, principles, and recent changes.
 
 **File**: `routes/masters/MasterDetailPage.tsx`, co-located `MasterDetailPage.module.css`.
 
 ### `learn/LearnPage` (path: `/learn`)
 
-Static learning page from `wire-masters-learn.jsx` (`WireLearn`) with three tabs: `입문서·칼럼`, `용어 사전`, `리포트 라이브러리`. Tab state is local `useState<LearnTab>`. Guides use `Card`; glossary and report library use `DataTable`.
+Static learning page from `wire-masters-learn.jsx` (`WireLearn`) with three tabs: `입문서·칼럼`, `용어 사전`, `리포트 라이브러리`. Tab state is local `useState<LearnTab>`. Guides, glossary rows, and report-library rows open shared `DetailPanel` through `useInteractionActions()`.
 
 **File**: `routes/learn/LearnPage.tsx`, co-located `LearnPage.module.css`.
 

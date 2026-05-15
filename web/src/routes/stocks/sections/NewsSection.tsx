@@ -5,9 +5,10 @@ import styles from "./NewsSection.module.css";
 
 type NewsSectionProps = {
   news: NewsItem[];
+  onOpenNews?: (news: NewsItem) => void;
 };
 
-export function NewsSection({ news }: NewsSectionProps) {
+export function NewsSection({ news, onOpenNews }: NewsSectionProps) {
   return (
     <div className={styles.container}>
       <div className={styles.filterRow}>
@@ -26,14 +27,19 @@ export function NewsSection({ news }: NewsSectionProps) {
       <div className={styles.newsGrid}>
         <div className={styles.newsList}>
           {news.map((n) => (
-            <Card key={n.id} className={styles.newsCard}>
+            <button
+              key={n.id}
+              type="button"
+              className={styles.newsCardButton}
+              onClick={() => onOpenNews?.(n)}
+            >
               <div className={styles.newsMeta}>
                 <span className={styles.newsTime}>{n.timeAgo}</span>
                 <Badge tone="neutral">{n.source}</Badge>
               </div>
               <p className={styles.newsTitle}>{n.title}</p>
               <p className={styles.newsSummary}>{n.summary}</p>
-            </Card>
+            </button>
           ))}
         </div>
 

@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { PageContainer } from "../../components/layout/PageContainer";
-import { ANALYSIS_TABS, type AnalysisTab } from "../../fixtures/analysis";
+import { ActionNotice } from "../../components/interaction/ActionNotice";
+import { DetailPanel } from "../../components/interaction/DetailPanel";
+import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
+import { ANALYSIS_TABS, type AnalysisTab, type AnalysisTool } from "../../fixtures/analysis";
 import { MarketOverviewSection } from "./sections/MarketOverviewSection";
 import { SentimentSection } from "./sections/SentimentSection";
 import { TechnicalSection } from "./sections/TechnicalSection";
@@ -11,10 +14,34 @@ import { SectorFlowSection } from "./sections/SectorFlowSection";
 import { SignalsSection } from "./sections/SignalsSection";
 import styles from "./AnalysisPage.module.css";
 
-function TabContent({ tab }: { tab: AnalysisTab }) {
+function toolDetail(tool: AnalysisTool) {
+  return {
+    id: tool.id,
+    eyebrow: `Analysis tool · ${tool.targetTab}`,
+    title: tool.title,
+    summary: tool.description,
+    tags: [tool.targetTab],
+    sections: tool.detailSections,
+  };
+}
+
+function TabContent({
+  tab,
+  onOpenTool,
+  onSelectToolTab,
+}: {
+  tab: AnalysisTab;
+  onOpenTool: (tool: AnalysisTool) => void;
+  onSelectToolTab: (tab: AnalysisTab) => void;
+}) {
   switch (tab) {
     case "시장 한눈에":
-      return <MarketOverviewSection />;
+      return (
+        <MarketOverviewSection
+          onOpenTool={onOpenTool}
+          onSelectToolTab={onSelectToolTab}
+        />
+      );
     case "시장 심리":
       return <SentimentSection />;
     case "기술적 분석":
@@ -36,6 +63,7 @@ function TabContent({ tab }: { tab: AnalysisTab }) {
 
 export function AnalysisPage() {
   const [activeTab, setActiveTab] = useState<AnalysisTab>("시장 한눈에");
+  const { detail, notice, handleAction, closeDetail } = useInteractionActions();
 
   return (
     <PageContainer
@@ -60,8 +88,14 @@ export function AnalysisPage() {
       </nav>
 
       <section aria-label={`${activeTab} 탭`}>
-        <TabContent tab={activeTab} />
+        <TabContent
+          tab={activeTab}
+          onOpenTool={(tool) => handleAction({ type: "detail", detail: toolDetail(tool) })}
+          onSelectToolTab={setActiveTab}
+        />
       </section>
+      <DetailPanel detail={detail} onClose={closeDetail} />
+      <ActionNotice message={notice} />
     </PageContainer>
   );
 }

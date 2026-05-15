@@ -1,5 +1,5 @@
 import { Card } from "../../../components/primitives/Card";
-import type { ReturnSeries } from "../../../fixtures/dashboard";
+import type { ReturnContributor, ReturnSeries } from "../../../fixtures/dashboard";
 import styles from "./ReturnsChart.module.css";
 
 const PERIODS = ["1D", "1W", "1M", "3M", "1Y", "ALL"] as const;
@@ -39,7 +39,15 @@ const PORTFOLIO_PATH = areaPath("home-portfolio", 600, 130);
 const KOSPI_PATH = areaPath("home-kospi", 600, 130);
 const SPX_PATH = areaPath("home-spx", 600, 130);
 
-export function ReturnsChart({ data }: { data: ReturnSeries }) {
+export function ReturnsChart({
+  data,
+  onOpenContributor,
+  onSendReview,
+}: {
+  data: ReturnSeries;
+  onOpenContributor?: (contributor: ReturnContributor) => void;
+  onSendReview?: () => void;
+}) {
   return (
     <Card className={styles.card}>
       <div className={styles.header}>
@@ -107,10 +115,17 @@ export function ReturnsChart({ data }: { data: ReturnSeries }) {
         <span className={styles.contribHeading}>
           시장 대비 +4.2%p · 기여 요인
         </span>
-        <span className={styles.contribAction}>복기로 보내기 →</span>
+        <button type="button" className={styles.contribAction} onClick={onSendReview}>
+          복기로 보내기 →
+        </button>
       </div>
       {data.contributors.map((c) => (
-        <div key={c.symbol} className={styles.contribRow}>
+        <button
+          key={c.symbol}
+          type="button"
+          className={styles.contribRow}
+          onClick={() => onOpenContributor?.(c)}
+        >
           <span className={styles.contribSymbol}>{c.symbol}</span>
           <span className={styles.contribName}>{c.name}</span>
           <span className={styles.contribReason}>{c.reason}</span>
@@ -119,7 +134,7 @@ export function ReturnsChart({ data }: { data: ReturnSeries }) {
           >
             {c.contribution}
           </span>
-        </div>
+        </button>
       ))}
       <div className={styles.learning}>
         <b className={styles.learningStrong}>학습 포인트.</b>{" "}

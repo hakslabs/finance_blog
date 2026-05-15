@@ -16,7 +16,17 @@ const CAT_LABEL: Record<NewsCategory, string> = {
   macro: "매크로",
 };
 
-export function NewsList({ items }: { items: NewsItem[] }) {
+export function NewsList({
+  items,
+  onOpenNews,
+  onSaveNews,
+  onAddNote,
+}: {
+  items: NewsItem[];
+  onOpenNews?: (item: NewsItem) => void;
+  onSaveNews?: (item: NewsItem) => void;
+  onAddNote?: (item: NewsItem) => void;
+}) {
   return (
     <Card className={styles.card}>
       <div className={styles.header}>
@@ -35,7 +45,13 @@ export function NewsList({ items }: { items: NewsItem[] }) {
               {CAT_LABEL[n.category]}
             </span>
             <div className={styles.body}>
-              <div className={styles.newsTitle}>{n.title}</div>
+              <button
+                type="button"
+                className={styles.newsTitleButton}
+                onClick={() => onOpenNews?.(n)}
+              >
+                {n.title}
+              </button>
               <div className={styles.meta}>
                 {n.source} · {n.timeAgo}
               </div>
@@ -60,11 +76,29 @@ export function NewsList({ items }: { items: NewsItem[] }) {
             )}
             <span className={styles.spacer} />
             {n.hasMyNote ? (
-              <span className={styles.actionHasNote}>✎ 내 해석 있음 →</span>
+              <button
+                type="button"
+                className={styles.actionHasNote}
+                onClick={() => onOpenNews?.(n)}
+              >
+                ✎ 내 해석 있음 →
+              </button>
             ) : (
-              <span className={styles.actionAddNote}>+ 해석 추가</span>
+              <button
+                type="button"
+                className={styles.actionAddNote}
+                onClick={() => onAddNote?.(n)}
+              >
+                + 해석 추가
+              </button>
             )}
-            <span className={styles.actionSave}>저장</span>
+            <button
+              type="button"
+              className={styles.actionSave}
+              onClick={() => onSaveNews?.(n)}
+            >
+              저장
+            </button>
           </div>
         </div>
       ))}

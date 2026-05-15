@@ -1,11 +1,14 @@
 import { Link, useParams } from "react-router-dom";
 import { PageContainer } from "../../components/layout/PageContainer";
+import { ActionNotice } from "../../components/interaction/ActionNotice";
+import { DetailPanel } from "../../components/interaction/DetailPanel";
 import { Badge } from "../../components/primitives/Badge";
 import { Card } from "../../components/primitives/Card";
 import { ChartPlaceholder } from "../../components/primitives/ChartPlaceholder";
 import { DataTable } from "../../components/primitives/DataTable";
 import { EmptyState } from "../../components/primitives/EmptyState";
 import { KpiTile } from "../../components/primitives/KpiTile";
+import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
 import { getMaster } from "../../fixtures/masters";
 import type { MasterHolding, MasterQuarterChange, HoldingChange } from "../../fixtures/masters";
 import styles from "./MasterDetailPage.module.css";
@@ -41,6 +44,7 @@ const quarterColumns = [
 export function MasterDetailPage() {
   const { id } = useParams<{ id: string }>();
   const master = getMaster(id);
+  const { detail, notice, handleAction, closeDetail } = useInteractionActions();
 
   if (!master) {
     return (
@@ -59,7 +63,15 @@ export function MasterDetailPage() {
       eyebrow="Masters / Detail"
       title={master.name}
       description={`${master.firm} · ${master.style}`}
-      actions={<button className={styles.followButton} type="button">팔로우</button>}
+      actions={
+        <button
+          className={styles.followButton}
+          type="button"
+          onClick={() => handleAction({ type: "planned", message: "거장 팔로우 저장은 PR-17 saved-items에서 연결됩니다." })}
+        >
+          팔로우
+        </button>
+      }
     >
       <Link to="/masters" className={styles.backLink}>← 거장 목록으로</Link>
 
@@ -92,14 +104,30 @@ export function MasterDetailPage() {
         <Card title="최근 보유 변경">
           <div className={styles.changeList}>
             {master.recentChanges.map((change) => (
-              <div key={change.id} className={styles.changeRow}>
+              <button
+                key={change.id}
+                type="button"
+                className={styles.changeRow}
+                onClick={() => handleAction({
+                  type: "detail",
+                  detail: {
+                    id: change.id,
+                    eyebrow: `${master.name} · 최근 보유 변경`,
+                    title: change.text,
+                    summary: "13F 변화 원인과 내 포트폴리오 영향 메모를 연결할 상세 패널입니다.",
+                    tags: [change.type],
+                  },
+                })}
+              >
                 <Badge tone={CHANGE_TONE[change.kind]}>{change.type}</Badge>
                 <span>{change.text}</span>
-              </div>
+              </button>
             ))}
           </div>
         </Card>
       </div>
+      <DetailPanel detail={detail} onClose={closeDetail} />
+      <ActionNotice message={notice} />
     </PageContainer>
   );
 }

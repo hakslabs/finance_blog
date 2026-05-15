@@ -83,43 +83,47 @@ export function SentimentSection() {
         </p>
       </Card>
 
-      {regions.map((region) => (
-        <Card key={region} title={REGION_LABEL[region]}>
-          <DataTable<SentimentIndicator>
-            columns={indicatorColumns}
-            rows={regionRows(region)}
+      <div className={styles.regionGrid}>
+        {regions.map((region) => (
+          <Card key={region} title={REGION_LABEL[region]}>
+            <DataTable<SentimentIndicator>
+              columns={indicatorColumns}
+              rows={regionRows(region)}
+              getRowKey={(r) => r.id}
+              density="compact"
+            />
+          </Card>
+        ))}
+      </div>
+
+      <div className={styles.bottomGrid}>
+        <Card title="종합 심리 지수 · 12개월 추이">
+          <ChartPlaceholder label="US · KR · Global 합성 심리 추이" height={140} />
+          <div className={styles.legendRow}>
+            <span className={styles.legendItem}>
+              <span className={`${styles.legendSwatch} ${styles.swatchDown}`} aria-hidden="true" />
+              극공포 (0–25)
+            </span>
+            <span className={styles.legendItem}>
+              <span className={`${styles.legendSwatch} ${styles.swatchNeutral}`} aria-hidden="true" />
+              중립 (45–55)
+            </span>
+            <span className={styles.legendItem}>
+              <span className={`${styles.legendSwatch} ${styles.swatchUp}`} aria-hidden="true" />
+              극탐욕 (75+)
+            </span>
+          </div>
+        </Card>
+
+        <Card title="지표 해설">
+          <DataTable<IndicatorGlossary>
+            columns={glossaryColumns}
+            rows={INDICATOR_GLOSSARY}
             getRowKey={(r) => r.id}
             density="compact"
           />
         </Card>
-      ))}
-
-      <Card title="종합 심리 지수 · 12개월 추이">
-        <ChartPlaceholder label="US · KR · Global 합성 심리 추이" height={140} />
-        <div className={styles.legendRow}>
-          <span className={styles.legendItem}>
-            <span className={`${styles.legendSwatch} ${styles.swatchDown}`} aria-hidden="true" />
-            극공포 (0–25)
-          </span>
-          <span className={styles.legendItem}>
-            <span className={`${styles.legendSwatch} ${styles.swatchNeutral}`} aria-hidden="true" />
-            중립 (45–55)
-          </span>
-          <span className={styles.legendItem}>
-            <span className={`${styles.legendSwatch} ${styles.swatchUp}`} aria-hidden="true" />
-            극탐욕 (75+)
-          </span>
-        </div>
-      </Card>
-
-      <Card title="지표 해설">
-        <DataTable<IndicatorGlossary>
-          columns={glossaryColumns}
-          rows={INDICATOR_GLOSSARY}
-          getRowKey={(r) => r.id}
-          density="compact"
-        />
-      </Card>
+      </div>
     </div>
   );
 }
