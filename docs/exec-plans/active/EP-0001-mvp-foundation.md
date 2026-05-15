@@ -178,11 +178,11 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 
 ### PR-12 — Deployment and env docs
 
-- [ ] Scope: Vercel deploy for the frontend, deploy/run notes for the FastAPI service (Render/Fly/NAS — pick the first realistic target), `.env` matrix per environment, secret handling rules pointing at `docs/SECURITY.md`.
-- [ ] Required Reading: `docs/SECURITY.md`, `docs/references/vercel-llms.txt`, `vercel-labs/agent-skills:deploy-to-vercel`, `vercel-labs/agent-skills:vercel-cli-with-tokens`.
-- [ ] Files: `docs/DEPLOYMENT.md`, Vercel config, backend deploy config.
-- [ ] Acceptance: Frontend reachable on a Vercel preview; backend reachable from that preview; secrets not in browser bundle.
-- [ ] Out Of Scope: custom domain, observability stack.
+- [x] Scope: Vercel deploy for the frontend (root dir = `web`, SPA rewrite, asset cache); Fly.io selected as the backend target (multi-stage Dockerfile via `uv sync --frozen`, `fly.toml` with `auto_stop_machines`, `/health` HTTP check, NRT region). `docs/DEPLOYMENT.md` carries the env matrix per `APP_ENV`, the secret-handling rules pointing at `docs/SECURITY.md`, and the rollback flow.
+- [x] Required Reading: `docs/SECURITY.md`, `docs/references/vercel-llms.txt`, `vercel-labs/agent-skills:deploy-to-vercel`, `vercel-labs/agent-skills:vercel-cli-with-tokens`.
+- [x] Files: `docs/DEPLOYMENT.md`, `web/vercel.json`, `api/Dockerfile`, `api/.dockerignore`, `api/fly.toml`.
+- [x] Acceptance: Local equivalent verified: Docker image builds cleanly, container with `APP_ENV=prod` serves `/health=200` and rejects `X-Dev-User` with 401 (auth gate honored). Vite production bundle scanned and contains **no** `POLYGON_API_KEY` / `SUPABASE_SERVICE_ROLE_KEY` / `ALPHA_VANTAGE_API_KEY` / `SUPABASE_JWT_SECRET` strings. Pushing to Vercel + Fly is left to the operator per the runbook; PR-14 lifts the single-user gate on the resulting URL.
+- [x] Out Of Scope: custom domain, observability stack, CI-driven deploys.
 
 ### PR-13 — Scheduled refresh proof of concept (deferred phase)
 
