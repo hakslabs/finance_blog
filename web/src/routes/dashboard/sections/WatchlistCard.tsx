@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Card } from "../../../components/primitives/Card";
 import type { Watchlist, WatchlistItem } from "../../../lib/api-client";
+import { useAuth } from "../../../lib/auth-state";
 import type { WatchlistState } from "../../../lib/useWatchlist";
 import styles from "./WatchlistCard.module.css";
 
@@ -92,6 +93,27 @@ function StatusCard({ children }: { children: React.ReactNode }) {
 }
 
 export function WatchlistCard({ state }: { state: WatchlistState }) {
+  const auth = useAuth();
+
+  if (state.status === "signed-out") {
+    return (
+      <StatusCard>
+        <div className={styles.signInPrompt}>
+          <span>로그인하면 내 관심종목과 메모를 볼 수 있습니다.</span>
+          <button
+            type="button"
+            className={styles.signInButton}
+            onClick={() => void auth.signInWithGoogle()}
+          >
+            로그인
+          </button>
+        </div>
+      </StatusCard>
+    );
+  }
+  if (state.status === "config-error") {
+    return <StatusCard>Supabase 브라우저 설정이 필요합니다.</StatusCard>;
+  }
   if (state.status === "loading") {
     return <StatusCard>불러오는 중…</StatusCard>;
   }
