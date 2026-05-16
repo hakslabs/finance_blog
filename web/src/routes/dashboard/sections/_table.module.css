@@ -7,7 +7,7 @@
   align-items: center;
   padding: 4px 12px;
   background: var(--surface-muted);
-  font-size: 0.5625rem;
+  font-size: var(--fs-xs);
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -43,14 +43,14 @@
 
 .symbolCode {
   font-family: var(--mono);
-  font-size: 0.6875rem;
-  font-weight: 600;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
   min-width: 52px;
   flex-shrink: 0;
 }
 
 .symbolName {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -59,7 +59,7 @@
 
 .cellPrice {
   font-family: var(--mono);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   text-align: right;
   width: 56px;
   flex-shrink: 0;
@@ -67,7 +67,7 @@
 
 .cellChange {
   font-family: var(--mono);
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   text-align: right;
   width: 46px;
   flex-shrink: 0;

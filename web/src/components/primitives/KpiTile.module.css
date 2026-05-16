@@ -14,8 +14,8 @@
   max-width: 100%;
   overflow: hidden;
   color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-bold);
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -24,9 +24,9 @@
 .value {
   margin-top: 10px;
   font-family: var(--mono);
-  font-size: 1.625rem;
+  font-size: var(--fs-2xl);
   font-variant-numeric: tabular-nums;
-  font-weight: 800;
+  font-weight: var(--fw-bold);
   line-height: 1.1;
   text-align: center;
 }
@@ -38,6 +38,6 @@
   gap: 10px;
   margin-top: 16px;
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
   text-align: center;
 }

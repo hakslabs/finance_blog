@@ -5,7 +5,7 @@
   padding: 16px;
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
   text-align: center;
   background-color: var(--surface-muted);
   background-image: repeating-linear-gradient(

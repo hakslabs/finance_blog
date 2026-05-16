@@ -14,7 +14,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
 }
 
 .earnRow {
@@ -34,7 +34,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
 }
 
 .filingRow {
@@ -65,7 +65,7 @@
   flex-shrink: 0;
   font-family: var(--mono);
   color: var(--muted);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
 }
 
 .filingTitle {
@@ -76,13 +76,13 @@
   width: 60px;
   text-align: right;
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--fs-sm);
 }
 
 .formBadge {
   display: inline-block;
   padding: 1px 6px;
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   border: 1px solid var(--hairline);
   border-radius: 2px;
   margin-right: 6px;
@@ -93,7 +93,7 @@
 .neutral { color: var(--muted); }
 
 .sourceNote {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
   text-align: center;
   margin-top: 8px;
@@ -111,8 +111,8 @@
 }
 
 .earnSectionTitle {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--muted);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   margin-top: 4px;
 }

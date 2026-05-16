@@ -36,8 +36,8 @@
 
 .catBadge {
   padding: 1px 5px;
-  font-size: 0.5625rem;
-  font-weight: 600;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
   border: 1px solid;
   border-radius: 2px;
   flex-shrink: 0;
@@ -70,7 +70,7 @@
 
 .newsTitle,
 .newsTitleButton {
-  font-size: 0.71875rem;
+  font-size: var(--fs-sm);
   line-height: 1.35;
   color: var(--ink);
 }
@@ -92,7 +92,7 @@
 
 .meta {
   margin-top: 1px;
-  font-size: 0.59375rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
 }
 
@@ -106,13 +106,13 @@
 }
 
 .relatedLabel {
-  font-size: 0.59375rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
 }
 
 .relatedTicker {
   font-family: var(--mono);
-  font-size: 0.59375rem;
+  font-size: var(--fs-xs);
   padding: 0 4px;
   border: 1px solid var(--hairline);
   color: var(--muted);
@@ -125,13 +125,13 @@
 }
 
 .impact {
-  font-size: 0.59375rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
   margin-left: 4px;
 }
 
 .impactValue {
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--positive);
 }
 
@@ -140,7 +140,7 @@
 }
 
 .action {
-  font-size: 0.59375rem;
+  font-size: var(--fs-xs);
   cursor: pointer;
   flex-shrink: 0;
   padding: 0;
@@ -152,7 +152,7 @@
 .actionHasNote {
   composes: action;
   color: var(--accent);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .actionAddNote {

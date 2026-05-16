@@ -15,15 +15,15 @@
 .eyebrow {
   margin: 0 0 8px;
   color: var(--muted);
-  font-size: 0.6875rem;
-  font-weight: 800;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
   text-transform: uppercase;
 }
 
 .title {
   margin: 0;
   color: var(--ink);
-  font-size: 0.9375rem;
+  font-size: var(--fs-lg);
   line-height: 1.35;
   text-wrap: balance;
 }
@@ -32,7 +32,7 @@
   max-width: 720px;
   margin: 8px 0 0;
   color: var(--muted);
-  font-size: 0.875rem;
+  font-size: var(--fs-lg);
   line-height: 1.6;
 }
 

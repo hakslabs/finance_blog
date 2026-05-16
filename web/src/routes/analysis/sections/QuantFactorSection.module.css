@@ -23,10 +23,10 @@
 }
 
 .factorName {
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .factorDesc {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--muted);
 }

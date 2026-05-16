@@ -1,6 +1,6 @@
 .backLink {
   display: inline-block;
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
   color: var(--muted);
   text-decoration: none;
 }
@@ -44,8 +44,8 @@
 }
 
 .statLabel {
-  font-size: 0.625rem;
-  font-weight: 800;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
   text-transform: uppercase;
   color: var(--muted);
   margin: 0 0 2px;
@@ -53,8 +53,8 @@
 
 .statValue {
   font-family: var(--mono);
-  font-size: 0.8125rem;
-  font-weight: 600;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
   margin: 0;
 }
 
@@ -70,13 +70,13 @@
 
 .tab {
   padding: 8px 14px;
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
   cursor: pointer;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
   color: var(--muted);
-  font-weight: 400;
+  font-weight: var(--fw-regular);
   position: relative;
   top: 1px;
   transition: color 0.15s ease;
@@ -88,7 +88,7 @@
 
 .tabActive {
   color: var(--ink);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   border-bottom-color: var(--ink);
 }
 
@@ -104,8 +104,8 @@
 
 .cardLink {
   color: var(--accent);
-  font-size: 0.6875rem;
-  font-weight: 800;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
   text-decoration: none;
 }
 
@@ -139,12 +139,12 @@
 }
 
 .analysisSnapshot strong {
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
 }
 
 .analysisSnapshot small {
   color: var(--muted);
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   line-height: 1.35;
 }
 
@@ -167,7 +167,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 0.7rem;
+  font-size: var(--fs-sm);
 }
 
 .similarRow {
@@ -184,7 +184,7 @@
 
 .similarSector {
   display: block;
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
 }
 
@@ -192,7 +192,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 0.7rem;
+  font-size: var(--fs-sm);
 }
 
 .sectorAvgItem {
@@ -207,7 +207,7 @@
 }
 
 .sectorAvgLabel {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
   text-align: right;
 }
@@ -232,23 +232,23 @@
 
 .descriptionChange {
   font-family: var(--mono);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .descriptionTime {
   color: var(--faint);
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
 }
 
 /* ── Similar stocks sidebar ──────────────────────────── */
 
 .similarSymbol {
   font-family: var(--mono);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .similarChange {
-  font-size: 0.7rem;
+  font-size: var(--fs-sm);
 }
 
 .sectorAvgValue {

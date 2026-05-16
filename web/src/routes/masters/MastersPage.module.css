@@ -11,12 +11,12 @@
 }
 
 .name {
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .firm {
   color: var(--muted);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
 }
 
 .badges {

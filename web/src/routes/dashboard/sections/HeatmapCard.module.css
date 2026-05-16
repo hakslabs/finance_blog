@@ -43,7 +43,7 @@
   align-items: center;
   justify-content: space-between;
   margin-top: 6px;
-  font-size: 0.5625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
 }
 
@@ -57,7 +57,7 @@
 }
 
 .viewAll {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--muted);
   font: inherit;
   background: transparent;

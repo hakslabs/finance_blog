@@ -21,12 +21,12 @@
 
 .positive {
   color: var(--positive);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .negative {
   color: var(--negative);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 @media (max-width: 560px) {

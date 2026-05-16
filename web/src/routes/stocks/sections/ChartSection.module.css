@@ -1,7 +1,7 @@
 .sourceBar {
   padding: 6px 10px;
   background: var(--surface-muted);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   color: var(--muted);
   margin-bottom: 12px;
 }
@@ -15,7 +15,7 @@
 
 .periodPill {
   padding: 4px 10px;
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   border: 1px solid var(--hairline);
   background: var(--surface);
   color: var(--muted);
@@ -31,7 +31,7 @@
 .periodActive {
   background: var(--surface-muted);
   color: var(--ink);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .divider {
@@ -48,14 +48,14 @@
 .subPanelHeader {
   display: flex;
   justify-content: space-between;
-  font-size: 0.6875rem;
-  font-weight: 600;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
   margin-bottom: 4px;
 }
 
 .subPanelValue {
   font-family: var(--mono);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
 }
 
 .subPositive { color: var(--positive); }

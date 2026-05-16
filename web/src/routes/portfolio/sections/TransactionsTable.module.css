@@ -5,20 +5,20 @@
 .cellDate {
   font-family: var(--mono);
   color: var(--faint);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
 }
 
 .cellSymbol {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--fw-medium);
 }
 
 .cellCurrency {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
 }
 
 .cellNote {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
 }

@@ -28,7 +28,7 @@
   height: 22px;
   border: 1px solid var(--hairline);
   border-radius: 3px;
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--muted);
   flex-shrink: 0;
 }
@@ -42,43 +42,43 @@
 
 .symbolCode {
   font-family: var(--mono);
-  font-weight: 600;
-  font-size: 0.75rem;
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-base);
 }
 
 .symbolName {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
 }
 
 .pnlPos {
   font-family: var(--mono);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--positive);
 }
 
 .pnlNeg {
   font-family: var(--mono);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--negative);
 }
 
 .memoLocked {
   font-family: var(--mono);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   color: var(--positive);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .memoHas {
   font-family: var(--mono);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   color: var(--ink);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .memoNone {
   font-family: var(--mono);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   color: var(--faint);
 }

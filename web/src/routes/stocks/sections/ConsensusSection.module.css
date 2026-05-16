@@ -39,7 +39,7 @@
 .opinionHeader {
   display: flex;
   justify-content: space-between;
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
 }
 
 .opinionCount {
@@ -65,7 +65,7 @@
 
 .reportTable {
   width: 100%;
-  font-size: 0.72rem;
+  font-size: var(--fs-sm);
   border-collapse: collapse;
 }
 
@@ -74,8 +74,8 @@
   text-align: left;
   background: var(--surface-muted);
   color: var(--muted);
-  font-size: 0.625rem;
-  font-weight: 800;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
 }
 
 .reportTable th:not(:first-child),
@@ -88,7 +88,7 @@
   border-bottom: 1px solid var(--hairline);
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
-  font-size: 0.7rem;
+  font-size: var(--fs-sm);
 }
 
 .reportTable td:first-child {
@@ -96,7 +96,7 @@
 }
 
 .reportTable td:nth-child(3) {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
 }
 
 .guruGrid {
@@ -116,12 +116,12 @@
 }
 
 .guruName {
-  font-size: 0.8125rem;
-  font-weight: 600;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
 }
 
 .guruFirm {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
 }
 
@@ -129,11 +129,11 @@
   display: flex;
   justify-content: space-between;
   margin-top: 6px;
-  font-size: 0.7rem;
+  font-size: var(--fs-sm);
 }
 
 .opinionBadge {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   border: 1px solid var(--hairline);
   padding: 0 4px;
   border-radius: 2px;
@@ -146,18 +146,18 @@
 /* ── KPI cards ─────────────────────────────────────────── */
 
 .kpiLabel {
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   margin: 0 0 4px;
 }
 
 .kpiValue {
-  font-size: 0.9375rem;
-  font-weight: 700;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
   margin: 0;
 }
 
 .kpiDetail {
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   color: var(--muted);
   margin: 0;
 }
@@ -168,7 +168,7 @@
   display: flex;
   justify-content: space-between;
   margin-top: 4px;
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
 }
 
@@ -185,7 +185,7 @@
 
 .commentCell {
   color: var(--muted);
-  font-size: 0.65rem;
+  font-size: var(--fs-xs);
 }
 
 .container {
@@ -195,7 +195,7 @@
 }
 
 .sourceNote {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
   margin: -4px 0 4px;
 }

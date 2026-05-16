@@ -7,7 +7,7 @@
 
 .filterPill {
   padding: 4px 10px;
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   border: 1px solid var(--hairline);
   background: var(--surface);
   color: var(--muted);
@@ -17,7 +17,7 @@
 .filterActive {
   background: var(--surface-muted);
   color: var(--ink);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .newsGrid {
@@ -62,25 +62,25 @@
 .newsTime {
   font-family: var(--mono);
   color: var(--faint);
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
 }
 
 .newsSource {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   border: 1px solid var(--hairline);
   padding: 0 4px;
   border-radius: 2px;
 }
 
 .newsTitle {
-  font-size: 0.8125rem;
-  font-weight: 600;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
   margin-bottom: 4px;
   line-height: 1.35;
 }
 
 .newsSummary {
-  font-size: 0.7rem;
+  font-size: var(--fs-sm);
   color: var(--muted);
   line-height: 1.5;
 }
@@ -90,7 +90,7 @@
 }
 
 .summaryText {
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
   line-height: 1.6;
   color: var(--muted);
 }
@@ -100,7 +100,7 @@
 }
 
 .summarySource {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
   margin-top: 8px;
 }

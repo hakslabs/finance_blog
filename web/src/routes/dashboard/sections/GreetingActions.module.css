@@ -29,8 +29,8 @@
 }
 
 .label {
-  font-size: 0.5625rem;
-  font-weight: 700;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -38,8 +38,8 @@
 
 .value {
   font-family: var(--mono);
-  font-size: 0.875rem;
-  font-weight: 700;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
   font-variant-numeric: tabular-nums;
 }
 

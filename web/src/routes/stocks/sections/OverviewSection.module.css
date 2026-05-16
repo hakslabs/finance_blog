@@ -14,7 +14,7 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
 }
 
 .statItem {
@@ -23,20 +23,20 @@
 
 .statLabel {
   color: var(--muted);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   margin-bottom: 2px;
 }
 
 .statValue {
   font-family: var(--mono);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .signalList {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
 }
 
 .signalRow {
@@ -72,7 +72,7 @@
 .neutral { color: var(--muted); }
 
 .overviewText {
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
   line-height: 1.65;
   color: var(--muted);
 }
@@ -85,7 +85,7 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
 }
 
 .positionRow {

@@ -8,13 +8,13 @@
 
 .tab {
   padding: 8px 14px;
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
   cursor: pointer;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
   color: var(--muted);
-  font-weight: 400;
+  font-weight: var(--fw-regular);
   position: relative;
   top: 1px;
   transition: color 0.15s ease;
@@ -26,6 +26,6 @@
 
 .tabActive {
   color: var(--ink);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   border-bottom-color: var(--ink);
 }

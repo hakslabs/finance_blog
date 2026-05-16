@@ -15,8 +15,8 @@
   padding: 0 8px;
   color: var(--accent);
   font: inherit;
-  font-size: 0.6875rem;
-  font-weight: 800;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
   background: var(--surface);
   border: 1px solid var(--hairline);
   cursor: pointer;
@@ -39,7 +39,7 @@
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 8px;
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
 }
 
 .indexPicker {
@@ -55,8 +55,8 @@
   padding: 0 7px;
   color: var(--muted);
   font: inherit;
-  font-size: 0.625rem;
-  font-weight: 700;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
   background: var(--surface);
   border: 1px solid var(--hairline);
   cursor: pointer;
@@ -115,12 +115,12 @@
   display: grid;
   grid-template-columns: auto 1fr 1fr;
   gap: 4px;
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
 }
 
 .styleHeader {
-  font-size: 0.5625rem;
-  font-weight: 600;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
   text-align: center;
   color: var(--muted);
   align-self: center;
@@ -133,7 +133,7 @@
   border: 1px solid var(--hairline);
   color: inherit;
   font-family: var(--mono);
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
   cursor: pointer;
 }
 
@@ -152,7 +152,7 @@
 }
 
 .styleNote {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
   margin: 8px 0 0;
 }
@@ -184,8 +184,8 @@
 }
 
 .fedMeeting {
-  font-size: 0.75rem;
-  font-weight: 800;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-bold);
 }
 
 .fedBars {
@@ -211,7 +211,7 @@
 .fedMeta {
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   text-align: right;
 }
 
@@ -252,8 +252,8 @@
   height: 28px;
   border: 1px solid var(--line);
   font-family: var(--mono);
-  font-size: 0.6875rem;
-  font-weight: 800;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -261,13 +261,13 @@
 }
 
 .toolTitle {
-  font-size: 0.8125rem;
-  font-weight: 600;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
   margin-bottom: 2px;
 }
 
 .toolDesc {
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   color: var(--muted);
 }
@@ -284,8 +284,8 @@
   padding: 0 8px;
   color: var(--accent);
   font: inherit;
-  font-size: 0.6875rem;
-  font-weight: 700;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
   background: var(--surface);
   border: 1px solid var(--hairline);
   cursor: pointer;
@@ -335,7 +335,7 @@
 
 .signalTicker {
   font-family: var(--mono);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .signalTime {
@@ -350,11 +350,11 @@
 }
 
 .screenTitle {
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .screenDesc {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--muted);
 }
 

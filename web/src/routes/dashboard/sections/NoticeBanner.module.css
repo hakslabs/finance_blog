@@ -22,8 +22,8 @@
   display: inline-flex;
   align-items: center;
   padding: 1px 6px;
-  font-size: 0.625rem;
-  font-weight: 700;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
   color: #fff;
   background: var(--accent);
   border-radius: 2px;
@@ -31,14 +31,14 @@
 }
 
 .title {
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
   color: var(--ink);
   white-space: nowrap;
 }
 
 .desc {
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   color: var(--faint);
   flex: 1;
   min-width: 0;
@@ -48,7 +48,7 @@
 }
 
 .meta {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
   flex-shrink: 0;
 }

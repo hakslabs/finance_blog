@@ -33,14 +33,14 @@
 .eyebrow {
   margin: 0 0 8px;
   color: var(--muted);
-  font-size: 0.6875rem;
-  font-weight: 800;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
   text-transform: uppercase;
 }
 
 .title {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: var(--fs-xl);
   line-height: 1.35;
 }
 
@@ -48,7 +48,7 @@
   margin: 8px 0 0;
   color: var(--faint);
   font-family: var(--mono);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
 }
 
 .close {
@@ -56,8 +56,8 @@
   padding: 0 10px;
   color: var(--ink);
   font: inherit;
-  font-size: 0.75rem;
-  font-weight: 800;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-bold);
   background: var(--surface);
   border: 1px solid var(--line);
   cursor: pointer;
@@ -66,7 +66,7 @@
 .summary {
   margin: 16px 0 0;
   color: var(--ink);
-  font-size: 0.875rem;
+  font-size: var(--fs-lg);
   line-height: 1.7;
 }
 
@@ -90,13 +90,13 @@
 
 .sections h3 {
   margin: 0 0 6px;
-  font-size: 0.8125rem;
+  font-size: var(--fs-md);
 }
 
 .sections p {
   margin: 0;
   color: var(--muted);
-  font-size: 0.8125rem;
+  font-size: var(--fs-md);
   line-height: 1.7;
 }
 
@@ -106,7 +106,7 @@
   margin: 10px 0 0;
   padding-left: 18px;
   color: var(--muted);
-  font-size: 0.8125rem;
+  font-size: var(--fs-md);
   line-height: 1.6;
 }
 
@@ -127,7 +127,7 @@
 .chartValue {
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
 }
 
 .chartValue {

@@ -6,7 +6,7 @@
   max-width: min(360px, calc(100vw - 36px));
   padding: 12px 14px;
   color: var(--surface);
-  font-size: 0.8125rem;
+  font-size: var(--fs-md);
   line-height: 1.5;
   background: var(--ink);
   border: 1px solid var(--ink);

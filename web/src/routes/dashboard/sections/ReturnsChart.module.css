@@ -20,7 +20,7 @@
 }
 
 .periodPill {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   padding: 1px 7px;
   border: 1px solid var(--hairline);
   border-radius: 2px;
@@ -97,7 +97,7 @@
   display: flex;
   gap: 12px;
   margin-top: 4px;
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   flex-wrap: wrap;
 }
 
@@ -133,7 +133,7 @@
 }
 
 .legendValuePos {
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   color: var(--positive);
   margin-left: 3px;
 }
@@ -150,13 +150,13 @@
 }
 
 .contribHeading {
-  font-size: 0.625rem;
-  font-weight: 700;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
   color: var(--ink);
 }
 
 .contribAction {
-  font-size: 0.5625rem;
+  font-size: var(--fs-xs);
   cursor: pointer;
   color: var(--accent);
   padding: 0;
@@ -169,7 +169,7 @@
   display: flex;
   gap: 6px;
   width: 100%;
-  font-size: 0.65625rem;
+  font-size: var(--fs-xs);
   padding: 2px 0;
   align-items: center;
   color: inherit;
@@ -187,7 +187,7 @@
 .contribSymbol {
   font-family: var(--mono);
   width: 56px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   flex-shrink: 0;
 }
 
@@ -202,7 +202,7 @@
 
 .contribReason {
   flex: 1;
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--muted);
   min-width: 0;
 }
@@ -211,7 +211,7 @@
   font-family: var(--mono);
   width: 50px;
   text-align: right;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   flex-shrink: 0;
 }
 
@@ -228,7 +228,7 @@
 .learning {
   margin-top: 6px;
   padding: 6px 8px;
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   line-height: 1.45;
   background: var(--surface-muted);
   color: var(--muted);
@@ -236,5 +236,5 @@
 
 .learningStrong {
   color: var(--ink);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }

@@ -20,14 +20,14 @@
 .titleKo {
   display: block;
   overflow: hidden;
-  font-weight: 800;
+  font-weight: var(--fw-bold);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .titleEn {
   color: var(--muted);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
 }
 
 .search {
@@ -100,14 +100,14 @@
   grid-row: 1 / span 2;
   align-self: center;
   color: var(--accent);
-  font-size: 0.625rem;
-  font-weight: 800;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
 }
 
 .searchLabel {
   overflow: hidden;
-  font-size: 0.75rem;
-  font-weight: 800;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-bold);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -115,7 +115,7 @@
 .searchMeta {
   overflow: hidden;
   color: var(--muted);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -123,7 +123,7 @@
 .searchEmpty {
   padding: 12px;
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
 }
 
 .actions {
@@ -142,7 +142,7 @@
   padding: 0 10px;
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   background: var(--surface);
   border: 1px solid var(--hairline);
 }
@@ -193,8 +193,8 @@
   height: 32px;
   padding: 0 10px;
   color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 800;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-bold);
   text-decoration: none;
   background: var(--surface);
   border: 1px solid var(--hairline);
@@ -244,21 +244,21 @@
   gap: 12px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--hairline);
-  font-size: 0.75rem;
-  font-weight: 800;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-bold);
 }
 
 .menuHeader span:last-child {
   color: var(--muted);
-  font-weight: 500;
+  font-weight: var(--fw-medium);
 }
 
 .markAllButton {
   padding: 0;
   color: var(--accent);
   font: inherit;
-  font-size: 0.6875rem;
-  font-weight: 800;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
   background: transparent;
   border: 0;
   cursor: pointer;
@@ -279,7 +279,7 @@
   display: block;
   padding: 10px 12px;
   color: var(--ink);
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
   line-height: 1.5;
   text-decoration: none;
   border-bottom: 1px solid var(--hairline);
@@ -298,8 +298,8 @@
   border-radius: 50%;
   color: var(--surface);
   font-family: var(--mono);
-  font-size: 0.75rem;
-  font-weight: 800;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-bold);
   background: var(--ink);
 }
 
@@ -327,7 +327,7 @@
 
 .accountName {
   overflow: hidden;
-  font-weight: 800;
+  font-weight: var(--fw-bold);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -335,7 +335,7 @@
 .accountEmail {
   overflow: hidden;
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -350,7 +350,7 @@
   padding: 0 12px;
   color: var(--ink);
   font: inherit;
-  font-size: 0.8125rem;
+  font-size: var(--fs-md);
   text-align: left;
   text-decoration: none;
   background: transparent;
@@ -371,8 +371,8 @@
   height: 32px;
   padding: 0 12px;
   color: var(--surface);
-  font-size: 0.75rem;
-  font-weight: 800;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-bold);
   background: var(--ink);
   border: 1px solid var(--ink);
   cursor: pointer;
@@ -393,7 +393,7 @@
   margin: 0;
   padding: 8px 10px;
   color: var(--ink);
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
   background: var(--surface);
   border: 1px solid var(--line);
   box-shadow: 0 10px 20px rgb(26 24 21 / 8%);

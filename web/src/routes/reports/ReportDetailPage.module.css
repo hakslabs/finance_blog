@@ -1,6 +1,6 @@
 .backLink {
   display: inline-block;
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
   color: var(--muted);
   text-decoration: none;
 }

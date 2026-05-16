@@ -21,7 +21,7 @@
 }
 
 .legend {
-  font-size: 0.5625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
 }
 
@@ -35,7 +35,7 @@
 
 .statusBody {
   padding: 1.25rem;
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
   color: var(--faint);
 }
 
@@ -63,8 +63,8 @@
   min-height: 32px;
   padding: 0 12px;
   color: var(--surface);
-  font-size: 0.75rem;
-  font-weight: 800;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-bold);
   background: var(--ink);
   border: 1px solid var(--ink);
   cursor: pointer;
@@ -139,7 +139,7 @@
 }
 
 .cellMa {
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   text-align: center;
   width: 24px;
   flex-shrink: 0;
@@ -148,19 +148,19 @@
 .maUp {
   composes: cellMa;
   color: var(--positive);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .maDown {
   composes: cellMa;
   color: var(--negative);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .maNeutral {
   composes: cellMa;
   color: var(--muted);
-  font-weight: 400;
+  font-weight: var(--fw-regular);
 }
 
 .cellRsi {
@@ -201,17 +201,17 @@
 }
 
 .rsiValue {
-  font-size: 0.59375rem;
-  font-weight: 400;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-regular);
 }
 
 .rsiValueActive {
   composes: rsiValue;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .cellMemo {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   text-align: center;
   width: 56px;
   cursor: pointer;
@@ -220,7 +220,7 @@
 
 .memoHasCount {
   color: var(--accent);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .memoAdd {
@@ -228,7 +228,7 @@
 }
 
 .cellEvent {
-  font-size: 0.59375rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
   width: 76px;
   overflow: hidden;
@@ -281,8 +281,8 @@
   padding: 4px 10px;
   color: var(--muted);
   font: inherit;
-  font-size: 0.6875rem;
-  font-weight: 700;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
   background: var(--surface);
   border: 1px solid var(--hairline);
   cursor: pointer;
@@ -308,7 +308,7 @@
   padding: 0 8px;
   color: var(--ink);
   font: inherit;
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
   background: var(--surface);
   border: 1px solid var(--hairline);
 }
@@ -323,8 +323,8 @@
   height: 28px;
   padding: 0 10px;
   font: inherit;
-  font-size: 0.6875rem;
-  font-weight: 700;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
   border: 1px solid var(--hairline);
   background: var(--surface);
   color: var(--ink);
@@ -340,7 +340,7 @@
 .addError {
   margin: 0;
   color: var(--negative);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
 }
 
 @media (max-width: 520px) {

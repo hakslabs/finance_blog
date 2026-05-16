@@ -4,8 +4,8 @@
   min-height: 22px;
   padding: 2px 8px;
   color: var(--muted);
-  font-size: 0.6875rem;
-  font-weight: 700;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
   line-height: 1.2;
   background: var(--surface);
   border: 1px solid var(--hairline);

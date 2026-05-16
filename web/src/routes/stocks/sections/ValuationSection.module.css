@@ -26,7 +26,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
 }
 
 .fvRow {
@@ -50,13 +50,13 @@
 
 .fvPremium {
   font-family: var(--mono);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   margin-left: 6px;
 }
 
 .peerTable {
   width: 100%;
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
   border-collapse: collapse;
 }
 
@@ -65,8 +65,8 @@
   text-align: left;
   background: var(--surface-muted);
   color: var(--muted);
-  font-size: 0.6875rem;
-  font-weight: 800;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
 }
 
 .peerTable th:not(:first-child) {
@@ -78,12 +78,12 @@
   border-bottom: 1px solid var(--hairline);
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
-  font-size: 0.7rem;
+  font-size: var(--fs-sm);
 }
 
 .peerTable td:first-child {
   font-family: inherit;
-  font-weight: 500;
+  font-weight: var(--fw-medium);
 }
 
 .peerTable td:not(:first-child) {
@@ -95,7 +95,7 @@
 }
 
 .medianRow {
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .positive { color: var(--positive); }
@@ -105,24 +105,24 @@
 /* ── Metric cards ──────────────────────────────────────── */
 
 .metricLabel {
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   color: var(--muted);
   margin: 0 0 4px;
 }
 
 .metricValue {
-  font-size: 0.9375rem;
-  font-weight: 700;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
   margin: 0 0 4px;
 }
 
 .metricContext {
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   margin: 0;
 }
 
 .trendNote {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
   margin-top: 4px;
 }

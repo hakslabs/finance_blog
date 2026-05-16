@@ -61,14 +61,14 @@
 }
 
 .donutCenterLabel {
-  font-size: 0.5625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
 }
 
 .donutCenterValue {
   font-family: var(--mono);
-  font-size: 0.8125rem;
-  font-weight: 700;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
 }
 
 .compositionLegend {
@@ -87,7 +87,7 @@
   padding: 1px 0;
   color: inherit;
   font: inherit;
-  font-size: 0.65625rem;
+  font-size: var(--fs-xs);
   text-align: left;
   background: transparent;
   border: 0;
@@ -114,7 +114,7 @@
 
 .legendPercent {
   font-family: var(--mono);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .legendAmount {
@@ -136,13 +136,13 @@
 }
 
 .holdingsTitle {
-  font-size: 0.625rem;
-  font-weight: 700;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
   color: var(--ink);
 }
 
 .holdingsSubtitle {
-  font-size: 0.5625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
 }
 
@@ -150,7 +150,7 @@
   display: flex;
   gap: 6px;
   width: 100%;
-  font-size: 0.65625rem;
+  font-size: var(--fs-xs);
   padding: 3px 0;
   align-items: center;
   color: inherit;
@@ -169,7 +169,7 @@
 .holdingSymbol {
   font-family: var(--mono);
   min-width: 48px;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .holdingName {
@@ -201,7 +201,7 @@
   font-family: var(--mono);
   width: 36px;
   text-align: right;
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
   flex-shrink: 0;
 }
 

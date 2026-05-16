@@ -12,13 +12,13 @@
   color: var(--muted);
   cursor: pointer;
   font: inherit;
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
 }
 
 .tabActive {
   border-bottom-color: var(--ink);
   color: var(--ink);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .guideGrid {
@@ -45,7 +45,7 @@
   text-align: left;
   border: 1px solid var(--hairline);
   background: var(--bg);
-  font-size: 0.75rem;
+  font-size: var(--fs-base);
   cursor: pointer;
 }
 
@@ -59,13 +59,13 @@
 .article span,
 .articleMeta span {
   color: var(--muted);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
 }
 
 .categoryRow small {
   grid-column: 1 / -1;
   color: var(--muted);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   line-height: 1.35;
 }
 
@@ -102,12 +102,12 @@
   background: var(--surface-muted);
   color: var(--faint);
   font-family: var(--mono);
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
 }
 
 .article p {
   margin: 0 0 4px;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .articleMeta {
@@ -122,7 +122,7 @@
   flex-direction: column;
   gap: 2px;
   font-family: var(--mono);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
 }
 
 .termButton,
@@ -144,8 +144,8 @@
 .term span {
   color: var(--muted);
   font-family: inherit;
-  font-size: 0.625rem;
-  font-weight: 400;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-regular);
 }
 
 @media (max-width: 820px) {

@@ -12,13 +12,13 @@
 
 .fgHeaderTitle {
   margin: 0;
-  font-size: 0.625rem;
-  font-weight: 700;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
   color: var(--ink);
 }
 
 .fgHeaderMeta {
-  font-size: 0.5625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
 }
 
@@ -44,7 +44,7 @@
 
 .fgSubtext {
   margin-top: 4px;
-  font-size: 0.59375rem;
+  font-size: var(--fs-xs);
   line-height: 1.4;
   color: var(--faint);
   text-align: center;
@@ -84,15 +84,15 @@
 
 .gaugeNumber {
   font-family: var(--mono);
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
   line-height: 1;
   color: var(--ink);
 }
 
 .gaugeLabel {
-  font-size: 0.625rem;
-  font-weight: 600;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
 }
 
 .fgExtremeFear {
@@ -119,9 +119,9 @@
   position: absolute;
   top: 0;
   left: 0;
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--muted);
-  font-weight: 600;
+  font-weight: var(--fw-semibold);
 }
 
 .needle {
@@ -150,13 +150,13 @@
 
 .macroHeaderTitle {
   margin: 0;
-  font-size: 0.625rem;
-  font-weight: 700;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
   color: var(--ink);
 }
 
 .macroHeaderTime {
-  font-size: 0.5625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
 }
 
@@ -198,13 +198,13 @@
 }
 
 .macroCellLabel {
-  font-size: 0.625rem;
-  font-weight: 700;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
   color: var(--ink);
 }
 
 .macroCellLocalName {
-  font-size: 0.5625rem;
+  font-size: var(--fs-xs);
   color: var(--muted);
 }
 
@@ -217,14 +217,14 @@
 
 .macroValueNum {
   font-family: var(--mono);
-  font-size: 0.9375rem;
-  font-weight: 600;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
   font-variant-numeric: tabular-nums;
 }
 
 .macroChangePos {
   font-family: var(--mono);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   color: var(--positive);
 }
 

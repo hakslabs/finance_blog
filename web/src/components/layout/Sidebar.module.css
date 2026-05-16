@@ -52,8 +52,8 @@
 .brandName {
   display: block;
   overflow: hidden;
-  font-size: 0.9375rem;
-  font-weight: 800;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -63,7 +63,7 @@
   display: block;
   overflow: hidden;
   color: var(--muted);
-  font-size: 0.6875rem;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -128,7 +128,7 @@
 .linkActive {
   composes: link;
   color: var(--ink);
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   background: var(--surface);
   border-color: var(--line);
 }
@@ -164,7 +164,7 @@
 .linkLabelEn {
   flex: 0 0 auto;
   color: var(--faint);
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   margin-left: auto;
 }
 

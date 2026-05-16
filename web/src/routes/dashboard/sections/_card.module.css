@@ -4,13 +4,13 @@
 
 .title {
   margin: 0;
-  font-size: 0.9375rem;
-  font-weight: 700;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
   color: var(--ink);
 }
 
 .subtitle {
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
 }
 
@@ -38,7 +38,7 @@
   display: flex;
   justify-content: flex-end;
   padding: 6px 12px;
-  font-size: 0.625rem;
+  font-size: var(--fs-xs);
   color: var(--faint);
   border-top: 1px solid var(--hairline);
   cursor: pointer;
