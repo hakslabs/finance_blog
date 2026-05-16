@@ -27,31 +27,33 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
       className={collapsed ? styles.asideCollapsed : styles.aside}
       aria-label="주요 메뉴"
     >
-      <Link to="/" className={styles.brand} aria-label="Finance_lab 홈">
-        <span className={styles.brandSymbol} aria-hidden="true" />
-        <span className={styles.brandText}>
-          <span className={styles.brandName} translate="no">
-            Finance_lab
+      <div className={styles.header}>
+        <Link to="/" className={styles.brand} aria-label="Finance_lab 홈">
+          <span className={styles.brandSymbol} aria-hidden="true" />
+          <span className={styles.brandText}>
+            <span className={styles.brandName} translate="no">
+              Finance_lab
+            </span>
+            <span className={styles.brandMeta}>Investing workspace</span>
           </span>
-          <span className={styles.brandMeta}>Investing workspace</span>
-        </span>
-      </Link>
+        </Link>
 
-      <button
-        type="button"
-        className={styles.collapseButton}
-        aria-label={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
-        aria-expanded={!collapsed}
-        title={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
-        onClick={onToggleCollapsed}
-      >
-        {collapsed ? (
-          <PanelLeftOpen size={16} aria-hidden="true" strokeWidth={1.8} />
-        ) : (
-          <Menu size={16} aria-hidden="true" strokeWidth={1.8} />
-        )}
-        <span className="sr-only">메뉴 {collapsed ? "펼치기" : "접기"}</span>
-      </button>
+        <button
+          type="button"
+          className={styles.collapseButton}
+          aria-label={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
+          aria-expanded={!collapsed}
+          title={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
+          onClick={onToggleCollapsed}
+        >
+          {collapsed ? (
+            <PanelLeftOpen size={16} aria-hidden="true" strokeWidth={1.8} />
+          ) : (
+            <Menu size={16} aria-hidden="true" strokeWidth={1.8} />
+          )}
+          <span className="sr-only">메뉴 {collapsed ? "펼치기" : "접기"}</span>
+        </button>
+      </div>
 
       <nav className={styles.nav} aria-label="제품 메뉴">
         {primaryNavItems.map((item) => {

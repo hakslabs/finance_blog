@@ -17,8 +17,22 @@
   padding: 18px 10px;
 }
 
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.asideCollapsed .header {
+  flex-direction: column;
+  gap: 8px;
+}
+
 .brand {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
   gap: 12px;
   min-width: 0;
@@ -71,9 +85,9 @@
 
 .collapseButton {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  align-self: flex-end;
   width: 28px;
   height: 28px;
   padding: 0;
@@ -88,10 +102,6 @@
   color: var(--ink);
   background: var(--surface);
   border-color: var(--line);
-}
-
-.asideCollapsed .collapseButton {
-  align-self: center;
 }
 
 .nav {
