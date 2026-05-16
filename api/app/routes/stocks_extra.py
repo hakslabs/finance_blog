@@ -19,6 +19,8 @@ from pydantic import BaseModel
 from app.settings import Settings, get_settings
 from app.sources import finnhub, sec
 
+import httpx
+
 
 router = APIRouter(prefix="/stocks", tags=["stocks"])
 
@@ -113,6 +115,55 @@ class FinancialsResponse(BaseModel):
     periods: List[FinancialPeriod]
 
 
+async def _news_from_db(symbol: str, settings: Settings) -> List[NewsItem]:
+    if not settings.supabase_url or not settings.supabase_service_role_key:
+        return []
+    headers = {
+        "apikey": settings.supabase_service_role_key,
+        "Authorization": f"Bearer {settings.supabase_service_role_key}",
+        "Accept": "application/json",
+    }
+    base = settings.supabase_url.rstrip("/")
+    async with httpx.AsyncClient(timeout=8.0, headers=headers) as client:
+        inst_resp = await client.get(
+            f"{base}/rest/v1/instruments",
+            params={"symbol": f"eq.{symbol}", "select": "id", "limit": "1"},
+        )
+        if inst_resp.status_code >= 400 or not inst_resp.json():
+            return []
+        instrument_id = inst_resp.json()[0]["id"]
+        news_resp = await client.get(
+            f"{base}/rest/v1/news_instruments",
+            params={
+                "instrument_id": f"eq.{instrument_id}",
+                "select": "news_items(id,source,external_id,title,summary,url,published_at)",
+                "order": "news_items(published_at).desc",
+                "limit": "30",
+            },
+        )
+        if news_resp.status_code >= 400:
+            return []
+        rows = news_resp.json()
+    items: List[NewsItem] = []
+    for r in rows:
+        n = r.get("news_items") or {}
+        if not n.get("title"):
+            continue
+        items.append(
+            NewsItem(
+                id=str(n.get("id") or n.get("external_id") or ""),
+                headline=n["title"],
+                summary=n.get("summary"),
+                source=n.get("source"),
+                url=n.get("url"),
+                category=None,
+                datetime=n.get("published_at"),
+                image=None,
+            )
+        )
+    return items
+
+
 @router.get("/{symbol}/news", response_model=NewsResponse)
 async def stock_news(
     symbol: str,
@@ -120,6 +171,9 @@ async def stock_news(
     settings: Settings = Depends(get_settings),
 ) -> NewsResponse:
     symbol = symbol.upper()
+    db_items = await _news_from_db(symbol, settings)
+    if db_items:
+        return NewsResponse(symbol=symbol, items=db_items)
     if not settings.finnhub_api_key:
         return NewsResponse(symbol=symbol, items=[])
     try:
