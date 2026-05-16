@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.settings import Settings, get_settings
-from app.sources import fred
+from app.sources import ecos, fred
 
 
 router = APIRouter(prefix="/macros", tags=["macros"])
@@ -31,6 +31,13 @@ KEY_SERIES: List[tuple[str, str, str, str]] = [
     ("UNRATE",   "美 실업률",            "%",   "US"),
     ("DEXKOUS",  "원/달러 환율",         "₩",   "KR"),
     ("VIXCLS",   "VIX 변동성지수",       "",    "US"),
+]
+
+# (stat_code, cycle, label, unit, item_code1 or None)
+ECOS_SERIES: List[tuple[str, str, str, str, Optional[str]]] = [
+    ("722Y001", "D", "한국은행 기준금리",   "%",   "0101000"),
+    ("901Y009", "M", "韓 CPI (YoY)",        "%",   "0"),
+    ("200Y001", "Q", "韓 GDP 성장률",       "%",   "10101"),
 ]
 
 
@@ -53,27 +60,36 @@ class IndicatorsResponse(BaseModel):
 async def list_indicators(
     settings: Settings = Depends(get_settings),
 ) -> IndicatorsResponse:
-    if not settings.fred_api_key:
-        return IndicatorsResponse(indicators=[])
+    results: List[Indicator] = []
 
-    async def _one(series_id: str, label: str, unit: str, country: str) -> Indicator:
+    async def _fred(series_id: str, label: str, unit: str, country: str) -> Indicator:
         try:
-            data = await fred.fetch_series_latest(series_id, settings.fred_api_key)
+            data = await fred.fetch_series_latest(series_id, settings.fred_api_key) if settings.fred_api_key else None
         except HTTPException:
             data = None
         return Indicator(
-            series_id=series_id,
-            label=label,
-            country_code=country,
-            unit=unit,
-            date=(data or {}).get("date"),
-            value=(data or {}).get("value"),
-            previous_value=(data or {}).get("previous_value"),
-            change=(data or {}).get("change"),
+            series_id=series_id, label=label, country_code=country, unit=unit,
+            date=(data or {}).get("date"), value=(data or {}).get("value"),
+            previous_value=(data or {}).get("previous_value"), change=(data or {}).get("change"),
         )
 
-    results = await asyncio.gather(
-        *(_one(sid, lbl, unit, country) for sid, lbl, unit, country in KEY_SERIES),
-        return_exceptions=False,
-    )
-    return IndicatorsResponse(indicators=list(results))
+    async def _ecos(stat: str, cycle: str, label: str, unit: str, item1: Optional[str]) -> Indicator:
+        try:
+            data = await ecos.fetch_series_latest(stat, cycle, settings.ecos_api_key, item_code1=item1) if settings.ecos_api_key else None
+        except HTTPException:
+            data = None
+        return Indicator(
+            series_id=f"ECOS:{stat}", label=label, country_code="KR", unit=unit,
+            date=(data or {}).get("period"), value=(data or {}).get("value"),
+            previous_value=(data or {}).get("previous_value"), change=(data or {}).get("change"),
+        )
+
+    if settings.fred_api_key:
+        results += list(await asyncio.gather(
+            *(_fred(sid, lbl, unit, country) for sid, lbl, unit, country in KEY_SERIES),
+        ))
+    if settings.ecos_api_key:
+        results += list(await asyncio.gather(
+            *(_ecos(stat, cycle, lbl, unit, item1) for stat, cycle, lbl, unit, item1 in ECOS_SERIES),
+        ))
+    return IndicatorsResponse(indicators=results)

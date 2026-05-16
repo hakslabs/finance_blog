@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     finnhub_api_key: Optional[str] = Field(default=None, alias="FINNHUB_API_KEY")
     newsapi_key: Optional[str] = Field(default=None, alias="NEWSAPI_KEY")
     fred_api_key: Optional[str] = Field(default=None, alias="FRED_API_KEY")
+    ecos_api_key: Optional[str] = Field(default=None, alias="ECOS_API_KEY")
+    dart_api_key: Optional[str] = Field(default=None, alias="DART_API_KEY")
+    krx_api_key: Optional[str] = Field(default=None, alias="KRX_API_KEY")
     sec_user_agent: Optional[str] = Field(default=None, alias="SEC_USER_AGENT")
     cron_secret: Optional[str] = Field(default=None, alias="CRON_SECRET")
 
