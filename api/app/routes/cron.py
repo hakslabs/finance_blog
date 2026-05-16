@@ -17,7 +17,7 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 
-from app.jobs import ingest_13f, ingest_finnhub, refresh_us_daily
+from app.jobs import ingest_13f, ingest_finnhub, refresh_kr_daily, refresh_us_daily
 from app.settings import Settings, get_settings
 
 
@@ -72,4 +72,17 @@ async def ingest_finnhub_route(
         return {"status": "ok", **result}
     except ingest_finnhub.IngestionError as exc:
         log.error("ingest_finnhub failed: %s", exc)
+        return {"status": "failed", "error": str(exc)}
+
+
+@router.get("/refresh-kr-daily")
+async def refresh_kr_daily_route(
+    _auth: None = Depends(_require_cron),
+    settings: Settings = Depends(get_settings),
+) -> Dict[str, Any]:
+    try:
+        result = await refresh_kr_daily.run(settings)
+        return {"status": "ok", **result}
+    except refresh_kr_daily.IngestionError as exc:
+        log.error("kr_daily failed: %s", exc)
         return {"status": "failed", "error": str(exc)}
