@@ -27,11 +27,11 @@
     },
     {
       "path": "/api/v1/internal/cron/ingest-finnhub",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 3 * * *"
     },
     {
       "path": "/api/v1/internal/cron/ingest-13f",
-      "schedule": "0 6 * * 1"
+      "schedule": "0 6 * * *"
     }
   ]
 }
