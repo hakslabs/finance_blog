@@ -2,9 +2,10 @@
 // project (see vercel.json routes). In dev (vite dev) we hit the local
 // FastAPI on :8000 unless overridden via VITE_API_BASE_URL.
 const defaultApiBase = import.meta.env.PROD ? "/api" : "http://localhost:8000";
+const rawApiBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
 
 export const env = {
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? defaultApiBase,
+  apiBaseUrl: rawApiBase && rawApiBase.length > 0 ? rawApiBase : defaultApiBase,
   supabaseUrl: import.meta.env.VITE_SUPABASE_URL as string | undefined,
   supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined,
   adminEmails: import.meta.env.VITE_ADMIN_EMAILS as string | undefined,
