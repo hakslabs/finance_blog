@@ -40,13 +40,21 @@ class ReportRepo:
         return [ReportSummary(**_to_summary(r)) for r in rows]
 
     async def get_report(self, report_id: str) -> Optional[Report]:
+        url = f"{self._base_url}/rest/v1/reports"
+        # Try uuid id first if the param parses as a uuid, otherwise treat as slug.
+        looks_like_uuid = len(report_id) == 36 and report_id.count("-") == 4
+        key = "id" if looks_like_uuid else "slug"
         params = {
-            "id": f"eq.{report_id}",
-            "select": _REPORT_DETAIL_SELECT,
+            key: f"eq.{report_id}",
+            "select": f"{_REPORT_DETAIL_SELECT},slug",
             "limit": "1",
         }
-        url = f"{self._base_url}/rest/v1/reports"
         rows = await self._get(url, params)
+        if not rows and looks_like_uuid:
+            # Last-chance fallback: also try as slug.
+            params["slug"] = f"eq.{report_id}"
+            params.pop("id", None)
+            rows = await self._get(url, params)
         if not rows:
             return None
         row = rows[0]
