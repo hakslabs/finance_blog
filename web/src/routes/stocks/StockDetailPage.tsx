@@ -5,7 +5,6 @@ import { ActionNotice } from "../../components/interaction/ActionNotice";
 import { DetailPanel } from "../../components/interaction/DetailPanel";
 import { Card } from "../../components/primitives/Card";
 import { Badge } from "../../components/primitives/Badge";
-import { EmptyState } from "../../components/primitives/EmptyState";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
 import { useQuote } from "../../lib/useQuote";
 import type { FilingItem, NewsItem, StockDetail, StockTab } from "../../fixtures/stocks";
@@ -262,28 +261,11 @@ function SimilarStocksSidebar({
 export function StockDetailPage() {
   const { symbol } = useParams<{ symbol: string }>();
   const rawSymbol = symbol ?? "";
-  const displaySymbol = rawSymbol.toUpperCase();
   const [activeTab, setActiveTab] = useState<StockTab>("개요");
   const { detail: panelDetail, notice, handleAction, closeDetail } = useInteractionActions();
 
   const detail = getStockDetail(rawSymbol);
   const quoteState = useQuote(rawSymbol.toUpperCase(), "1mo");
-
-  // Unknown symbol → empty state with link back to /stocks
-  if (!detail) {
-    return (
-      <PageContainer
-        eyebrow="Stock Detail"
-        title={`${displaySymbol} 종목 상세`}
-      >
-        <EmptyState
-          title="종목을 찾을 수 없습니다"
-          description={`"${displaySymbol}"에 대한 정보가 아직 준비되지 않았습니다.`}
-          action={<Link to="/stocks">종목 목록으로 돌아가기</Link>}
-        />
-      </PageContainer>
-    );
-  }
 
   const liveQuote = quoteState.status === "ready" ? quoteState.quote : null;
   const liveUp = liveQuote ? liveQuote.change >= 0 : detail.up;

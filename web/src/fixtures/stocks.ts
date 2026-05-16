@@ -600,7 +600,32 @@ const DETAIL_MAP: Record<string, StockDetail> = {
   AAPL: AAPL_DETAIL,
 };
 
-/** Case-insensitive lookup for stock detail by symbol. Returns undefined for unknown symbols. */
-export function getStockDetail(symbol: string): StockDetail | undefined {
-  return DETAIL_MAP[symbol.toUpperCase()];
+/** Detail-shell helper: when a symbol isn't in DETAIL_MAP, build a fixture
+ * skeleton off AAPL_DETAIL with the symbol/name/exchange swapped. Live
+ * data (quote, news, filings, financials, consensus) is loaded by the
+ * page hooks at runtime and overlays this shell — the shell only feeds
+ * the static text that isn't yet wired to a backend. */
+function buildShell(symbol: string): StockDetail {
+  const upper = symbol.toUpperCase();
+  const isKr = /\.K[SQ]$/i.test(upper);
+  const listed = STOCK_LIST.find((s) => s.symbol.toUpperCase() === upper);
+  return {
+    ...AAPL_DETAIL,
+    symbol: upper,
+    name: listed?.name ?? upper,
+    exchange: listed?.exchange ?? (isKr ? "KRX" : "NASDAQ"),
+    sector: listed?.sector ?? "—",
+    price: listed?.price ?? "—",
+    change: listed?.change ?? "—",
+    changePercent: "",
+    up: listed?.up ?? true,
+    lastUpdated: "—",
+  };
+}
+
+/** Case-insensitive lookup for stock detail by symbol. Falls back to a
+ *  generated shell so the detail page renders for any symbol. */
+export function getStockDetail(symbol: string): StockDetail {
+  const upper = symbol.toUpperCase();
+  return DETAIL_MAP[upper] ?? buildShell(upper);
 }

@@ -11,10 +11,14 @@ export type QuoteState =
 // for an anonymous visitor too.
 export function useQuote(symbol: string, range: QuoteRange = "6mo"): QuoteState {
   const [state, setState] = useState<QuoteState>({ status: "loading" });
+  const [currentKey, setCurrentKey] = useState<string>(`${symbol}|${range}`);
+  if (currentKey !== `${symbol}|${range}`) {
+    setCurrentKey(`${symbol}|${range}`);
+    setState({ status: "loading" });
+  }
 
   useEffect(() => {
     let cancelled = false;
-    setState({ status: "loading" });
     apiClient
       .getQuote(symbol, range)
       .then((quote) => {
