@@ -254,6 +254,18 @@ export type MacroIndicatorDb = {
 };
 export type MacroIndicatorsResponse = { indicators: MacroIndicatorDb[] };
 
+export type MoverDb = {
+  rank: number;
+  symbol: string;
+  name: string;
+  market: string;
+  last: number;
+  change: number;
+  change_pct: number;
+  volume: number;
+};
+export type MoversResponse = { market: string; items: MoverDb[] };
+
 async function buildHeaders(): Promise<HeadersInit> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (supabase) {
@@ -337,6 +349,9 @@ export const apiClient = {
   },
   getMacroIndicators(): Promise<MacroIndicatorsResponse> {
     return request<MacroIndicatorsResponse>("/v1/macros/indicators");
+  },
+  getMovers(market: "US" | "KR", limit = 6): Promise<MoversResponse> {
+    return request<MoversResponse>(`/v1/movers?market=${market}&limit=${limit}`);
   },
   getStockFinancials(
     symbol: string,

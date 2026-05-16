@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Badge } from "../../../components/primitives/Badge";
 import { Card } from "../../../components/primitives/Card";
 import type { TopMover } from "../../../fixtures/dashboard";
+import { useMovers } from "../../../lib/useMovers";
 import type { MarketCode } from "../useDashboardClock";
 import styles from "./TopMoversCard.module.css";
 
@@ -17,11 +18,41 @@ type Props = {
   }[];
 };
 
+function fmtNumber(n: number, market: MarketCode): string {
+  if (market === "KR") return Math.round(n).toLocaleString("ko-KR");
+  return n.toFixed(2);
+}
+
+function fmtVolume(v: number): string {
+  if (v >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
+  if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
+  if (v >= 1e3) return `${(v / 1e3).toFixed(1)}K`;
+  return String(v);
+}
+
 export function TopMoversCard({ moversByMarket, initialMarket, sessions }: Props) {
   const [manualMarket, setManualMarket] = useState<MarketCode | null>(null);
   const selectedMarket = manualMarket ?? initialMarket;
 
-  const movers = moversByMarket[selectedMarket];
+  const live = useMovers(selectedMarket as "US" | "KR", 6);
+  const liveMovers: TopMover[] = live.status === "ready"
+    ? live.data.items.map((m) => ({
+        rank: m.rank,
+        symbol: m.symbol,
+        name: m.name,
+        market: selectedMarket,
+        price: fmtNumber(m.last, selectedMarket),
+        change: `${m.change_pct >= 0 ? "+" : ""}${m.change_pct.toFixed(2)}%`,
+        up: m.change_pct >= 0,
+        volume: fmtVolume(m.volume),
+      }))
+    : [];
+  const movers = liveMovers.length > 0 ? liveMovers : moversByMarket[selectedMarket];
+  const sourceLabel = live.status === "ready" && liveMovers.length > 0
+    ? `DB · ${liveMovers.length}건`
+    : live.status === "loading"
+      ? "DB 로딩 중 · fixture 표시"
+      : "DB 비어있음 · fixture 표시";
   const session = useMemo(
     () => sessions.find((item) => item.code === selectedMarket),
     [selectedMarket, sessions]
@@ -72,7 +103,7 @@ export function TopMoversCard({ moversByMarket, initialMarket, sessions }: Props
       ))}
       <div className={styles.footer}>
         <Link className={styles.footerAction} to="/stocks">전체 보기 →</Link>
-        <span>{session?.label ?? "선택 시장"} · 거래대금 순 · 현재 시간 기준 기본 시장 자동 선택</span>
+        <span>{session?.label ?? "선택 시장"} · {sourceLabel}</span>
       </div>
     </Card>
   );
