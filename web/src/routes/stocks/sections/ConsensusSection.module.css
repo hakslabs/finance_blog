@@ -193,3 +193,9 @@
   flex-direction: column;
   gap: 12px;
 }
+
+.sourceNote {
+  font-size: 0.625rem;
+  color: var(--faint);
+  margin: -4px 0 4px;
+}

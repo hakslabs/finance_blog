@@ -6,6 +6,7 @@ import type {
   AnalystReport,
   GuruHolding,
 } from "../../../fixtures/stocks";
+import { useStockConsensus } from "../../../lib/useStockExtras";
 import styles from "./ConsensusSection.module.css";
 
 const GURU_TONE_CLASS: Record<GuruHolding["tone"], string> = {
@@ -18,7 +19,7 @@ type OpinionKey = "strongBuy" | "buy" | "hold" | "sell" | "strongSell";
 
 type OpinionRow = readonly [label: string, count: number, key: OpinionKey];
 
-const OPINION_ROWS: readonly OpinionRow[] = [
+const FALLBACK_OPINION_ROWS: readonly OpinionRow[] = [
   ["강력 매수", 28, "strongBuy"],
   ["매수", 13, "buy"],
   ["보유", 9, "hold"],
@@ -35,16 +36,40 @@ const OPINION_FILL_CLASS: Record<OpinionKey, string> = {
 };
 
 type ConsensusSectionProps = {
+  symbol: string;
   consensus: ConsensusSummary;
   reports: AnalystReport[];
   gurus: GuruHolding[];
 };
 
 export function ConsensusSection({
+  symbol,
   consensus,
   reports,
   gurus,
 }: ConsensusSectionProps) {
+  const live = useStockConsensus(symbol);
+  const liveRec = live.status === "ready" ? live.data.recommendations[0] : null;
+  const opinionRows: readonly OpinionRow[] = liveRec
+    ? ([
+        ["강력 매수", liveRec.strong_buy, "strongBuy"],
+        ["매수", liveRec.buy, "buy"],
+        ["보유", liveRec.hold, "hold"],
+        ["매도", liveRec.sell, "sell"],
+        ["강력 매도", liveRec.strong_sell, "strongSell"],
+      ] as const)
+    : FALLBACK_OPINION_ROWS;
+  const livePT = live.status === "ready" ? live.data.price_target : null;
+  const targetMean = livePT?.target_mean != null ? `$${livePT.target_mean.toFixed(2)}` : consensus.targetMean;
+  const analystCount = livePT?.number_of_analysts != null ? `${livePT.number_of_analysts}명` : consensus.analystCount;
+  const sourceLabel =
+    live.status === "ready" && (liveRec || livePT)
+      ? `Finnhub · ${liveRec?.period ?? livePT?.last_updated ?? "라이브"}`
+      : live.status === "loading"
+        ? "Finnhub 로딩 중 · fixture 표시"
+        : live.status === "error"
+          ? "Finnhub 오류 · fixture 표시"
+          : "Finnhub 빈 결과 · fixture 표시";
   return (
     <div className={styles.container}>
       {/* KPI row */}
@@ -58,7 +83,7 @@ export function ConsensusSection({
         </Card>
         <Card>
           <p className={styles.kpiLabel}>목표주가 평균</p>
-          <p className={styles.kpiValue}>{consensus.targetMean}</p>
+          <p className={styles.kpiValue}>{targetMean}</p>
         </Card>
         <Card>
           <p className={styles.kpiLabel}>상승여력</p>
@@ -68,9 +93,11 @@ export function ConsensusSection({
         </Card>
         <Card>
           <p className={styles.kpiLabel}>커버 애널리스트</p>
-          <p className={styles.kpiValue}>{consensus.analystCount}</p>
+          <p className={styles.kpiValue}>{analystCount}</p>
         </Card>
       </div>
+
+      <p className={styles.sourceNote}>출처: {sourceLabel}</p>
 
       {/* Target distribution + Opinion distribution */}
       <div className={styles.conGrid}>
@@ -85,7 +112,7 @@ export function ConsensusSection({
 
         <Card title="의견 분포">
           <div className={styles.opinionList}>
-            {OPINION_ROWS.map(([label, count, key]) => (
+            {opinionRows.map(([label, count, key]) => (
               <div key={String(label)} className={styles.opinionRow}>
                 <div className={styles.opinionHeader}>
                   <span>{label}</span>

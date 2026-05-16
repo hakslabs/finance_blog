@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     alphavantage_api_key: Optional[str] = Field(
         default=None, alias="ALPHA_VANTAGE_API_KEY"
     )
+    finnhub_api_key: Optional[str] = Field(default=None, alias="FINNHUB_API_KEY")
+    newsapi_key: Optional[str] = Field(default=None, alias="NEWSAPI_KEY")
+    fred_api_key: Optional[str] = Field(default=None, alias="FRED_API_KEY")
+    sec_user_agent: Optional[str] = Field(default=None, alias="SEC_USER_AGENT")
     cron_secret: Optional[str] = Field(default=None, alias="CRON_SECRET")
 
     @field_validator("cors_origins", mode="before")

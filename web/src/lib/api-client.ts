@@ -142,6 +142,88 @@ export type Report = ReportSummary & {
 export type ReportListResponse = { reports: ReportSummary[] };
 export type ReportResponse = { report: Report };
 
+export type StockNewsItem = {
+  id: string;
+  headline: string;
+  summary: string | null;
+  source: string | null;
+  url: string | null;
+  category: string | null;
+  datetime: string | null;
+  image: string | null;
+};
+export type StockNewsResponse = { symbol: string; items: StockNewsItem[] };
+
+export type StockCompanyProfile = {
+  name: string | null;
+  country: string | null;
+  currency: string | null;
+  exchange: string | null;
+  industry: string | null;
+  ipo: string | null;
+  market_cap: number | null;
+  share_outstanding: number | null;
+  logo: string | null;
+  weburl: string | null;
+  phone: string | null;
+};
+export type StockProfileResponse = {
+  symbol: string;
+  profile: StockCompanyProfile | null;
+  metrics: Record<string, number | null | undefined>;
+};
+
+export type RecommendationBucket = {
+  period: string | null;
+  strong_buy: number;
+  buy: number;
+  hold: number;
+  sell: number;
+  strong_sell: number;
+};
+export type PriceTarget = {
+  target_high: number | null;
+  target_low: number | null;
+  target_mean: number | null;
+  target_median: number | null;
+  last_updated: string | null;
+  number_of_analysts: number | null;
+};
+export type StockConsensusResponse = {
+  symbol: string;
+  recommendations: RecommendationBucket[];
+  price_target: PriceTarget | null;
+};
+
+export type StockFilingItem = {
+  accession: string;
+  form: string;
+  filed_at: string | null;
+  description: string | null;
+  url: string | null;
+};
+export type StockFilingsResponse = {
+  symbol: string;
+  cik: string | null;
+  items: StockFilingItem[];
+};
+
+export type FinancialLine = { concept?: string; label?: string; unit?: string; value?: number };
+export type FinancialPeriod = {
+  year: number | null;
+  quarter: number | null;
+  period: string | null;
+  form: string | null;
+  income_statement: FinancialLine[];
+  balance_sheet: FinancialLine[];
+  cash_flow: FinancialLine[];
+};
+export type StockFinancialsResponse = {
+  symbol: string;
+  freq: string;
+  periods: FinancialPeriod[];
+};
+
 async function buildHeaders(): Promise<HeadersInit> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (supabase) {
@@ -197,5 +279,33 @@ export const apiClient = {
   },
   getReport(id: string): Promise<ReportResponse> {
     return request<ReportResponse>(`/v1/reports/${encodeURIComponent(id)}`);
+  },
+  getStockNews(symbol: string, days = 14): Promise<StockNewsResponse> {
+    return request<StockNewsResponse>(
+      `/v1/stocks/${encodeURIComponent(symbol)}/news?days=${days}`,
+    );
+  },
+  getStockProfile(symbol: string): Promise<StockProfileResponse> {
+    return request<StockProfileResponse>(
+      `/v1/stocks/${encodeURIComponent(symbol)}/profile`,
+    );
+  },
+  getStockConsensus(symbol: string): Promise<StockConsensusResponse> {
+    return request<StockConsensusResponse>(
+      `/v1/stocks/${encodeURIComponent(symbol)}/consensus`,
+    );
+  },
+  getStockFilings(symbol: string, limit = 20): Promise<StockFilingsResponse> {
+    return request<StockFilingsResponse>(
+      `/v1/stocks/${encodeURIComponent(symbol)}/filings?limit=${limit}`,
+    );
+  },
+  getStockFinancials(
+    symbol: string,
+    freq: "annual" | "quarterly" = "annual",
+  ): Promise<StockFinancialsResponse> {
+    return request<StockFinancialsResponse>(
+      `/v1/stocks/${encodeURIComponent(symbol)}/financials?freq=${freq}`,
+    );
   },
 };

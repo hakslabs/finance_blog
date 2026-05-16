@@ -348,6 +348,25 @@ Each migration ships with RLS policies, grants, indexes, and `updated_at` trigge
 - [x] Acceptance: `cd web && npm run lint && npm run build` is clean; FastAPI imports without error and the new routes appear in `app.routes`. Each detail page renders correctly when the DB row is missing (fixture fallback with explicit source label) and prefers DB values when present.
 - [x] Out of scope: ingestion of masters/reports rows; financial-statement / consensus / filing data wiring (blocked on PR-21–PR-23 ingestion PRs).
 
+### PR-27 — Free-API live wiring for stock detail tabs + masters seed
+
+- [x] Scope: Detail-page tabs that the schema does not yet have ingested data for now live-fetch from already-connected free APIs instead of fixture-only. Use Finnhub (`/company-news`, `/stock/profile2`, `/stock/metric`, `/stock/recommendation`, `/stock/price-target`, `/stock/financials-reported`) and SEC EDGAR (`data.sec.gov/submissions/CIK*.json`). All endpoints fail-soft to empty payloads so the page never crashes when a key is missing or upstream rate-limits.
+  - `/v1/stocks/{symbol}/news` — Finnhub company news (14 days). Wires `NewsSection`.
+  - `/v1/stocks/{symbol}/profile` — Finnhub profile + basic metrics. (Frontend hook ready; KeyStatsStrip uses live volume from `useQuote`; deeper profile wiring is a follow-up.)
+  - `/v1/stocks/{symbol}/consensus` — Finnhub recommendation trends + price target. Wires `ConsensusSection` opinion distribution + 목표주가/커버 애널리스트 KPIs.
+  - `/v1/stocks/{symbol}/filings` — SEC EDGAR submissions via ticker→CIK resolution. Wires `FilingsSection` timeline.
+  - `/v1/stocks/{symbol}/financials` — Finnhub `financials-reported`. Wires `FinancialsSection` to render real income/balance/cash-flow line items for the latest annual period (top 10 lines).
+  - Migration `0013_masters_seed.sql` — seeds 8 well-known investors (Buffett, Munger, Burry, Ackman, Klarman, Pabrai, Einhorn, Marks) with `filer_cik` so the `master_filings` view can be populated by a later SEC 13F ingestion PR. Includes seed principles per master. Applied to local DB; remote push requires `SUPABASE_ACCESS_TOKEN` (not present in current `.env`).
+- [x] Files:
+  - `api/app/settings.py` (new optional keys: `FINNHUB_API_KEY`, `NEWSAPI_KEY`, `FRED_API_KEY`, `SEC_USER_AGENT`).
+  - `api/app/sources/finnhub.py`, `api/app/sources/sec.py`.
+  - `api/app/routes/stocks_extra.py`, `api/app/main.py`.
+  - `web/src/lib/api-client.ts`, `web/src/lib/useStockExtras.ts`.
+  - `web/src/routes/stocks/sections/NewsSection.tsx`, `FilingsSection.tsx`, `ConsensusSection.tsx`, `FinancialsSection.tsx`, plus the matching StockDetailPage wiring.
+  - `supabase/migrations/0013_masters_seed.sql`.
+- [x] Acceptance: `cd web && npm run lint && npm run build` clean. FastAPI registers `/v1/stocks/{symbol}/{news,profile,consensus,filings,financials}` and the existing endpoints still work. `supabase migration up --local` applies 0013 cleanly. Every wired section shows an explicit source label so the user can tell "Finnhub 라이브" from "fixture 표시" at a glance.
+- [x] Out of scope: persisted ingestion (write to `news_items`, `filings`, `filing_holdings`, `consensus_snapshots`, `financial_lines`); KR-side equivalents (DART, KRX); reports table seed; 13F holdings ingestion via SEC for the seeded masters; remote DB push of 0013 (requires `SUPABASE_ACCESS_TOKEN`).
+
 - PR-01 through PR-10 are merged.
 - The dashboard renders real watchlist data and `/stocks/AAPL` renders real market data through the backend path.
 - Initial Supabase schema and security notes are documented and applied.

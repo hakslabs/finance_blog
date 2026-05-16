@@ -1,19 +1,54 @@
 import { Card } from "../../../components/primitives/Card";
 import { Badge } from "../../../components/primitives/Badge";
 import type { NewsItem } from "../../../fixtures/stocks";
+import { useStockNews } from "../../../lib/useStockExtras";
 import styles from "./NewsSection.module.css";
 
 type NewsSectionProps = {
   news: NewsItem[];
+  symbol: string;
   onOpenNews?: (news: NewsItem) => void;
 };
 
-export function NewsSection({ news, onOpenNews }: NewsSectionProps) {
+function timeAgo(iso: string | null): string {
+  if (!iso) return "";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "";
+  const mins = Math.floor((Date.now() - t) / 60000);
+  if (mins < 60) return `${Math.max(mins, 0)}분 전`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}시간 전`;
+  const days = Math.floor(hrs / 24);
+  return `${days}일 전`;
+}
+
+export function NewsSection({ news, symbol, onOpenNews }: NewsSectionProps) {
+  const live = useStockNews(symbol, 14);
+  const liveItems: NewsItem[] =
+    live.status === "ready"
+      ? live.data.items.map((n) => ({
+          id: n.id,
+          timeAgo: timeAgo(n.datetime),
+          source: n.source ?? "",
+          title: n.headline,
+          summary: n.summary ?? "",
+        }))
+      : [];
+  const items = liveItems.length > 0 ? liveItems : news;
+  const sourceLabel =
+    live.status === "ready" && liveItems.length > 0
+      ? `Finnhub · 최근 14일 ${liveItems.length}건`
+      : live.status === "loading"
+        ? "Finnhub 로딩 중 · fixture 표시"
+        : live.status === "error"
+          ? `Finnhub 오류 · fixture 표시`
+          : "Finnhub 빈 결과 · fixture 표시";
+
   return (
     <div className={styles.container}>
       <div className={styles.filterRow}>
         <span className={`${styles.filterPill} ${styles.filterActive}`}>
-          전체 ({news.length})
+          전체 ({items.length})
         </span>
         <span className={styles.filterPill}>한국어</span>
         <span className={styles.filterPill}>영문</span>
@@ -26,7 +61,7 @@ export function NewsSection({ news, onOpenNews }: NewsSectionProps) {
 
       <div className={styles.newsGrid}>
         <div className={styles.newsList}>
-          {news.map((n) => (
+          {items.map((n) => (
             <button
               key={n.id}
               type="button"
@@ -46,13 +81,9 @@ export function NewsSection({ news, onOpenNews }: NewsSectionProps) {
         <div className={styles.newsSidebar}>
           <Card className={styles.summaryCard}>
             <p className={styles.summaryText}>
-              최근 뉴스 {news.length}건 중 긍정적 흐름 우세. 핵심 키워드는{" "}
-              <strong>"실적 강세", "자사주 매입", "AI 서비스 확대"</strong>{" "}
-              순.
+              최근 뉴스 {items.length}건 표시. 핵심 키워드 분석 자동화는 후속 PR.
             </p>
-            <p className={styles.summarySource}>
-              출처: 각사 보도자료 · 수집 자동화 예정
-            </p>
+            <p className={styles.summarySource}>출처: {sourceLabel}</p>
           </Card>
         </div>
       </div>

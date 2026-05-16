@@ -2,6 +2,7 @@ import { Card } from "../../../components/primitives/Card";
 import { ChartPlaceholder } from "../../../components/primitives/ChartPlaceholder";
 import { Badge } from "../../../components/primitives/Badge";
 import type { FilingItem, EarningsEvent } from "../../../fixtures/stocks";
+import { useStockFilings } from "../../../lib/useStockExtras";
 import styles from "./FilingsSection.module.css";
 
 const FILING_TONE_CLASS: Record<FilingItem["tone"], string> = {
@@ -11,12 +12,35 @@ const FILING_TONE_CLASS: Record<FilingItem["tone"], string> = {
 };
 
 type FilingsSectionProps = {
+  symbol: string;
   filings: FilingItem[];
   nextEarnings: EarningsEvent;
   onOpenFiling?: (filing: FilingItem) => void;
 };
 
-export function FilingsSection({ filings, nextEarnings, onOpenFiling }: FilingsSectionProps) {
+export function FilingsSection({ symbol, filings, nextEarnings, onOpenFiling }: FilingsSectionProps) {
+  const live = useStockFilings(symbol, 25);
+  const liveItems: FilingItem[] =
+    live.status === "ready"
+      ? live.data.items.map((f) => ({
+          id: f.accession,
+          date: f.filed_at ?? "",
+          formType: f.form,
+          title: f.description || f.form,
+          priceImpact: "—",
+          tone: "neutral" as const,
+        }))
+      : [];
+  const items = liveItems.length > 0 ? liveItems : filings;
+  const sourceLabel =
+    live.status === "ready" && liveItems.length > 0
+      ? `SEC EDGAR · ${live.data.cik ? `CIK ${live.data.cik}` : "라이브"} · ${liveItems.length}건`
+      : live.status === "loading"
+        ? "EDGAR 로딩 중 · fixture 표시"
+        : live.status === "error"
+          ? "EDGAR 오류 · fixture 표시"
+          : "EDGAR 미지원 심볼 · fixture 표시";
+
   return (
     <div className={styles.container}>
       <div className={styles.filingsGrid}>
@@ -66,7 +90,7 @@ export function FilingsSection({ filings, nextEarnings, onOpenFiling }: FilingsS
 
       <Card title="공시 타임라인" eyebrow="EDGAR / DART">
         <div className={styles.filingList}>
-          {filings.map((f) => (
+          {items.map((f) => (
             <button
               key={f.id}
               type="button"
@@ -86,9 +110,7 @@ export function FilingsSection({ filings, nextEarnings, onOpenFiling }: FilingsS
             </button>
           ))}
         </div>
-        <p className={styles.sourceNote}>
-          출처: SEC EDGAR · 갱신 매일 18:00
-        </p>
+        <p className={styles.sourceNote}>출처: {sourceLabel}</p>
       </Card>
     </div>
   );

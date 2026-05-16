@@ -94,6 +94,7 @@ function TabContent({
     case "재무":
       return (
         <FinancialsSection
+          symbol={detail.symbol}
           incomeStatement={detail.incomeStatement}
           balanceSheet={detail.balanceSheet}
           cashFlow={detail.cashFlow}
@@ -111,13 +112,14 @@ function TabContent({
     case "공시·실적":
       return (
         <FilingsSection
+          symbol={detail.symbol}
           filings={detail.filings}
           nextEarnings={detail.nextEarnings}
           onOpenFiling={onOpenFiling}
         />
       );
     case "뉴스":
-      return <NewsSection news={detail.news} onOpenNews={onOpenNews} />;
+      return <NewsSection news={detail.news} symbol={detail.symbol} onOpenNews={onOpenNews} />;
     case "수급":
       return (
         <SupplyDemandSection
@@ -129,6 +131,7 @@ function TabContent({
     case "컨센서스":
       return (
         <ConsensusSection
+          symbol={detail.symbol}
           consensus={detail.consensus}
           reports={detail.analystReports}
           gurus={detail.guruHoldings}

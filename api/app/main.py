@@ -9,6 +9,7 @@ from app.routes.masters import router as masters_router
 from app.routes.portfolios import router as portfolios_router
 from app.routes.quotes import router as quotes_router
 from app.routes.reports import router as reports_router
+from app.routes.stocks_extra import router as stocks_extra_router
 from app.routes.watchlists import router as watchlists_router
 from app.settings import get_settings
 
@@ -38,6 +39,7 @@ app.include_router(masters_router, prefix="/v1")
 app.include_router(portfolios_router, prefix="/v1")
 app.include_router(quotes_router, prefix="/v1")
 app.include_router(reports_router, prefix="/v1")
+app.include_router(stocks_extra_router, prefix="/v1")
 app.include_router(watchlists_router, prefix="/v1")
 
 
