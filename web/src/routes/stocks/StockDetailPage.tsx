@@ -7,6 +7,7 @@ import { Card } from "../../components/primitives/Card";
 import { Badge } from "../../components/primitives/Badge";
 import { EmptyState } from "../../components/primitives/EmptyState";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
+import { useQuote } from "../../lib/useQuote";
 import type { FilingItem, NewsItem, StockDetail, StockTab } from "../../fixtures/stocks";
 import { getStockDetail, STOCK_TABS } from "../../fixtures/stocks";
 import {
@@ -139,7 +140,7 @@ function TabContent({
 }
 
 /** Key stats strip rendered above the tab area. */
-function KeyStatsStrip({ detail }: { detail: StockDetail }) {
+function KeyStatsStrip({ detail, liveVolume }: { detail: StockDetail; liveVolume: number | null }) {
   const {
     marketCap,
     volume,
@@ -151,9 +152,11 @@ function KeyStatsStrip({ detail }: { detail: StockDetail }) {
     beta,
   } = detail.keyStats;
 
+  const volumeText = liveVolume != null ? liveVolume.toLocaleString("ko-KR") : volume;
+
   const stats: [string, string][] = [
     ["시가총액", marketCap],
-    ["거래량", volume],
+    ["거래량", volumeText],
     ["52W 고/저", week52Range],
     ["PER", per],
     ["PBR", pbr],
@@ -261,6 +264,7 @@ export function StockDetailPage() {
   const { detail: panelDetail, notice, handleAction, closeDetail } = useInteractionActions();
 
   const detail = getStockDetail(rawSymbol);
+  const quoteState = useQuote(rawSymbol.toUpperCase(), "1mo");
 
   // Unknown symbol → empty state with link back to /stocks
   if (!detail) {
@@ -278,6 +282,25 @@ export function StockDetailPage() {
     );
   }
 
+  const liveQuote = quoteState.status === "ready" ? quoteState.quote : null;
+  const liveUp = liveQuote ? liveQuote.change >= 0 : detail.up;
+  const currencyPrefix = liveQuote?.currency === "USD" ? "$" : liveQuote?.currency === "KRW" ? "₩" : "";
+  const livePriceText = liveQuote ? `${currencyPrefix}${liveQuote.last.toFixed(2)}` : detail.price;
+  const liveChangeText = liveQuote
+    ? `${liveQuote.change >= 0 ? "+" : ""}${liveQuote.change.toFixed(2)}`
+    : detail.change;
+  const liveChangePctText = liveQuote
+    ? `${liveQuote.change_pct >= 0 ? "+" : ""}${liveQuote.change_pct.toFixed(2)}%`
+    : detail.changePercent;
+  const liveLastUpdated = liveQuote
+    ? (() => {
+        const d = new Date(liveQuote.last_refreshed_at);
+        return Number.isNaN(d.getTime())
+          ? detail.lastUpdated
+          : `${d.toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })} 기준${liveQuote.stale ? " · 캐시" : ""}`;
+      })()
+    : detail.lastUpdated;
+
   return (
     <PageContainer
       eyebrow="리서치 / 종목"
@@ -288,19 +311,22 @@ export function StockDetailPage() {
           <Badge tone="neutral">{detail.exchange}</Badge>
           <Badge tone="neutral">{detail.sector}</Badge>
           <span
-            className={`${detail.up ? styles.changePos : styles.changeNeg} ${styles.descriptionChange}`}
+            className={`${liveUp ? styles.changePos : styles.changeNeg} ${styles.descriptionChange}`}
           >
-            {detail.price} {detail.change} ({detail.changePercent})
+            {livePriceText} {liveChangeText} ({liveChangePctText})
           </span>
           <span className={styles.descriptionTime}>
-            {detail.lastUpdated}
+            {liveLastUpdated}
           </span>
         </span>
       }
     >
       <Link to="/stocks" className={styles.backLink}>← 종목 목록으로</Link>
 
-      <KeyStatsStrip detail={detail} />
+      <KeyStatsStrip
+        detail={detail}
+        liveVolume={liveQuote && liveQuote.bars.length > 0 ? liveQuote.bars[liveQuote.bars.length - 1].v : null}
+      />
 
       <div className={styles.layout}>
         {/* Main content area with tabs */}

@@ -331,6 +331,23 @@ Each migration ships with RLS policies, grants, indexes, and `updated_at` trigge
 - [x] Files: `supabase/migrations/0011_user_state.sql`.
 - [x] Acceptance: Every table is FK'd to `public.profiles(id) on delete cascade`, has RLS enabled with owner-only select/insert/update/delete policies (`position_thesis_conditions` scoped via its parent thesis). Applied local + remote. Schema-master-plan migration order (0004–0011) is now fully landed.
 
+### PR-26 — Detail-page data wiring
+
+- [x] Scope: Make every detail page render appropriate data through the intended data path, falling back gracefully when the table is empty.
+  - `/stocks/:symbol` — header price/change/last-updated and key-stats volume now read live from `useQuote` (DB-backed via PR-13, Polygon fallback). Unwired tabs (financials, valuations, supply/demand, consensus, news, filings) remain fixture-backed pending later ingestion PRs because the PR-21–PR-23 schemas are still empty.
+  - `/masters/:id` — new `GET /v1/masters` and `GET /v1/masters/{slug}` endpoints (PostgREST-backed, public-read RLS) feed `useMaster`. Page merges DB header (name, firm, style, principles) over fixture; renders a `Supabase · 라이브` / `DB 미수록 · fixture 표시` source label so the user can tell the difference.
+  - `/reports/:id` — new `GET /v1/reports` and `GET /v1/reports/{id}` endpoints feed `useReport`. Same fallback/source-label pattern as masters.
+- [x] Files:
+  - `api/app/models/masters.py`, `api/app/models/reports.py`
+  - `api/app/repos/masters.py`, `api/app/repos/reports.py`
+  - `api/app/routes/masters.py`, `api/app/routes/reports.py`, `api/app/main.py`
+  - `web/src/lib/api-client.ts`, `web/src/lib/useMaster.ts`, `web/src/lib/useReport.ts`
+  - `web/src/routes/stocks/StockDetailPage.tsx`
+  - `web/src/routes/masters/MasterDetailPage.tsx`
+  - `web/src/routes/reports/ReportDetailPage.tsx`
+- [x] Acceptance: `cd web && npm run lint && npm run build` is clean; FastAPI imports without error and the new routes appear in `app.routes`. Each detail page renders correctly when the DB row is missing (fixture fallback with explicit source label) and prefers DB values when present.
+- [x] Out of scope: ingestion of masters/reports rows; financial-statement / consensus / filing data wiring (blocked on PR-21–PR-23 ingestion PRs).
+
 - PR-01 through PR-10 are merged.
 - The dashboard renders real watchlist data and `/stocks/AAPL` renders real market data through the backend path.
 - Initial Supabase schema and security notes are documented and applied.

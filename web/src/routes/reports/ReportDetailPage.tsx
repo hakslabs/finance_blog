@@ -4,6 +4,7 @@ import { ActionNotice } from "../../components/interaction/ActionNotice";
 import { DetailPanel } from "../../components/interaction/DetailPanel";
 import { EmptyState } from "../../components/primitives/EmptyState";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
+import { useReport } from "../../lib/useReport";
 import { getReport } from "../../fixtures/reports";
 import { ReportBody } from "./sections/ReportBody";
 import { ReportDetailHeader } from "./sections/ReportDetailHeader";
@@ -14,8 +15,31 @@ import styles from "./ReportDetailPage.module.css";
 
 export function ReportDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const report = getReport(id);
+  const fixtureReport = getReport(id);
+  const dbState = useReport(id);
   const { detail, notice, handleAction, closeDetail } = useInteractionActions();
+
+  const dbReport = dbState.status === "ready" ? dbState.report : null;
+  const report = fixtureReport
+    ? {
+        ...fixtureReport,
+        title: dbReport?.title ?? fixtureReport.title,
+        source: dbReport?.source ?? fixtureReport.source,
+        date: dbReport?.published_at ?? fixtureReport.date,
+        language:
+          dbReport && (dbReport.language === "ko" || dbReport.language === "en")
+            ? (dbReport.language as "ko" | "en")
+            : fixtureReport.language,
+      }
+    : null;
+  const sourceLabel =
+    dbState.status === "ready"
+      ? "Supabase · 라이브"
+      : dbState.status === "loading"
+        ? "DB 로딩 중 · fixture 표시"
+        : dbState.status === "not-found"
+          ? "DB 미수록 · fixture 표시"
+          : "API 오류 · fixture 표시";
 
   if (!report) {
     return (
@@ -33,7 +57,7 @@ export function ReportDetailPage() {
     <PageContainer
       eyebrow="리포트 / 상세"
       title={report.title}
-      description={`${report.source} · ${report.department} · ${report.date} 발간 · ${report.pages}페이지 · ${report.language.toUpperCase()}`}
+      description={`${report.source} · ${report.department} · ${report.date} 발간 · ${report.pages}페이지 · ${report.language.toUpperCase()} · ${sourceLabel}`}
     >
       <Link to="/reports" className={styles.backLink}>← 리포트 목록으로</Link>
 

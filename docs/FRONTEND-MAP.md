@@ -174,6 +174,14 @@ Stock detail hook for the PR-10 quote data path. Returns `QuoteState`: loading, 
 
 Portfolio page hook for the PR-11 portfolio data path. Returns `PortfolioState`: loading, ready with `Portfolio`, or error with message.
 
+### `useMaster.ts`
+
+Master detail hook (PR-26). Calls `apiClient.getMaster(slug)` against `/v1/masters/{slug}`. Returns `MasterState`: loading, ready with `Master`, not-found (404), or error. Public read — does not require auth. `MasterDetailPage` merges DB header fields over the existing fixture and renders a source label so the user can tell whether they're viewing live DB data or a fixture fallback.
+
+### `useReport.ts`
+
+Report detail hook (PR-26). Calls `apiClient.getReport(id)` against `/v1/reports/{id}`. Same shape as `useMaster`. `ReportDetailPage` overlays DB title/source/published_at/language onto the fixture report and shows the same source label pattern.
+
 ## Fixtures (`fixtures/`)
 
 ### `fixtures/dashboard.ts`

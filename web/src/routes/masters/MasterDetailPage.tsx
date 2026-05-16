@@ -9,6 +9,7 @@ import { DataTable } from "../../components/primitives/DataTable";
 import { EmptyState } from "../../components/primitives/EmptyState";
 import { KpiTile } from "../../components/primitives/KpiTile";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
+import { useMaster } from "../../lib/useMaster";
 import { getMaster } from "../../fixtures/masters";
 import type { MasterHolding, MasterQuarterChange, HoldingChange } from "../../fixtures/masters";
 import styles from "./MasterDetailPage.module.css";
@@ -43,8 +44,31 @@ const quarterColumns = [
 
 export function MasterDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const master = getMaster(id);
+  const fixtureMaster = getMaster(id);
+  const dbState = useMaster(id);
   const { detail, notice, handleAction, closeDetail } = useInteractionActions();
+
+  const dbMaster = dbState.status === "ready" ? dbState.master : null;
+  const master = fixtureMaster
+    ? {
+        ...fixtureMaster,
+        name: dbMaster?.name ?? fixtureMaster.name,
+        firm: dbMaster?.firm ?? fixtureMaster.firm,
+        style: dbMaster?.style ?? fixtureMaster.style,
+        principles:
+          dbMaster && dbMaster.principles.length > 0
+            ? dbMaster.principles.map((p) => p.title)
+            : fixtureMaster.principles,
+      }
+    : null;
+  const sourceLabel =
+    dbState.status === "ready"
+      ? "Supabase · 라이브"
+      : dbState.status === "loading"
+        ? "DB 로딩 중 · fixture 표시"
+        : dbState.status === "not-found"
+          ? "DB 미수록 · fixture 표시"
+          : "API 오류 · fixture 표시";
 
   if (!master) {
     return (
@@ -62,7 +86,7 @@ export function MasterDetailPage() {
     <PageContainer
       eyebrow="Masters / Detail"
       title={master.name}
-      description={`${master.firm} · ${master.style}`}
+      description={`${master.firm} · ${master.style} · ${sourceLabel}`}
       actions={
         <button
           className={styles.followButton}

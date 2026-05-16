@@ -95,6 +95,53 @@ export type Portfolio = {
 
 export type PortfolioResponse = { portfolio: Portfolio };
 
+export type MasterSummary = {
+  id: string;
+  slug: string;
+  name: string;
+  firm: string | null;
+  country_code: string | null;
+  style: string | null;
+  aum: number | null;
+  aum_currency: string | null;
+  photo_url: string | null;
+};
+
+export type MasterPrinciple = { ordinal: number; title: string; body: string | null };
+export type MasterBook = { id: string; ordinal: number; title: string; url: string | null; year: number | null };
+export type MasterStrategy = { ordinal: number; title: string; body: string | null };
+
+export type Master = MasterSummary & {
+  description: string | null;
+  homepage_url: string | null;
+  filer_cik: string | null;
+  birth_year: number | null;
+  principles: MasterPrinciple[];
+  books: MasterBook[];
+  strategies: MasterStrategy[];
+};
+
+export type MasterListResponse = { masters: MasterSummary[] };
+export type MasterResponse = { master: Master };
+
+export type ReportSummary = {
+  id: string;
+  source: string;
+  title: string;
+  category: string | null;
+  published_at: string;
+  language: string;
+  importance: number | null;
+};
+
+export type Report = ReportSummary & {
+  summary: string | null;
+  body_url: string | null;
+};
+
+export type ReportListResponse = { reports: ReportSummary[] };
+export type ReportResponse = { report: Report };
+
 async function buildHeaders(): Promise<HeadersInit> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (supabase) {
@@ -138,5 +185,17 @@ export const apiClient = {
   },
   getMyPortfolio(): Promise<PortfolioResponse> {
     return request<PortfolioResponse>("/v1/portfolios/me");
+  },
+  listMasters(): Promise<MasterListResponse> {
+    return request<MasterListResponse>("/v1/masters");
+  },
+  getMaster(slug: string): Promise<MasterResponse> {
+    return request<MasterResponse>(`/v1/masters/${encodeURIComponent(slug)}`);
+  },
+  listReports(limit = 50): Promise<ReportListResponse> {
+    return request<ReportListResponse>(`/v1/reports?limit=${limit}`);
+  },
+  getReport(id: string): Promise<ReportResponse> {
+    return request<ReportResponse>(`/v1/reports/${encodeURIComponent(id)}`);
   },
 };

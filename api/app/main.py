@@ -5,8 +5,10 @@ from app.errors import register_exception_handlers
 from app.models.health import HealthResponse
 from app.routes.cron import router as cron_router
 from app.routes.dashboard import router as dashboard_router
+from app.routes.masters import router as masters_router
 from app.routes.portfolios import router as portfolios_router
 from app.routes.quotes import router as quotes_router
+from app.routes.reports import router as reports_router
 from app.routes.watchlists import router as watchlists_router
 from app.settings import get_settings
 
@@ -32,8 +34,10 @@ register_exception_handlers(app)
 
 app.include_router(cron_router, prefix="/v1")
 app.include_router(dashboard_router, prefix="/v1")
+app.include_router(masters_router, prefix="/v1")
 app.include_router(portfolios_router, prefix="/v1")
 app.include_router(quotes_router, prefix="/v1")
+app.include_router(reports_router, prefix="/v1")
 app.include_router(watchlists_router, prefix="/v1")
 
 
