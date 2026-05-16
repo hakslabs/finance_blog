@@ -94,3 +94,121 @@ async def fetch_submissions(
             }
         )
     return items
+
+
+async def list_filings_by_form(
+    cik: str, form: str, user_agent: str, *, limit: int = 4
+) -> List[Dict[str, Any]]:
+    """Return recent accessions for `cik` matching `form` (e.g. '13F-HR')."""
+    items = await fetch_submissions(cik, user_agent, limit=120)
+    return [r for r in items if r.get("form", "").upper() == form.upper()][:limit]
+
+
+async def fetch_information_table(
+    cik: str, accession: str, user_agent: str
+) -> List[Dict[str, Any]]:
+    """Fetch the 13F Information Table XML for one accession and parse it.
+
+    Returns a list of holdings:
+        { "name": str, "cusip": str, "value_usd": int, "shares": float,
+          "share_type": "SH"|"PRN", "discretion": str, "put_call": Optional[str] }
+
+    `value` in the SEC XML is reported in thousands of USD before
+    2022-Q4 and in raw USD after. We return raw USD.
+    """
+    import re
+    from xml.etree import ElementTree as ET
+
+    cik10 = _normalize_cik(cik)
+    acc_nodash = accession.replace("-", "")
+    headers = {"User-Agent": user_agent, "Accept": "application/json"}
+    base = f"https://www.sec.gov/Archives/edgar/data/{int(cik10)}/{acc_nodash}"
+    index_url = f"{base}/index.json"
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0, headers=headers) as client:
+            idx = await client.get(index_url)
+            if idx.status_code >= 400:
+                return []
+            idx_body = idx.json()
+            files = idx_body.get("directory", {}).get("item", []) or []
+            xml_name: Optional[str] = None
+            for f in files:
+                name = f.get("name", "")
+                if name.lower().endswith(".xml") and "info" in name.lower():
+                    xml_name = name
+                    break
+            if not xml_name:
+                # Fallback: any .xml that isn't the primary doc
+                for f in files:
+                    name = f.get("name", "")
+                    if name.lower().endswith(".xml") and "primary_doc" not in name.lower():
+                        xml_name = name
+                        break
+            if not xml_name:
+                return []
+            xml_url = f"{base}/{xml_name}"
+            xml_resp = await client.get(xml_url)
+            if xml_resp.status_code >= 400:
+                return []
+            xml_text = xml_resp.text
+    except httpx.HTTPError:
+        return []
+
+    # Strip namespaces (xmlns declarations, prefixed attributes like
+    # xsi:schemaLocation, and ns: prefixes on element tags) so plain
+    # `findall("infoTable")` works.
+    xml_clean = re.sub(r"\sxmlns(:\w+)?=\"[^\"]+\"", "", xml_text)
+    xml_clean = re.sub(r"\s\w+:\w+=\"[^\"]+\"", "", xml_clean)
+    xml_clean = re.sub(r"<(/?)\w+:(\w+)", r"<\1\2", xml_clean)
+    try:
+        root = ET.fromstring(xml_clean)
+    except ET.ParseError:
+        return []
+
+    holdings: List[Dict[str, Any]] = []
+    # Reporting threshold for "value in USD" changed in 2022-Q4; auto-detect
+    # by checking the order of magnitude vs shares.
+    for info in root.findall(".//infoTable"):
+        name = (info.findtext("nameOfIssuer") or "").strip()
+        cusip = (info.findtext("cusip") or "").strip()
+        title = (info.findtext("titleOfClass") or "").strip()
+        value_raw = (info.findtext("value") or "0").strip()
+        try:
+            value_num = int(float(value_raw))
+        except ValueError:
+            value_num = 0
+        shares_text = info.findtext("shrsOrPrnAmt/sshPrnamt") or "0"
+        share_type = (info.findtext("shrsOrPrnAmt/sshPrnamtType") or "SH").strip()
+        try:
+            shares = float(shares_text)
+        except ValueError:
+            shares = 0.0
+        discretion = (info.findtext("investmentDiscretion") or "").strip()
+        put_call = info.findtext("putCall")
+        holdings.append(
+            {
+                "name": name,
+                "cusip": cusip,
+                "title_of_class": title,
+                "value_raw": value_num,
+                "shares": shares,
+                "share_type": share_type,
+                "discretion": discretion,
+                "put_call": put_call.strip() if put_call else None,
+            }
+        )
+
+    if not holdings:
+        return []
+
+    # Heuristic: total value vs total shares. If avg value/share < 1, treat
+    # as $K (pre-2022Q4). Otherwise raw USD.
+    total_value = sum(h["value_raw"] for h in holdings)
+    total_shares = sum(h["shares"] for h in holdings) or 1.0
+    avg = total_value / total_shares
+    multiplier = 1000 if avg < 1.0 else 1
+    for h in holdings:
+        h["value_usd"] = h["value_raw"] * multiplier
+        del h["value_raw"]
+    return holdings

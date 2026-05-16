@@ -10,6 +10,7 @@ import { EmptyState } from "../../components/primitives/EmptyState";
 import { KpiTile } from "../../components/primitives/KpiTile";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
 import { useMaster } from "../../lib/useMaster";
+import { useMasterHoldings } from "../../lib/useMasterHoldings";
 import { getMaster } from "../../fixtures/masters";
 import type { MasterHolding, MasterQuarterChange, HoldingChange } from "../../fixtures/masters";
 import styles from "./MasterDetailPage.module.css";
@@ -49,6 +50,26 @@ export function MasterDetailPage() {
   const { detail, notice, handleAction, closeDetail } = useInteractionActions();
 
   const dbMaster = dbState.status === "ready" ? dbState.master : null;
+  const holdingsState = useMasterHoldings(id);
+  const liveHoldings: MasterHolding[] =
+    holdingsState.status === "ready"
+      ? holdingsState.data.holdings.map((h) => ({
+          id: h.instrument_id,
+          symbol: h.symbol ?? "?",
+          name: h.name ?? "—",
+          weight: h.weight_pct != null ? `${h.weight_pct.toFixed(2)}%` : "—",
+          change: "—",
+          changeKind: "flat" as HoldingChange,
+        }))
+      : [];
+  const holdingsSource =
+    holdingsState.status === "ready" && liveHoldings.length > 0
+      ? `13F ${holdingsState.data.period_end ?? holdingsState.data.filed_at ?? "라이브"} · ${liveHoldings.length}건`
+      : holdingsState.status === "loading"
+        ? "13F 로딩 중 · fixture 표시"
+        : holdingsState.status === "error"
+          ? "13F 오류 · fixture 표시"
+          : "13F 미수집 · fixture 표시";
   const master = fixtureMaster
     ? {
         ...fixtureMaster,
@@ -107,10 +128,10 @@ export function MasterDetailPage() {
       </div>
 
       <div className={styles.detailGrid}>
-        <Card title="상위 보유 종목" eyebrow="Portfolio">
+        <Card title="상위 보유 종목" eyebrow={holdingsSource}>
           <DataTable<MasterHolding>
             columns={holdingColumns}
-            rows={master.holdings}
+            rows={liveHoldings.length > 0 ? liveHoldings : master.holdings}
             getRowKey={(row) => row.id}
             density="compact"
             onRowClick={(row) =>

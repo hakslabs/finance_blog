@@ -17,7 +17,7 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 
-from app.jobs import refresh_us_daily
+from app.jobs import ingest_13f, refresh_us_daily
 from app.settings import Settings, get_settings
 
 
@@ -46,4 +46,17 @@ async def refresh_us_daily_route(
         return {"status": "ok", **result}
     except refresh_us_daily.IngestionError as exc:
         log.error("us_grouped_daily failed: %s", exc)
+        return {"status": "failed", "error": str(exc)}
+
+
+@router.get("/ingest-13f")
+async def ingest_13f_route(
+    _auth: None = Depends(_require_cron),
+    settings: Settings = Depends(get_settings),
+) -> Dict[str, Any]:
+    try:
+        result = await ingest_13f.run(settings)
+        return {"status": "ok", **result}
+    except ingest_13f.IngestionError as exc:
+        log.error("ingest_13f failed: %s", exc)
         return {"status": "failed", "error": str(exc)}

@@ -15,6 +15,7 @@ from fastapi import Depends, HTTPException
 from app.models.masters import (
     Master,
     MasterBook,
+    MasterHolding,
     MasterPrinciple,
     MasterStrategy,
     MasterSummary,
@@ -59,6 +60,58 @@ class MasterRepo:
         if not rows:
             return None
         return _row_to_master(rows[0])
+
+    async def get_holdings(self, slug: str, *, limit: int = 50) -> Dict[str, Any]:
+        """Return latest 13F holdings for `slug` via master_filings view.
+
+        Joins via instruments to enrich with symbol/name/exchange. Empty
+        result is normal until ingest_13f has run.
+        """
+        # First grab the most recent filing for this slug from the view.
+        url = f"{self._base_url}/rest/v1/master_filings"
+        params = {
+            "master_slug": f"eq.{slug}",
+            "select": "filing_id,period_end,filed_at,instrument_id,shares,market_value,weight_pct,position_kind",
+            "order": "filed_at.desc,weight_pct.desc",
+            "limit": "500",
+        }
+        rows = await self._get(url, params)
+        if not rows:
+            return {"slug": slug, "period_end": None, "filed_at": None, "holdings": []}
+        latest_filing_id = rows[0]["filing_id"]
+        latest_rows = [r for r in rows if r["filing_id"] == latest_filing_id][:limit]
+        instrument_ids = sorted({r["instrument_id"] for r in latest_rows if r.get("instrument_id")})
+        # Bulk fetch instruments for symbol/name/exchange.
+        inst_map: Dict[str, Dict[str, Any]] = {}
+        if instrument_ids:
+            inst_url = f"{self._base_url}/rest/v1/instruments"
+            inst_params = {
+                "id": f"in.({','.join(instrument_ids)})",
+                "select": "id,symbol,name,exchange",
+            }
+            inst_rows = await self._get(inst_url, inst_params)
+            inst_map = {r["id"]: r for r in inst_rows}
+        holdings: List[MasterHolding] = []
+        for r in latest_rows:
+            inst = inst_map.get(r["instrument_id"], {}) if r.get("instrument_id") else {}
+            holdings.append(
+                MasterHolding(
+                    instrument_id=r["instrument_id"],
+                    symbol=inst.get("symbol"),
+                    name=inst.get("name"),
+                    exchange=inst.get("exchange"),
+                    shares=float(r["shares"]),
+                    market_value=float(r["market_value"]) if r.get("market_value") is not None else None,
+                    weight_pct=float(r["weight_pct"]) if r.get("weight_pct") is not None else None,
+                    position_kind=r.get("position_kind") or "long",
+                )
+            )
+        return {
+            "slug": slug,
+            "period_end": latest_rows[0].get("period_end"),
+            "filed_at": latest_rows[0].get("filed_at"),
+            "holdings": holdings,
+        }
 
     async def _get(self, url: str, params: Dict[str, str]) -> List[Dict[str, Any]]:
         try:

@@ -53,3 +53,21 @@ class MasterListResponse(BaseModel):
 
 class MasterResponse(BaseModel):
     master: Master
+
+
+class MasterHolding(BaseModel):
+    instrument_id: str
+    symbol: Optional[str] = None
+    name: Optional[str] = None
+    exchange: Optional[str] = None
+    shares: float
+    market_value: Optional[float] = None
+    weight_pct: Optional[float] = None
+    position_kind: str = "long"
+
+
+class MasterHoldingsResponse(BaseModel):
+    slug: str
+    period_end: Optional[str] = None
+    filed_at: Optional[str] = None
+    holdings: List[MasterHolding]

@@ -124,6 +124,24 @@ export type Master = MasterSummary & {
 export type MasterListResponse = { masters: MasterSummary[] };
 export type MasterResponse = { master: Master };
 
+export type MasterHoldingDb = {
+  instrument_id: string;
+  symbol: string | null;
+  name: string | null;
+  exchange: string | null;
+  shares: number;
+  market_value: number | null;
+  weight_pct: number | null;
+  position_kind: string;
+};
+
+export type MasterHoldingsResponse = {
+  slug: string;
+  period_end: string | null;
+  filed_at: string | null;
+  holdings: MasterHoldingDb[];
+};
+
 export type ReportSummary = {
   id: string;
   source: string;
@@ -273,6 +291,11 @@ export const apiClient = {
   },
   getMaster(slug: string): Promise<MasterResponse> {
     return request<MasterResponse>(`/v1/masters/${encodeURIComponent(slug)}`);
+  },
+  getMasterHoldings(slug: string, limit = 50): Promise<MasterHoldingsResponse> {
+    return request<MasterHoldingsResponse>(
+      `/v1/masters/${encodeURIComponent(slug)}/holdings?limit=${limit}`,
+    );
   },
   listReports(limit = 50): Promise<ReportListResponse> {
     return request<ReportListResponse>(`/v1/reports?limit=${limit}`);

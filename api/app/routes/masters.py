@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.models.masters import MasterListResponse, MasterResponse
+from app.models.masters import MasterHoldingsResponse, MasterListResponse, MasterResponse
 from app.repos.masters import MasterRepo, get_master_repo
 
 
@@ -29,3 +29,12 @@ async def get_master(
     if master is None:
         raise HTTPException(status_code=404, detail="not_found")
     return MasterResponse(master=master)
+
+
+@router.get("/{slug}/holdings", response_model=MasterHoldingsResponse)
+async def get_master_holdings(
+    slug: str,
+    limit: int = 50,
+    repo: MasterRepo = Depends(get_master_repo),
+) -> MasterHoldingsResponse:
+    return MasterHoldingsResponse(**await repo.get_holdings(slug, limit=limit))
