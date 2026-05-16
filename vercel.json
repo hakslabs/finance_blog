@@ -20,6 +20,18 @@
     {
       "path": "/api/v1/internal/cron/refresh-us-daily",
       "schedule": "30 22 * * 1-5"
+    },
+    {
+      "path": "/api/v1/internal/cron/refresh-kr-daily",
+      "schedule": "0 10 * * 1-5"
+    },
+    {
+      "path": "/api/v1/internal/cron/ingest-finnhub",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/v1/internal/cron/ingest-13f",
+      "schedule": "0 6 * * 1"
     }
   ]
 }
