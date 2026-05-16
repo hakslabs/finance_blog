@@ -25,7 +25,6 @@ from typing import Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.auth import get_current_user_id
 from app.models.quotes import Quote, Range
 from app.repos.prices import PriceRepo, get_price_repo
 from app.settings import Settings, get_settings
@@ -85,7 +84,6 @@ async def get_quote(
     symbol: str,
     interval: str = Query("1d"),
     range_: Range = Query("6mo", alias="range"),
-    _user_id=Depends(get_current_user_id),
     settings: Settings = Depends(get_settings),
     price_repo: Optional[PriceRepo] = Depends(get_price_repo),
 ) -> Quote:

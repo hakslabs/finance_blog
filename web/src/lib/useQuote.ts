@@ -1,24 +1,20 @@
 import { useEffect, useState } from "react";
 import { apiClient, ApiError, type Quote, type QuoteRange } from "./api-client";
-import { useAuth } from "./auth-state";
 
 export type QuoteState =
-  | { status: "signed-out" }
   | { status: "loading" }
   | { status: "ready"; quote: Quote }
   | { status: "empty" }
   | { status: "error"; message: string };
 
+// Quotes are public-read; no auth gate. The page should render a chart
+// for an anonymous visitor too.
 export function useQuote(symbol: string, range: QuoteRange = "6mo"): QuoteState {
-  const auth = useAuth();
   const [state, setState] = useState<QuoteState>({ status: "loading" });
 
   useEffect(() => {
-    if (auth.status !== "signed-in") {
-      return undefined;
-    }
-
     let cancelled = false;
+    setState({ status: "loading" });
     apiClient
       .getQuote(symbol, range)
       .then((quote) => {
@@ -37,12 +33,7 @@ export function useQuote(symbol: string, range: QuoteRange = "6mo"): QuoteState 
     return () => {
       cancelled = true;
     };
-  }, [auth.status, symbol, range]);
-
-  if (auth.status === "signed-out" || auth.status === "config-error") {
-    return { status: "signed-out" };
-  }
-  if (auth.status === "loading") return { status: "loading" };
+  }, [symbol, range]);
 
   return state;
 }
