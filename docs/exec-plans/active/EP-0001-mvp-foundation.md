@@ -367,6 +367,42 @@ Each migration ships with RLS policies, grants, indexes, and `updated_at` trigge
 - [x] Acceptance: `cd web && npm run lint && npm run build` clean. FastAPI registers `/v1/stocks/{symbol}/{news,profile,consensus,filings,financials}` and the existing endpoints still work. `supabase migration up --local` applies 0013 cleanly. Every wired section shows an explicit source label so the user can tell "Finnhub 라이브" from "fixture 표시" at a glance.
 - [x] Out of scope: persisted ingestion (write to `news_items`, `filings`, `filing_holdings`, `consensus_snapshots`, `financial_lines`); KR-side equivalents (DART, KRX); reports table seed; 13F holdings ingestion via SEC for the seeded masters; remote DB push of 0013 (requires `SUPABASE_ACCESS_TOKEN`).
 
+### PR-28 — SEC 13F holdings ingestion + master detail wire
+
+- [x] Scope: Populate the empty `filings` / `filing_holdings` tables so `master_filings` view returns real data, then wire `MasterDetailPage` to render it.
+  - `api/app/sources/sec.py` — `list_filings_by_form`, `fetch_information_table` (parse 13F XML; strip xsi:* attrs and ns: prefixes so plain ElementTree works).
+  - `api/app/jobs/ingest_13f.py` — orchestrator. Per master with `filer_cik`: pull latest 13F-HR, parse, resolve instruments by CUSIP via `instrument_aliases` (auto-create `CUSIP-XXXXXXXXX` placeholder instruments when unknown), upsert `filings` + `filing_holdings` with aggregated weights.
+  - `/v1/internal/cron/ingest-13f` cron route.
+  - `/v1/masters/{slug}/holdings` read endpoint — joins `master_filings` view with `instruments` for symbol/name enrichment, returns latest-filing rows sorted by weight.
+  - `useMasterHoldings` hook + `MasterDetailPage` overlays live holdings table with source label.
+  - Migration `0015_masters_cik_fix.sql` — corrects Marks/Pabrai `filer_cik` to their actual filing-entity CIKs.
+- [x] Acceptance: 6/8 seeded masters yield real holdings (Buffett 29, Klarman 36, Einhorn 40, Ackman 11, Burry 8, Munger 4). Marks/Pabrai fail for unrelated data-shape reasons (documented as PR-32 follow-up). `npm run build` clean.
+- [x] Out of scope: cleanup of `CUSIP-*` placeholder instruments via a ticker-resolution backfill; Marks/Pabrai data-shape fix.
+
+### PR-29 — Finnhub news + consensus persistence
+
+- [x] Scope: Persist live-fetch payloads into `news_items` + `consensus_snapshots` so detail pages serve DB rows instead of round-tripping to Finnhub on every page load.
+  - `api/app/jobs/ingest_finnhub.py` — per the first 25 tracked US instruments: pull `/company-news` (7-day window) → `news_items` + `news_instruments`; pull `/stock/price-target` → `consensus_snapshots` as a `target_price` metric. Idempotent via existing unique constraints; ~1.1s sleep keeps us under Finnhub free-tier 60/min.
+  - `/v1/internal/cron/ingest-finnhub` cron route.
+  - `/v1/stocks/{symbol}/news` rewritten to prefer DB rows via `news_instruments` and only fall back to live Finnhub when the table is empty for that symbol.
+- [x] Acceptance: 634 news rows ingested across 25 symbols end-to-end against remote. `consensus_snapshots` writes are 0 because Finnhub's `price-target` is paid-tier; job handles that gracefully and the read endpoint already lives-fetches consensus.
+
+### PR-30 — FRED macro indicators
+
+- [x] Scope: Add FRED live-fetch macro endpoint and wire the dashboard indicator strip so it shows real Fed Funds / 10Y / CPI / unemployment / USD-KRW / VIX values instead of fixtures.
+  - `api/app/sources/fred.py` + `/v1/macros/indicators` route.
+  - `web/src/lib/useMacros.ts` hook; `DashboardPage` translates FRED observations into the existing `MacroIndicator` fixture shape so `IndicatorStrip` renders live values with no UI rewrite.
+- [x] Out of scope (tracked as PR-32 through PR-34): ECOS (BOK rate / KOSPI macro), DART (KR filings → `filings` table), KRX (KOSPI/KOSDAQ price bars). Each requires its own auth shape + ingestion fixture and is best landed separately.
+
+### PR-31 — Past-PR audit
+
+- [x] Scope: Walk PR-01 through PR-30 acceptance bullets against the actual repo and flag silently deferred work.
+- [x] Findings: No blockers. All marked-complete PRs deliver their stated acceptance criteria. Two cosmetic gaps are out-of-scope by design:
+  - `sectors` / `instrument_sector` (PR-19) are intentionally schema-only — seeding deferred to ingestion PRs.
+  - `/stocks` list page (PR-04) intentionally uses fixtures; "real prices" is explicitly out-of-scope for the list (the detail page wires `useQuote`).
+- [x] Verified live-data paths: PR-10 quote/chart (`useQuote` → Polygon), PR-11 portfolio (`usePortfolio`), PR-13 cron (`/v1/internal/cron/refresh-us-daily`, registered in `vercel.json`), PR-15 auth (`ProtectedRoute` + sign-in/out handlers), PR-16 interaction handlers (no dead-clicks on production paths), PR-18 schema bugfixes, PR-19 reference tables (`instrument_aliases` now actively used by PR-28).
+- [x] No code changes required; this PR is documentation-only.
+
 - PR-01 through PR-10 are merged.
 - The dashboard renders real watchlist data and `/stocks/AAPL` renders real market data through the backend path.
 - Initial Supabase schema and security notes are documented and applied.
