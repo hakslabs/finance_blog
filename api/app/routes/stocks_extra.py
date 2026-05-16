@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from app.settings import Settings, get_settings
-from app.sources import finnhub, sec
+from app.sources import dart, finnhub, sec
 
 import httpx
 
@@ -262,6 +262,34 @@ async def stock_financials(
     return FinancialsResponse(symbol=symbol, freq=freq, periods=periods)
 
 
+async def _kr_corp_code(symbol: str, settings: Settings) -> Optional[str]:
+    """Look up DART corp_code from instruments table for a KR symbol."""
+    if not settings.supabase_url or not settings.supabase_service_role_key:
+        return None
+    headers = {
+        "apikey": settings.supabase_service_role_key,
+        "Authorization": f"Bearer {settings.supabase_service_role_key}",
+        "Accept": "application/json",
+    }
+    base = settings.supabase_url.rstrip("/")
+    async with httpx.AsyncClient(timeout=6.0, headers=headers) as client:
+        resp = await client.get(
+            f"{base}/rest/v1/instruments",
+            params={
+                "symbol": f"eq.{symbol}",
+                "country_code": "eq.KR",
+                "select": "corp_code",
+                "limit": "1",
+            },
+        )
+        if resp.status_code >= 400:
+            return None
+        rows = resp.json()
+        if not rows:
+            return None
+        return rows[0].get("corp_code")
+
+
 @router.get("/{symbol}/filings", response_model=FilingsResponse)
 async def stock_filings(
     symbol: str,
@@ -269,6 +297,25 @@ async def stock_filings(
     settings: Settings = Depends(get_settings),
 ) -> FilingsResponse:
     symbol = symbol.upper()
+
+    # KR branch: prefer DART when we have a corp_code for this symbol.
+    if settings.dart_api_key:
+        corp_code = await _kr_corp_code(symbol, settings)
+        if corp_code:
+            try:
+                raw = await dart.fetch_recent_filings_normalized(
+                    corp_code, settings.dart_api_key, days=180
+                )
+            except HTTPException:
+                raw = []
+            if raw:
+                return FilingsResponse(
+                    symbol=symbol,
+                    cik=corp_code,
+                    items=[FilingItem(**r) for r in raw[:limit]],
+                )
+
+    # US fallback via SEC EDGAR.
     if not settings.sec_user_agent:
         return FilingsResponse(symbol=symbol, cik=None, items=[])
     try:
