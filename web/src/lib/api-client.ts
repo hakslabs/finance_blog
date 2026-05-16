@@ -242,6 +242,18 @@ export type StockFinancialsResponse = {
   periods: FinancialPeriod[];
 };
 
+export type MacroIndicatorDb = {
+  series_id: string;
+  label: string;
+  country_code: string;
+  unit: string;
+  date: string | null;
+  value: number | null;
+  previous_value: number | null;
+  change: number | null;
+};
+export type MacroIndicatorsResponse = { indicators: MacroIndicatorDb[] };
+
 async function buildHeaders(): Promise<HeadersInit> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (supabase) {
@@ -322,6 +334,9 @@ export const apiClient = {
     return request<StockFilingsResponse>(
       `/v1/stocks/${encodeURIComponent(symbol)}/filings?limit=${limit}`,
     );
+  },
+  getMacroIndicators(): Promise<MacroIndicatorsResponse> {
+    return request<MacroIndicatorsResponse>("/v1/macros/indicators");
   },
   getStockFinancials(
     symbol: string,

@@ -4,6 +4,8 @@ import { ActionNotice } from "../../components/interaction/ActionNotice";
 import { DetailPanel } from "../../components/interaction/DetailPanel";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
 import { useWatchlist } from "../../lib/useWatchlist";
+import { useMacroIndicators } from "../../lib/useMacros";
+import type { MacroIndicator } from "../../fixtures/dashboard";
 import {
   ECONOMIC_EVENTS,
   FEAR_GREED,
@@ -54,8 +56,31 @@ export function DashboardPage() {
   const watchlistState = useWatchlist();
   const { detail, notice, handleAction, closeDetail } = useInteractionActions();
   const dashboardClock = useDashboardClock();
+  const macrosState = useMacroIndicators();
   const [todos, setTodos] = useState(TODOS);
   const [starredEventIds, setStarredEventIds] = useState(() => new Set<string>());
+
+  const liveMacros: MacroIndicator[] =
+    macrosState.status === "ready"
+      ? macrosState.data.indicators
+          .filter((m) => m.value !== null)
+          .map((m) => {
+            const up = (m.change ?? 0) >= 0;
+            const decimals = m.unit === "idx" ? 1 : 2;
+            return {
+              id: m.series_id,
+              label: m.label,
+              localName: m.series_id,
+              market: m.country_code === "KR" ? "KR" : "US",
+              value: `${m.value!.toFixed(decimals)}${m.unit && m.unit !== "idx" ? m.unit : ""}`,
+              change: m.change != null ? `${Math.abs(m.change).toFixed(decimals)}` : "—",
+              up,
+              detail: `FRED ${m.series_id} · ${m.date ?? ""}`,
+              history: [],
+            } satisfies MacroIndicator;
+          })
+      : [];
+  const macrosToShow = liveMacros.length > 0 ? liveMacros : MACRO_INDICATORS;
 
   return (
     <PageContainer
@@ -96,7 +121,7 @@ export function DashboardPage() {
         <div className={styles.pair}>
           <IndicatorStrip
             fearGreed={FEAR_GREED}
-            macros={MACRO_INDICATORS}
+            macros={macrosToShow}
             marketTime={dashboardClock.currentTimeLabel}
             onOpenFearGreed={(item) => handleAction({ type: "detail", detail: fearGreedDetail(item) })}
             onOpenMacro={(item) => handleAction({ type: "detail", detail: macroDetail(item) })}
