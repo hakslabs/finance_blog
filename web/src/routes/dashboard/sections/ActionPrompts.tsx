@@ -1,3 +1,5 @@
+import { useState, type FormEvent } from "react";
+import { X } from "lucide-react";
 import { Badge } from "../../../components/primitives/Badge";
 import { Card } from "../../../components/primitives/Card";
 import type { TodoItem, TodoSource } from "../../../fixtures/dashboard";
@@ -13,13 +15,25 @@ export function ActionPrompts({
   todos,
   onOpenTodo,
   onToggleTodo,
+  onAddTodo,
+  onDeleteTodo,
   onOpenAll,
 }: {
   todos: TodoItem[];
   onOpenTodo?: (todo: TodoItem) => void;
   onToggleTodo?: (todo: TodoItem) => void;
+  onAddTodo?: (title: string) => void;
+  onDeleteTodo?: (id: string) => void;
   onOpenAll?: () => void;
 }) {
+  const [draft, setDraft] = useState("");
+  const handleAdd = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const t = draft.trim();
+    if (!t || !onAddTodo) return;
+    onAddTodo(t);
+    setDraft("");
+  };
   const doneCount = todos.filter((t) => t.done).length;
   return (
     <Card className={styles.card}>
@@ -64,9 +78,32 @@ export function ActionPrompts({
               <span className={styles.categoryTag}>{todo.category}</span>
               <span className={styles.metaText}>{todo.meta}</span>
             </button>
+            {onDeleteTodo ? (
+              <button
+                type="button"
+                className={styles.deleteBtn}
+                aria-label={`${todo.task} 삭제`}
+                onClick={() => onDeleteTodo(todo.id)}
+              >
+                <X size={12} aria-hidden="true" strokeWidth={2} />
+              </button>
+            ) : null}
           </div>
         ))}
       </div>
+      {onAddTodo ? (
+        <form className={styles.addRow} onSubmit={handleAdd}>
+          <input
+            type="text"
+            className={styles.addInput}
+            placeholder="새 할 일 (예: 삼성전자 실적 메모 정리)"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            maxLength={200}
+          />
+          <button type="submit" className={styles.addBtn} disabled={!draft.trim()}>추가</button>
+        </form>
+      ) : null}
     </Card>
   );
 }

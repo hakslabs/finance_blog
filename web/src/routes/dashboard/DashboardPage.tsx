@@ -6,6 +6,7 @@ import { useInteractionActions } from "../../lib/interaction/useInteractionActio
 import { useWatchlist } from "../../lib/useWatchlist";
 import { useMacroIndicators } from "../../lib/useMacros";
 import { useBreadth, useEconomicEvents, useFearGreed } from "../../lib/useDashboardLive";
+import { useTodos } from "../../lib/useTodos";
 import type {
   EconomicEvent,
   EventType,
@@ -66,7 +67,20 @@ export function DashboardPage() {
   const fgState = useFearGreed();
   const eventsState = useEconomicEvents(10);
   const krBreadthState = useBreadth("KR");
+  const todosApi = useTodos();
   const [todos, setTodos] = useState(TODOS);
+  // Live todos take precedence when signed in; otherwise local fixture state.
+  const liveTodos = todosApi.state.status === "ready"
+    ? todosApi.state.items.map((t) => ({
+        id: t.id,
+        done: t.done,
+        task: t.title,
+        meta: t.body ?? (t.due_at ? new Date(t.due_at).toLocaleDateString("ko-KR") : ""),
+        category: "공통",
+        source: "공통" as const,
+      }))
+    : [];
+  const todosForUi = liveTodos.length > 0 ? liveTodos : todos;
   const [starredEventIds, setStarredEventIds] = useState(() => new Set<string>());
 
   const liveMacros: MacroIndicator[] =
@@ -180,14 +194,28 @@ export function DashboardPage() {
           onOpen={() => handleAction({ type: "detail", detail: noticeDetail(NOTICE) })}
         />
         <ActionPrompts
-          todos={todos}
+          todos={todosForUi}
           onOpenTodo={(todo) => handleAction({ type: "detail", detail: todoDetail(todo) })}
-          onToggleTodo={(todo) =>
-            setTodos((current) =>
-              current.map((item) =>
-                item.id === todo.id ? { ...item, done: !item.done } : item
-              )
-            )
+          onToggleTodo={(todo) => {
+            if (todosApi.state.status === "ready") {
+              void todosApi.patch(todo.id, { done: !todo.done });
+            } else {
+              setTodos((current) =>
+                current.map((item) =>
+                  item.id === todo.id ? { ...item, done: !item.done } : item
+                )
+              );
+            }
+          }}
+          onAddTodo={
+            todosApi.state.status === "ready"
+              ? (title) => void todosApi.create({ title })
+              : undefined
+          }
+          onDeleteTodo={
+            todosApi.state.status === "ready"
+              ? (id) => void todosApi.remove(id)
+              : undefined
           }
           onOpenAll={() => handleAction({ type: "route", to: "/mypage?tab=activity" })}
         />

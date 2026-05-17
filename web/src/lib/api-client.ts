@@ -314,6 +314,19 @@ export type BreadthResponse = {
   cells: BreadthCellDb[];
 };
 
+export type TodoDb = {
+  id: string;
+  title: string;
+  body: string | null;
+  done: boolean;
+  due_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+export type TodosResponse = { items: TodoDb[] };
+export type TodoCreate = { title: string; body?: string; due_at?: string };
+export type TodoPatch = Partial<{ title: string; body: string; done: boolean; due_at: string }>;
+
 async function buildHeaders(): Promise<HeadersInit> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (supabase) {
@@ -420,5 +433,25 @@ export const apiClient = {
     return request<StockFinancialsResponse>(
       `/v1/stocks/${encodeURIComponent(symbol)}/financials?freq=${freq}`,
     );
+  },
+  listTodos(): Promise<TodosResponse> {
+    return request<TodosResponse>("/v1/todos");
+  },
+  createTodo(body: TodoCreate): Promise<TodoDb> {
+    return request<TodoDb>("/v1/todos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  },
+  patchTodo(id: string, body: TodoPatch): Promise<TodoDb> {
+    return request<TodoDb>(`/v1/todos/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  },
+  deleteTodo(id: string): Promise<unknown> {
+    return request(`/v1/todos/${encodeURIComponent(id)}`, { method: "DELETE" });
   },
 };
