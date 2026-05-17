@@ -266,6 +266,18 @@ export type MoverDb = {
 };
 export type MoversResponse = { market: string; items: MoverDb[] };
 
+export type DashNewsDb = {
+  id: string;
+  source: string;
+  title: string;
+  summary: string | null;
+  url: string | null;
+  language: string;
+  published_at: string;
+  related_symbols: string[];
+};
+export type DashNewsResponse = { items: DashNewsDb[] };
+
 async function buildHeaders(): Promise<HeadersInit> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (supabase) {
@@ -352,6 +364,9 @@ export const apiClient = {
   },
   getMovers(market: "US" | "KR", limit = 6): Promise<MoversResponse> {
     return request<MoversResponse>(`/v1/movers?market=${market}&limit=${limit}`);
+  },
+  getDashboardNews(limit = 8): Promise<DashNewsResponse> {
+    return request<DashNewsResponse>(`/v1/news?limit=${limit}`);
   },
   getStockFinancials(
     symbol: string,
