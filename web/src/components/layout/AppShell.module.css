@@ -16,7 +16,7 @@
 
 .main {
   min-width: 0;
-  padding: 28px clamp(16px, 3vw, 34px) 42px;
+  padding: 14px clamp(12px, 1.6vw, 20px) 24px;
 }
 
 @media (max-width: 900px) {
@@ -31,6 +31,6 @@
 
 @media (max-width: 680px) {
   .main {
-    padding: 20px 14px 32px;
+    padding: 10px 10px 20px;
   }
 }

@@ -1,5 +1,5 @@
 .container {
-  width: min(100%, 1180px);
+  width: min(100%, 1280px);
   margin: 0 auto;
 }
 
@@ -7,8 +7,8 @@
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 22px;
+  gap: 16px;
+  margin-bottom: 12px;
 }
 
 .copy {
@@ -16,29 +16,30 @@
 }
 
 .eyebrow {
-  margin: 0 0 8px;
+  margin: 0 0 2px;
   color: var(--muted);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   font-weight: var(--fw-bold);
-  letter-spacing: 0;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .title {
   margin: 0;
   color: var(--ink);
-  font-size: var(--fs-2xl);
-  line-height: 1.2;
-  letter-spacing: 0;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
   text-wrap: balance;
 }
 
 .description {
   max-width: 720px;
-  margin: 8px 0 0;
+  margin: 4px 0 0;
   color: var(--muted);
-  font-size: var(--fs-lg);
-  line-height: 1.6;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
 }
 
 .actions {
@@ -48,7 +49,7 @@
 .body {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 8px;
 }
 
 @media (max-width: 680px) {
