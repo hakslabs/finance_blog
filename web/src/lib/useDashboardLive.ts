@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   apiClient,
+  type BreadthResponse,
   type EconomicEventsResponse,
   type FearGreedResponse,
 } from "./api-client";
@@ -37,4 +38,8 @@ export function useFearGreed(): Loadable<FearGreedResponse> {
 
 export function useEconomicEvents(daysForward = 10): Loadable<EconomicEventsResponse> {
   return useFetch(`ev:${daysForward}`, () => apiClient.getEconomicEvents(daysForward));
+}
+
+export function useBreadth(market: "US" | "KR"): Loadable<BreadthResponse> {
+  return useFetch(`b:${market}`, () => apiClient.getBreadth(market));
 }

@@ -303,6 +303,17 @@ export type EconomicEventDb = {
 };
 export type EconomicEventsResponse = { items: EconomicEventDb[] };
 
+export type BreadthCellDb = { symbol: string; name: string; change_pct: number; last: number };
+export type BreadthResponse = {
+  market: string;
+  score: number;
+  rising: number;
+  falling: number;
+  flat: number;
+  total: number;
+  cells: BreadthCellDb[];
+};
+
 async function buildHeaders(): Promise<HeadersInit> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (supabase) {
@@ -398,6 +409,9 @@ export const apiClient = {
   },
   getEconomicEvents(daysForward = 10): Promise<EconomicEventsResponse> {
     return request<EconomicEventsResponse>(`/v1/events/economic?days_forward=${daysForward}`);
+  },
+  getBreadth(market: "US" | "KR"): Promise<BreadthResponse> {
+    return request<BreadthResponse>(`/v1/market/breadth?market=${market}`);
   },
   getStockFinancials(
     symbol: string,

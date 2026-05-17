@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card } from "../../../components/primitives/Card";
 import { ChartPlaceholder } from "../../../components/primitives/ChartPlaceholder";
 import { PriceChart } from "../../../components/primitives/PriceChart";
+import { VolumeBars } from "../../../components/primitives/VolumeBars";
 import type { StockDetail } from "../../../fixtures/stocks";
 import { useQuote } from "../../../lib/useQuote";
 import type { QuoteRange } from "../../../lib/api-client";
@@ -131,7 +132,11 @@ export function ChartSection({ detail }: ChartSectionProps) {
         <div className={styles.subPanelHeader}>
           <span>Volume</span>
         </div>
-        <ChartPlaceholder label="거래량 차트" height={50} />
+        {state.status === "ready" ? (
+          <VolumeBars bars={state.quote.bars} height={60} ariaLabel={`${detail.symbol} ${activePeriod} 거래량`} />
+        ) : (
+          <ChartPlaceholder label="거래량 차트" height={50} />
+        )}
       </div>
 
       <div className={styles.subPanel}>

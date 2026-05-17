@@ -5,7 +5,7 @@ import { DetailPanel } from "../../components/interaction/DetailPanel";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
 import { useWatchlist } from "../../lib/useWatchlist";
 import { useMacroIndicators } from "../../lib/useMacros";
-import { useEconomicEvents, useFearGreed } from "../../lib/useDashboardLive";
+import { useBreadth, useEconomicEvents, useFearGreed } from "../../lib/useDashboardLive";
 import type {
   EconomicEvent,
   EventType,
@@ -65,6 +65,7 @@ export function DashboardPage() {
   const macrosState = useMacroIndicators();
   const fgState = useFearGreed();
   const eventsState = useEconomicEvents(10);
+  const krBreadthState = useBreadth("KR");
   const [todos, setTodos] = useState(TODOS);
   const [starredEventIds, setStarredEventIds] = useState(() => new Set<string>());
 
@@ -109,10 +110,27 @@ export function DashboardPage() {
             ].filter((v): v is number => v != null).map((v) => Math.round(v)),
           }))
       : [];
+  const krFromBreadth: FearGreedData | null = krBreadthState.status === "ready" && krBreadthState.data.total > 0
+    ? (() => {
+        const score = Math.round(krBreadthState.data.score);
+        const label = score >= 70 ? "Greed" : score >= 55 ? "Mild Greed" : score >= 45 ? "Neutral" : score >= 30 ? "Fear" : "Extreme Fear";
+        return {
+          id: "fg-kr",
+          market: "한국",
+          marketCode: "KR" as const,
+          value: score,
+          label,
+          subtext: `상승 ${krBreadthState.data.rising} · 하락 ${krBreadthState.data.falling}`,
+          drivers: [],
+          history: [],
+        };
+      })()
+    : null;
   const fearGreedToShow: FearGreedData[] = (() => {
-    if (fgFromApi.length === 0) return FEAR_GREED;
-    const usFromApi = fgFromApi.find((g) => g.marketCode === "US");
     const merged: FearGreedData[] = [...FEAR_GREED];
+    const krIdx = merged.findIndex((g) => g.marketCode === "KR");
+    if (krFromBreadth && krIdx >= 0) merged[krIdx] = krFromBreadth;
+    const usFromApi = fgFromApi.find((g) => g.marketCode === "US");
     const usIdx = merged.findIndex((g) => g.marketCode === "US");
     if (usFromApi && usIdx >= 0) merged[usIdx] = usFromApi;
     return merged;

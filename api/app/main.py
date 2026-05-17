@@ -6,6 +6,7 @@ from app.models.health import HealthResponse
 from app.routes.cron import router as cron_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.macros import router as macros_router
+from app.routes.market import router as market_router
 from app.routes.masters import router as masters_router
 from app.routes.events import router as events_router
 from app.routes.movers import router as movers_router
@@ -41,6 +42,7 @@ register_exception_handlers(app)
 app.include_router(cron_router, prefix="/v1")
 app.include_router(dashboard_router, prefix="/v1")
 app.include_router(macros_router, prefix="/v1")
+app.include_router(market_router, prefix="/v1")
 app.include_router(masters_router, prefix="/v1")
 app.include_router(movers_router, prefix="/v1")
 app.include_router(events_router, prefix="/v1")
