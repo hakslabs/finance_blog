@@ -5,7 +5,13 @@ import { DetailPanel } from "../../components/interaction/DetailPanel";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
 import { useWatchlist } from "../../lib/useWatchlist";
 import { useMacroIndicators } from "../../lib/useMacros";
-import type { MacroIndicator } from "../../fixtures/dashboard";
+import { useEconomicEvents, useFearGreed } from "../../lib/useDashboardLive";
+import type {
+  EconomicEvent,
+  EventType,
+  FearGreedData,
+  MacroIndicator,
+} from "../../fixtures/dashboard";
 import {
   ECONOMIC_EVENTS,
   FEAR_GREED,
@@ -57,6 +63,8 @@ export function DashboardPage() {
   const { detail, notice, handleAction, closeDetail } = useInteractionActions();
   const dashboardClock = useDashboardClock();
   const macrosState = useMacroIndicators();
+  const fgState = useFearGreed();
+  const eventsState = useEconomicEvents(10);
   const [todos, setTodos] = useState(TODOS);
   const [starredEventIds, setStarredEventIds] = useState(() => new Set<string>());
 
@@ -81,6 +89,54 @@ export function DashboardPage() {
           })
       : [];
   const macrosToShow = liveMacros.length > 0 ? liveMacros : MACRO_INDICATORS;
+
+  const fgFromApi: FearGreedData[] =
+    fgState.status === "ready"
+      ? fgState.data.items
+          .filter((g) => g.value != null)
+          .map((g) => ({
+            id: `fg-${g.market_code.toLowerCase()}`,
+            market: g.market,
+            marketCode: g.market_code as "KR" | "US",
+            value: Math.round(g.value!),
+            label: g.label ?? "—",
+            subtext: g.previous_close != null
+              ? `직전 ${Math.round(g.previous_close)} → ${Math.round(g.value!)}`
+              : "CNN F&G 지수",
+            drivers: [],
+            history: [
+              g.previous_1_month, g.previous_1_week, g.previous_close, g.value,
+            ].filter((v): v is number => v != null).map((v) => Math.round(v)),
+          }))
+      : [];
+  const fearGreedToShow: FearGreedData[] = (() => {
+    if (fgFromApi.length === 0) return FEAR_GREED;
+    const usFromApi = fgFromApi.find((g) => g.marketCode === "US");
+    const merged: FearGreedData[] = [...FEAR_GREED];
+    const usIdx = merged.findIndex((g) => g.marketCode === "US");
+    if (usFromApi && usIdx >= 0) merged[usIdx] = usFromApi;
+    return merged;
+  })();
+
+  const liveEvents: EconomicEvent[] =
+    eventsState.status === "ready"
+      ? eventsState.data.items.map((e, i) => {
+          const d = e.time ? new Date(e.time) : null;
+          const valid = d && !Number.isNaN(d.getTime());
+          return {
+            id: `live-${i}`,
+            dateLabel: valid ? `${d!.getMonth() + 1}/${d!.getDate().toString().padStart(2, "0")}` : "—",
+            dayOfWeek: valid ? ["일","월","화","수","목","금","토"][d!.getDay()] : "",
+            event: `${e.country ?? ""} ${e.event ?? ""}`.trim(),
+            type: "macro" as EventType,
+            importance: (e.impact === "high" ? 3 : 2) as 1 | 2 | 3,
+            heldWeight: null,
+            memoCount: 0,
+            checklistProgress: null,
+          };
+        })
+      : [];
+  const eventsToShow = liveEvents.length > 0 ? liveEvents : ECONOMIC_EVENTS;
 
   return (
     <PageContainer
@@ -120,7 +176,7 @@ export function DashboardPage() {
 
         <div className={styles.pair}>
           <IndicatorStrip
-            fearGreed={FEAR_GREED}
+            fearGreed={fearGreedToShow}
             macros={macrosToShow}
             marketTime={dashboardClock.currentTimeLabel}
             onOpenFearGreed={(item) => handleAction({ type: "detail", detail: fearGreedDetail(item) })}
@@ -145,7 +201,7 @@ export function DashboardPage() {
             onAddNote={() => handleAction({ type: "planned", message: "뉴스 해석/메모 저장은 PR-19 메모 저장에서 연결됩니다." })}
           />
           <EconomicEventsList
-            events={ECONOMIC_EVENTS}
+            events={eventsToShow}
             starredEventIds={starredEventIds}
             onOpenEvent={(event) => handleAction({ type: "detail", detail: eventDetail(event) })}
             onToggleReminder={(event) => {

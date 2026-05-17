@@ -278,6 +278,31 @@ export type DashNewsDb = {
 };
 export type DashNewsResponse = { items: DashNewsDb[] };
 
+export type FearGreedDb = {
+  market: string;
+  market_code: string;
+  value: number | null;
+  label: string | null;
+  previous_close: number | null;
+  previous_1_week: number | null;
+  previous_1_month: number | null;
+  previous_1_year: number | null;
+  timestamp: string | null;
+};
+export type FearGreedResponse = { items: FearGreedDb[] };
+
+export type EconomicEventDb = {
+  time: string | null;
+  country: string | null;
+  event: string | null;
+  impact: string | null;
+  actual: number | null;
+  estimate: number | null;
+  prev: number | null;
+  unit: string | null;
+};
+export type EconomicEventsResponse = { items: EconomicEventDb[] };
+
 async function buildHeaders(): Promise<HeadersInit> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (supabase) {
@@ -367,6 +392,12 @@ export const apiClient = {
   },
   getDashboardNews(limit = 8): Promise<DashNewsResponse> {
     return request<DashNewsResponse>(`/v1/news?limit=${limit}`);
+  },
+  getFearGreed(): Promise<FearGreedResponse> {
+    return request<FearGreedResponse>("/v1/sentiment/fear-greed");
+  },
+  getEconomicEvents(daysForward = 10): Promise<EconomicEventsResponse> {
+    return request<EconomicEventsResponse>(`/v1/events/economic?days_forward=${daysForward}`);
   },
   getStockFinancials(
     symbol: string,

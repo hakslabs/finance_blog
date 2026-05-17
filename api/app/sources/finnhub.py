@@ -147,6 +147,40 @@ async def fetch_financials_reported(
     return out
 
 
+async def fetch_economic_calendar(
+    api_key: str, *, from_date: str, to_date: str
+) -> List[Dict[str, Any]]:
+    """Finnhub /calendar/economic.
+
+    Response shape: { "economicCalendar": [ { country, time, event,
+                                              impact, actual, prev,
+                                              estimate, unit }... ] }
+    """
+    data = await _get(
+        "/calendar/economic",
+        {"from": from_date, "to": to_date},
+        api_key,
+    )
+    if not isinstance(data, dict):
+        return []
+    rows = data.get("economicCalendar") or data.get("economicCalender") or []
+    out: List[Dict[str, Any]] = []
+    for r in rows:
+        out.append(
+            {
+                "time": r.get("time"),
+                "country": r.get("country"),
+                "event": r.get("event"),
+                "impact": r.get("impact"),
+                "actual": r.get("actual"),
+                "estimate": r.get("estimate"),
+                "prev": r.get("prev"),
+                "unit": r.get("unit"),
+            }
+        )
+    return out
+
+
 async def fetch_basic_financials(symbol: str, api_key: str) -> Dict[str, Any]:
     data = await _get(
         "/stock/metric", {"symbol": symbol, "metric": "all"}, api_key

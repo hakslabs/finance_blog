@@ -7,8 +7,10 @@ from app.routes.cron import router as cron_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.macros import router as macros_router
 from app.routes.masters import router as masters_router
+from app.routes.events import router as events_router
 from app.routes.movers import router as movers_router
 from app.routes.news import router as news_router
+from app.routes.sentiment import router as sentiment_router
 from app.routes.portfolios import router as portfolios_router
 from app.routes.quotes import router as quotes_router
 from app.routes.reports import router as reports_router
@@ -41,7 +43,9 @@ app.include_router(dashboard_router, prefix="/v1")
 app.include_router(macros_router, prefix="/v1")
 app.include_router(masters_router, prefix="/v1")
 app.include_router(movers_router, prefix="/v1")
+app.include_router(events_router, prefix="/v1")
 app.include_router(news_router, prefix="/v1")
+app.include_router(sentiment_router, prefix="/v1")
 app.include_router(portfolios_router, prefix="/v1")
 app.include_router(quotes_router, prefix="/v1")
 app.include_router(reports_router, prefix="/v1")
