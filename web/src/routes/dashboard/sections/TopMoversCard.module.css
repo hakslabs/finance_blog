@@ -54,8 +54,9 @@
 }
 
 .thRank {
-  width: 14px;
+  width: 16px;
   flex-shrink: 0;
+  text-align: right;
 }
 
 .thGrow {
@@ -66,19 +67,12 @@
   composes: thFixed from "./_table.module.css";
 }
 
-.thPrice { width: 56px; text-align: right; }
-.thChange { width: 46px; text-align: right; }
-.thVol { width: 44px; text-align: right; }
+.thPrice { width: 80px; text-align: right; }
+.thChange { min-width: 64px; text-align: center; }
+.thVol { width: 56px; text-align: right; }
 
 .row {
   composes: row from "./_table.module.css";
-}
-
-.rank {
-  width: 14px;
-  flex-shrink: 0;
-  color: var(--muted);
-  font-size: var(--fs-xs);
 }
 
 .symbol {
@@ -113,11 +107,22 @@
 
 .cellVol {
   font-family: var(--mono);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
   text-align: right;
-  width: 44px;
-  color: var(--faint);
+  width: 56px;
+  color: var(--muted);
   flex-shrink: 0;
+}
+
+.rank {
+  width: 16px;
+  flex-shrink: 0;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  text-align: right;
 }
 
 .footer {

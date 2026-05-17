@@ -1,16 +1,16 @@
-/* Shared table scaffolding for WatchlistCard + TopMoversCard. */
-/* Compose via `composes: x from "./_table.module.css"`. Section-specific */
-/* column widths stay in the section's own module. */
+/* MTS-style row scaffolding for WatchlistCard + TopMoversCard. */
 
 .tableHead {
   display: flex;
   align-items: center;
-  padding: 4px 12px;
+  gap: 8px;
+  padding: 6px 14px;
   background: var(--surface-muted);
   font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
+  border-bottom: 1px solid var(--hairline);
 }
 
 .thGrow {
@@ -25,60 +25,86 @@
 .row {
   display: flex;
   align-items: center;
-  padding: 6px 12px;
+  gap: 8px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--hairline);
+  transition: background 100ms ease;
+}
+
+.row:hover {
+  background: var(--surface-muted);
 }
 
 .row:last-child {
   border-bottom: none;
 }
 
+/* ── Symbol column ── */
 .symbol {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  gap: 1px;
   flex: 1;
   min-width: 0;
+  color: inherit;
+  text-decoration: none;
 }
 
 .symbolCode {
   font-family: var(--mono);
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
-  min-width: 52px;
-  flex-shrink: 0;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  line-height: 1.1;
 }
 
 .symbolName {
   font-size: var(--fs-xs);
-  color: var(--faint);
+  color: var(--muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1.2;
 }
 
+.symbol:hover .symbolCode {
+  color: var(--accent);
+}
+
+/* ── Price column — large mono number, right-aligned ── */
 .cellPrice {
   font-family: var(--mono);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
   text-align: right;
-  width: 56px;
+  width: 80px;
   flex-shrink: 0;
+  color: var(--ink);
 }
 
+/* ── Change column — pill-style chip ── */
 .cellChange {
   font-family: var(--mono);
   font-size: var(--fs-xs);
-  text-align: right;
-  width: 46px;
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  min-width: 64px;
+  padding: 3px 6px;
+  border-radius: 4px;
   flex-shrink: 0;
 }
 
 .cellChangePos {
   composes: cellChange;
   color: var(--positive);
+  background: var(--positive-bg);
 }
 
 .cellChangeNeg {
   composes: cellChange;
   color: var(--negative);
+  background: var(--negative-bg);
 }

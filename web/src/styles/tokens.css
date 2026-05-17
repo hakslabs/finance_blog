@@ -22,8 +22,11 @@
   --line: #1a1a1a;
   --hairline: #d8d8d2;
   --accent: #2a6fdb;
-  --positive: #1f7a55;
-  --negative: #c83b3b;
+  /* KR MTS-style up/down convention: red=상승, blue=하락. */
+  --positive: #e23a3a;
+  --negative: #2563eb;
+  --positive-bg: #fdecec;
+  --negative-bg: #e9efff;
   --warning: #9a6a16;
   --focus: #7a5cff;
   --mono: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
@@ -43,4 +46,14 @@
   --fw-medium:   500;
   --fw-semibold: 600;
   --fw-bold:     700;
+
+  /* Numeric defaults — apply via .num for all price/change cells. */
+  --num-feature: "tnum" 1, "lnum" 1;
+}
+
+.num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: var(--num-feature);
+  letter-spacing: -0.01em;
 }

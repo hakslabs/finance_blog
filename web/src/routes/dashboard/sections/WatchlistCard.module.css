@@ -88,12 +88,12 @@
   composes: thFixed from "./_table.module.css";
 }
 
-.thSymbol { width: 52px; }
-.thPrice { width: 56px; text-align: right; }
-.thChange { width: 46px; text-align: right; }
-.thMa { width: 24px; text-align: center; }
+.thSymbol { flex: 1; }
+.thPrice { width: 80px; text-align: right; }
+.thChange { width: 64px; text-align: center; }
+.thMa { width: 28px; text-align: center; }
 .thRsi { width: 44px; text-align: center; }
-.thMemo { width: 56px; text-align: center; }
+.thMemo { width: 48px; text-align: center; }
 .thEvent { width: 76px; }
 
 .row {

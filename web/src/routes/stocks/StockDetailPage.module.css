@@ -226,18 +226,22 @@
 
 .descriptionRow {
   display: inline-flex;
-  gap: 8px;
+  gap: 12px;
   align-items: baseline;
+  flex-wrap: wrap;
 }
 
 .descriptionChange {
   font-family: var(--mono);
-  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.01em;
 }
 
 .descriptionTime {
   color: var(--faint);
-  font-size: var(--fs-base);
+  font-size: var(--fs-xs);
 }
 
 /* ── Similar stocks sidebar ──────────────────────────── */
