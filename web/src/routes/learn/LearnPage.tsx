@@ -10,7 +10,8 @@ import { useInteractionActions } from "../../lib/interaction/useInteractionActio
 import { GUIDE_ARTICLES, GLOSSARY_TERMS, LEARN_CATEGORIES, LEARN_TABS } from "../../fixtures/learn";
 import type { GlossaryTerm, GuideArticle, LearnCategory, LearnTab } from "../../fixtures/learn";
 import { REPORTS } from "../../fixtures/reports";
-import type { ReportListItem } from "../../fixtures/reports";
+import type { ReportListItem, ReportRegion, ReportCategory } from "../../fixtures/reports";
+import { useReports } from "../../lib/useReports";
 import styles from "./LearnPage.module.css";
 
 const reportColumns = (onOpenReport: (row: ReportListItem) => void) => [
@@ -231,6 +232,26 @@ function Guides({
 export function LearnPage() {
   const [activeTab, setActiveTab] = useState<LearnTab>("입문서·칼럼");
   const { detail, notice, handleAction, closeDetail } = useInteractionActions();
+  const live = useReports(10);
+  const liveReports: ReportListItem[] = live.status === "ready"
+    ? live.data.reports.slice(0, 5).map((r): ReportListItem => ({
+        id: r.id,
+        source: r.source,
+        region: (r.language === "ko" ? "KR" : "GLOBAL") as ReportRegion,
+        category: (r.category as ReportCategory) ?? "리서치",
+        subtype: r.category ?? "리포트",
+        title: r.title,
+        date: r.published_at,
+        pages: 0,
+        language: (r.language === "en" ? "en" : "ko") as "ko" | "en",
+        summary: "",
+        tags: [],
+        status: "complete" as const,
+        views: "—",
+        bookmarks: "—",
+      }))
+    : [];
+  const reportRows = liveReports.length > 0 ? liveReports : REPORTS.slice(0, 5);
 
   const glossaryColumns = [
     {
@@ -297,7 +318,7 @@ export function LearnPage() {
           <Card title="학습용 리포트">
             <DataTable<ReportListItem>
               columns={reportColumns((row) => handleAction({ type: "detail", detail: reportDetail(row) }))}
-              rows={REPORTS.slice(0, 5)}
+              rows={reportRows}
               getRowKey={(row) => row.id}
               density="compact"
               onRowClick={(row) => handleAction({ type: "detail", detail: reportDetail(row) })}
