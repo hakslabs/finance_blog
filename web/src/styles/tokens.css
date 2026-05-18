@@ -1,4 +1,8 @@
 :root {
+  /* Root rem base. Browser default is usually 16px; we tighten to 14px
+     so the rem-based fs-* tokens compute to slightly smaller pixels
+     across the app. 1rem = 14px below. */
+  font-size: 14px;
   color: #1a1a1a;
   background: #f7f7f4;
   font-family:
