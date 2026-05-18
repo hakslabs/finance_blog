@@ -6,10 +6,12 @@ import { BackLink } from "../../components/primitives/BackLink";
 import { Badge } from "../../components/primitives/Badge";
 import { Card } from "../../components/primitives/Card";
 import { ChartPlaceholder } from "../../components/primitives/ChartPlaceholder";
-import { DataTable } from "../../components/primitives/DataTable";
+import { DataSource } from "../../components/primitives/DataSource";
+import { DataTable, type DataTableColumn } from "../../components/primitives/DataTable";
 import { EmptyState } from "../../components/primitives/EmptyState";
 import { KpiTile } from "../../components/primitives/KpiTile";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
+import type { MasterQuarterRowDb } from "../../lib/api-client";
 import { useMaster } from "../../lib/useMaster";
 import { useMasterHoldings } from "../../lib/useMasterHoldings";
 import { useMasterQuarters } from "../../lib/useMasterQuarters";
@@ -49,41 +51,51 @@ function QuarterChangesCard({ slug, fixture }: { slug?: string; fixture: MasterQ
   const live = useMasterQuarters(slug);
   if (live.status === "ready" && live.data.rows.length > 0) {
     const quarters: string[] = live.data.quarters;
-    const rows = live.data.rows.slice(0, 30);
+    const rows: MasterQuarterRowDb[] = live.data.rows.slice(0, 30);
     const fmtPct = (v: number | null) => (v == null ? "—" : `${v.toFixed(2)}%`);
+    const columns: DataTableColumn<MasterQuarterRowDb>[] = [
+      { key: "symbol", header: "티커", render: (r) => r.symbol ?? "—" },
+      { key: "name", header: "종목", render: (r) => r.name ?? "—" },
+      ...quarters.map<DataTableColumn<MasterQuarterRowDb>>((q, i) => ({
+        key: `q-${q}-${i}`,
+        header: q.slice(2),
+        align: "right" as const,
+        render: (r) => fmtPct(r.weights[i] ?? null),
+      })),
+      {
+        key: "change",
+        header: "변화",
+        align: "right" as const,
+        render: (r) => (
+          <Badge tone={CHANGE_TONE[r.change_kind as HoldingChange]}>{r.change_kind}</Badge>
+        ),
+      },
+    ];
     return (
-      <Card title="13F 분기 변화" eyebrow={`최근 ${quarters.length}분기 · DB 라이브`}>
-        <table style={{ width: "100%", fontSize: "var(--fs-sm)", fontFamily: "var(--mono)" }}>
-          <thead>
-            <tr style={{ color: "var(--muted)", textAlign: "left" }}>
-              <th>티커</th>
-              <th>종목</th>
-              {quarters.map((q: string) => (
-                <th key={q} style={{ textAlign: "right" }}>{q.slice(2)}</th>
-              ))}
-              <th style={{ textAlign: "right" }}>변화</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.instrument_id} style={{ borderTop: "1px solid var(--hairline)" }}>
-                <td style={{ fontWeight: 600 }}>{r.symbol ?? "—"}</td>
-                <td style={{ color: "var(--muted)" }}>{r.name ?? "—"}</td>
-                {r.weights.map((w: number | null, i: number) => (
-                  <td key={i} style={{ textAlign: "right" }}>{fmtPct(w)}</td>
-                ))}
-                <td style={{ textAlign: "right" }}>
-                  <Badge tone={CHANGE_TONE[r.change_kind as HoldingChange]}>{r.change_kind}</Badge>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <Card
+        title="13F 분기 변화"
+        eyebrow={`최근 ${quarters.length}분기`}
+        actions={<DataSource state="live" source="13F" detail={`${rows.length}건`} />}
+      >
+        <DataTable<MasterQuarterRowDb>
+          columns={columns}
+          rows={rows}
+          getRowKey={(r) => r.instrument_id}
+          density="compact"
+        />
       </Card>
     );
   }
   return (
-    <Card title="13F 분기 변화 — 최근 5분기" eyebrow={live.status === "loading" ? "DB 로딩 중 · fixture" : "DB 비어있음 · fixture"}>
+    <Card
+      title="13F 분기 변화 — 최근 5분기"
+      actions={
+        <DataSource
+          state={live.status === "loading" ? "loading" : "fixture"}
+          source="13F"
+        />
+      }
+    >
       <DataTable<MasterQuarterChange>
         columns={quarterColumns}
         rows={fixture}
