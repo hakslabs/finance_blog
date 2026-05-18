@@ -116,6 +116,10 @@ Shared back-arrow link for detail pages. Always renders "← {label}" at the rou
 
 Shared tab bar. `items` accepts either `readonly TId[]` (string tabs — labels shown as-is) or `readonly TabItem<TId>[]` (`{ id, label }` for type-narrowed ids with display labels). `variant: "underline" | "pill"`, default `"underline"`. Used by `/stocks/:symbol`, `/analysis`, `/learn` (underline) and `/mypage` (pill). Replaces the four independent `.tabBar`/`.tab`/`.tabActive` CSS rules those routes used to copy.
 
+### `BookmarkButton({ kind, refId, title, ariaLabel? })`
+
+Star-icon save toggle. Reads `isSaved` + `toggle` from `useSavedItems` so callers no longer need to wire those by hand. `kind: "report" | "stock" | "master" | "news"`; `title` is the human label persisted alongside the saved-item record (shown in `/mypage` saved list). Stops click propagation so it can live inside a clickable table row without triggering navigation. Used by `/stocks`, `/masters` list pages.
+
 ### Primitive Selection Rules
 
 Defaults — use these _before_ writing route-local alternatives. See `docs/FRONTEND.md` rule C-11 for the full reasoning and blocker criteria.

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Star } from "lucide-react";
 import { PageContainer } from "../../components/layout/PageContainer";
+import { BookmarkButton } from "../../components/primitives/BookmarkButton";
 import { DataSource } from "../../components/primitives/DataSource";
 import { DataTable } from "../../components/primitives/DataTable";
 import { Badge } from "../../components/primitives/Badge";
@@ -10,7 +10,6 @@ import type { StockListItem } from "../../fixtures/stocks";
 import { useMovers } from "../../lib/useMovers";
 import { useBreadth } from "../../lib/useDashboardLive";
 import { Card } from "../../components/primitives/Card";
-import { useSavedItems } from "../../lib/saved-items";
 import styles from "./StocksPage.module.css";
 
 function fmt(n: number, kr: boolean) {
@@ -24,7 +23,6 @@ const CHANGE_CLASS: Record<"up" | "down", string> = {
 
 export function StocksPage() {
   const navigate = useNavigate();
-  const { isSaved, toggle } = useSavedItems();
   const [market, setMarket] = useState<"US" | "KR">("US");
   const live = useMovers(market, 30);
   const breadth = useBreadth(market);
@@ -49,26 +47,13 @@ export function StocksPage() {
     {
       key: "bookmark",
       header: "저장",
-      render: (row: StockListItem) => {
-        const active = isSaved("stock", row.symbol);
-        return (
-          <button
-            type="button"
-            className={active ? styles.bookmarkActive : styles.bookmarkButton}
-            aria-label={`${row.symbol} 저장 ${active ? "해제" : ""}`}
-            onClick={(event) => {
-              event.stopPropagation();
-              toggle({
-                kind: "stock",
-                refId: row.symbol,
-                title: `${row.symbol} · ${row.name}`,
-              });
-            }}
-          >
-            <Star size={14} aria-hidden="true" fill={active ? "currentColor" : "none"} />
-          </button>
-        );
-      },
+      render: (row: StockListItem) => (
+        <BookmarkButton
+          kind="stock"
+          refId={row.symbol}
+          title={`${row.symbol} · ${row.name}`}
+        />
+      ),
     },
     {
       key: "symbol",

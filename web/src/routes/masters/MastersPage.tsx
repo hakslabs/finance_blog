@@ -1,14 +1,13 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Star } from "lucide-react";
 import { PageContainer } from "../../components/layout/PageContainer";
 import { Badge } from "../../components/primitives/Badge";
+import { BookmarkButton } from "../../components/primitives/BookmarkButton";
 import { Card } from "../../components/primitives/Card";
 import { DataSource } from "../../components/primitives/DataSource";
 import { DataTable } from "../../components/primitives/DataTable";
 import { MASTERS } from "../../fixtures/masters";
 import type { MasterListItem, MasterStrategy } from "../../fixtures/masters";
 import { useMasters } from "../../lib/useMasters";
-import { useSavedItems } from "../../lib/saved-items";
 import styles from "./MastersPage.module.css";
 
 type BadgeTone = "neutral" | "accent" | "positive" | "negative" | "warning";
@@ -51,7 +50,6 @@ const CAGR_COL = { key: "cagr", header: "5Y CAGR", align: "right" as const, rend
 
 export function MastersPage() {
   const navigate = useNavigate();
-  const { isSaved, toggle } = useSavedItems();
   const live = useMasters();
   const liveRows: MasterListItem[] = live.status === "ready"
     ? live.data.masters.map((m) => ({
@@ -74,26 +72,13 @@ export function MastersPage() {
     {
       key: "bookmark",
       header: "저장",
-      render: (row: MasterListItem) => {
-        const active = isSaved("master", row.id);
-        return (
-          <button
-            type="button"
-            className={active ? styles.bookmarkActive : styles.bookmarkButton}
-            aria-label={`${row.name} 저장 ${active ? "해제" : ""}`}
-            onClick={(event) => {
-              event.stopPropagation();
-              toggle({
-                kind: "master",
-                refId: row.id,
-                title: `${row.name} · ${row.firm}`,
-              });
-            }}
-          >
-            <Star size={14} aria-hidden="true" fill={active ? "currentColor" : "none"} />
-          </button>
-        );
-      },
+      render: (row: MasterListItem) => (
+        <BookmarkButton
+          kind="master"
+          refId={row.id}
+          title={`${row.name} · ${row.firm}`}
+        />
+      ),
     },
     NAME_COL,
     ...(usingLive ? [] : [STRATEGY_COL]),
