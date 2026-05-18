@@ -403,6 +403,13 @@ Each migration ships with RLS policies, grants, indexes, and `updated_at` trigge
 - [x] Verified live-data paths: PR-10 quote/chart (`useQuote` → Polygon), PR-11 portfolio (`usePortfolio`), PR-13 cron (`/v1/internal/cron/refresh-us-daily`, registered in `vercel.json`), PR-15 auth (`ProtectedRoute` + sign-in/out handlers), PR-16 interaction handlers (no dead-clicks on production paths), PR-18 schema bugfixes, PR-19 reference tables (`instrument_aliases` now actively used by PR-28).
 - [x] No code changes required; this PR is documentation-only.
 
+### PR-32 — Fix Marks/Pabrai 13F ingestion
+
+- [x] Scope: Resolve the two masters left empty after PR-28 so all 8 seeded investors yield real holdings.
+  - Migration `0020_pabrai_filer_cik_fix.sql` — swap Pabrai's `filer_cik` from `0001173334` (Mohnish Pabrai personal; last 13F-HR in 2012 as a pre-XML `.txt`) to `0001549575` (Dalal Street LLC, his active filing entity).
+  - `api/app/jobs/ingest_13f.py` — collapse holdings dedup from `(instrument_id, position_kind)` to `instrument_id` only. The `filing_holdings` PK is `(filing_id, instrument_id)`, so an issuer that appears both as common stock and as options (Marks, Klarman) was triggering a `21000` cardinality violation. Surviving position label uses priority long > call > put; shares and market value are summed.
+- [x] Acceptance: All 8 masters now ingest cleanly against remote. Per-filing holdings counts: Marks 140–177, Pabrai 3–5, Klarman 22–36 (previously had 1 of 4 fail), Burry/Buffett/Ackman/Munger/Einhorn unchanged.
+
 - PR-01 through PR-10 are merged.
 - The dashboard renders real watchlist data and `/stocks/AAPL` renders real market data through the backend path.
 - Initial Supabase schema and security notes are documented and applied.

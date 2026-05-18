@@ -237,10 +237,14 @@ async def _ingest_one_accession(
         bucket[key]["shares"] += h["shares"]
         bucket[key]["value_usd"] += h["value_usd"]
 
+    # PK is (filing_id, instrument_id) — collapse all position_kinds for the
+    # same instrument into one row so an issuer that appears as both common
+    # stock and options doesn't violate the PK. Position priority for the
+    # surviving label: long > call > put (long position dominates display).
     total_value = sum(b["value_usd"] for b in bucket.values()) or 1
-    holding_rows: List[Dict[str, Any]] = []
+    row_by_instrument: Dict[str, Dict[str, Any]] = {}
     skipped = 0
-    seen_inst: set[Tuple[str, str]] = set()
+    _kind_rank = {"long": 0, "call": 1, "put": 2}
     for b in bucket.values():
         instrument_id = await _resolve_or_create_instrument(
             client, settings, b["cusip"], b["name"]
@@ -248,30 +252,27 @@ async def _ingest_one_accession(
         if not instrument_id:
             skipped += 1
             continue
-        inst_key = (instrument_id, b["position_kind"])
-        if inst_key in seen_inst:
-            # Two CUSIPs map to the same instrument (e.g. cross-listings) —
-            # collapse into the earlier row to keep the PK unique.
-            for existing in holding_rows:
-                if existing["instrument_id"] == instrument_id and existing["position_kind"] == b["position_kind"]:
-                    existing["shares"] += b["shares"]
-                    existing["market_value"] = (existing.get("market_value") or 0) + b["value_usd"]
-                    break
-            continue
-        seen_inst.add(inst_key)
-        weight = (b["value_usd"] / total_value) * 100 if total_value else 0
-        weight = round(min(max(weight, 0), 100), 6)
-        holding_rows.append(
-            {
+        existing = row_by_instrument.get(instrument_id)
+        if existing is None:
+            row_by_instrument[instrument_id] = {
                 "filing_id": filing_id,
                 "instrument_id": instrument_id,
                 "shares": b["shares"],
                 "market_value": b["value_usd"],
                 "currency": "USD",
-                "weight_pct": weight,
+                "weight_pct": 0,
                 "position_kind": b["position_kind"],
             }
-        )
+        else:
+            existing["shares"] += b["shares"]
+            existing["market_value"] = (existing.get("market_value") or 0) + b["value_usd"]
+            if _kind_rank[b["position_kind"]] < _kind_rank[existing["position_kind"]]:
+                existing["position_kind"] = b["position_kind"]
+
+    holding_rows: List[Dict[str, Any]] = list(row_by_instrument.values())
+    for row in holding_rows:
+        weight = ((row.get("market_value") or 0) / total_value) * 100 if total_value else 0
+        row["weight_pct"] = round(min(max(weight, 0), 100), 6)
 
     # Replace existing holdings for this filing to avoid stale rows.
     await client.delete(
