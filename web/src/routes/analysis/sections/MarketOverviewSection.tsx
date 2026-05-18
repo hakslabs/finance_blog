@@ -9,7 +9,6 @@ import {
 import { Badge } from "../../../components/primitives/Badge";
 import {
   MARKET_INDICES,
-  FED_RATE_PROBABILITIES,
   SECTOR_ROTATION,
   STYLE_ROTATION,
   ANALYSIS_TOOLS,
@@ -20,7 +19,6 @@ import {
   type SavedScreen,
   type MarketIndex,
   type StyleCell,
-  type FedRateProbability,
   type AnalysisTab,
   type AnalysisTool,
 } from "../../../fixtures/analysis";
@@ -110,7 +108,6 @@ export function MarketOverviewSection({
   onOpenSignal,
   onOpenScreen,
   onOpenChart,
-  onOpenFedWatch,
 }: {
   onOpenTool?: (tool: AnalysisTool) => void;
   onSelectToolTab?: (tab: AnalysisTab) => void;
@@ -120,7 +117,6 @@ export function MarketOverviewSection({
   onOpenSignal?: (row: RecentSignal) => void;
   onOpenScreen?: (row: SavedScreen) => void;
   onOpenChart?: (label: string) => void;
-  onOpenFedWatch?: (row: FedRateProbability) => void;
 }) {
   const [selectedIndexIds, setSelectedIndexIds] = useState<string[]>(DEFAULT_MARKET_INDEX_IDS);
   const [showAllIndices, setShowAllIndices] = useState(false);
@@ -267,29 +263,6 @@ export function MarketOverviewSection({
           <p className={styles.styleNote}>이번 분기 대형 그로스 우위</p>
         </Card>
       </div>
-
-      <Card title="FedWatch · 금리 인하 확률" eyebrow="CME 스타일 확률 뷰 · fixture">
-        <div className={styles.fedWatchGrid}>
-          {FED_RATE_PROBABILITIES.map((row) => (
-            <button
-              key={row.id}
-              type="button"
-              className={styles.fedWatchRow}
-              onClick={() => onOpenFedWatch?.(row)}
-            >
-              <span className={styles.fedMeeting}>{row.meeting}</span>
-              <span className={styles.fedBars} aria-hidden="true">
-                <span className={styles.fedCut} style={{ width: `${row.cutProbability}%` }} />
-                <span className={styles.fedHold} style={{ width: `${row.holdProbability}%` }} />
-                <span className={styles.fedHike} style={{ width: `${row.hikeProbability}%` }} />
-              </span>
-              <span className={styles.fedMeta}>
-                인하 {row.cutProbability}% · 동결 {row.holdProbability}% · 예상 {row.expectedRate}
-              </span>
-            </button>
-          ))}
-        </div>
-      </Card>
 
       <Section title="분석 도구">
         <div className={styles.toolsGrid}>

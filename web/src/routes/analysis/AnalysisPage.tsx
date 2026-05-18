@@ -10,7 +10,6 @@ import {
   type AnalysisTab,
   type AnalysisTool,
   type DcfAssumption,
-  type FedRateProbability,
   type FinancialScore,
   type IndicatorGlossary,
   type MarketIndex,
@@ -129,7 +128,6 @@ function TabContent({
           onOpenSignal={(row: RecentSignal) => onOpenDetail(rowDetail("최근 기술적 신호", row))}
           onOpenScreen={(row: SavedScreen) => onOpenDetail(rowDetail("저장한 스크린", row))}
           onOpenChart={(label) => onOpenDetail(chartDetail(label, tab))}
-          onOpenFedWatch={(row: FedRateProbability) => onOpenDetail(rowDetail("FedWatch 금리 확률", row))}
         />
       );
     case "시장 심리":

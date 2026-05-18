@@ -15,7 +15,6 @@ import { useStockProfile } from "../../lib/useStockExtras";
 import type { FilingItem, NewsItem, StockDetail, StockTab } from "../../fixtures/stocks";
 import { getStockDetail, hasStockFixture, STOCK_TABS } from "../../fixtures/stocks";
 import {
-  FED_RATE_PROBABILITIES,
   MARKET_INDICES,
   RECENT_SIGNALS,
   SENTIMENT_INDICATORS,
@@ -61,14 +60,13 @@ function filingDetail(filing: FilingItem, symbol: string) {
 function stockAnalysisDetail(symbol: string): DetailContent {
   const topMarket = MARKET_INDICES.slice(0, 3).map((idx) => `${idx.label} ${idx.value} (${idx.change})`).join(" · ");
   const sentiment = SENTIMENT_INDICATORS[1];
-  const rate = FED_RATE_PROBABILITIES[2];
   const signal = RECENT_SIGNALS.find((s) => s.ticker === symbol) ?? RECENT_SIGNALS[0];
 
   return {
     id: `stock-analysis-${symbol}`,
     eyebrow: `${symbol} Analysis snapshot`,
     title: `${symbol} 분석 요약 한 줄`,
-    summary: `시장 ${topMarket} · 심리 ${sentiment.label} ${sentiment.value} · 금리 ${rate.meeting} 인하 ${rate.cutProbability}% · 신호 ${signal.signal}`,
+    summary: `시장 ${topMarket} · 심리 ${sentiment.label} ${sentiment.value} · 신호 ${signal.signal}`,
     sections: [
       {
         title: "전체 분석은 분석 페이지에서",
@@ -221,10 +219,6 @@ function SimilarStocksSidebar({
           <span>
             <strong>심리</strong>
             <small>{SENTIMENT_INDICATORS[1].label} {SENTIMENT_INDICATORS[1].value} · {SENTIMENT_INDICATORS[1].statusLabel}</small>
-          </span>
-          <span>
-            <strong>금리</strong>
-            <small>{FED_RATE_PROBABILITIES[2].meeting} 인하 {FED_RATE_PROBABILITIES[2].cutProbability}%</small>
           </span>
           <span>
             <strong>신호</strong>

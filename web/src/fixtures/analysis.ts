@@ -42,23 +42,6 @@ export const MARKET_INDICES: MarketIndex[] = [
   { id: "mi-btc", label: "Bitcoin", value: "$66,420", change: "-1.8%", up: false, group: "Macro", description: "위험자산 심리 참고 지표" },
 ];
 
-export type FedRateProbability = {
-  id: string;
-  meeting: string;
-  cutProbability: number;
-  holdProbability: number;
-  hikeProbability: number;
-  expectedRate: string;
-};
-
-export const FED_RATE_PROBABILITIES: FedRateProbability[] = [
-  { id: "fed-jun", meeting: "6월 FOMC", cutProbability: 8, holdProbability: 91, hikeProbability: 1, expectedRate: "5.25–5.50%" },
-  { id: "fed-jul", meeting: "7월 FOMC", cutProbability: 28, holdProbability: 71, hikeProbability: 1, expectedRate: "5.00–5.25%" },
-  { id: "fed-sep", meeting: "9월 FOMC", cutProbability: 54, holdProbability: 45, hikeProbability: 1, expectedRate: "4.75–5.00%" },
-  { id: "fed-nov", meeting: "11월 FOMC", cutProbability: 63, holdProbability: 36, hikeProbability: 1, expectedRate: "4.75–5.00%" },
-  { id: "fed-dec", meeting: "12월 FOMC", cutProbability: 72, holdProbability: 27, hikeProbability: 1, expectedRate: "4.50–4.75%" },
-];
-
 export type SectorReturn = {
   id: string;
   sector: string;
