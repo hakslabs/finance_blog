@@ -8,6 +8,7 @@ import type {
 } from "../../../fixtures/stocks";
 import { useEffect, useState } from "react";
 import { apiClient, type StockHolderDb } from "../../../lib/api-client";
+import { useStockFilings } from "../../../lib/useStockExtras";
 import styles from "./SupplyDemandSection.module.css";
 
 function fmtShares(n: number): string {
@@ -57,6 +58,19 @@ export function SupplyDemandSection({
     return () => { cancelled = true; };
   }, [symbol]);
   const useLive = (live ?? []).length > 0;
+  const filingsLive = useStockFilings(symbol, 50);
+  const liveInsiders: InsiderTrade[] = filingsLive.status === "ready"
+    ? filingsLive.data.items
+        .filter((f) => f.form === "4")
+        .slice(0, 8)
+        .map((f) => ({
+          id: f.accession,
+          name: f.description || "내부자",
+          action: "Form 4",
+          detail: f.filed_at ?? "",
+        }))
+    : [];
+  const insidersToShow = liveInsiders.length > 0 ? liveInsiders : insiders;
   const sourceLabel = useLive
     ? `13F · 라이브 ${(live ?? []).length}건`
     : live === null ? "DB 로딩 중 · fixture" : "13F 미수록 · fixture";
@@ -87,9 +101,9 @@ export function SupplyDemandSection({
           </p>
         </Card>
 
-        <Card title="내부자 거래" eyebrow="Form 4">
+        <Card title="내부자 거래" eyebrow={liveInsiders.length > 0 ? `SEC Form 4 · ${liveInsiders.length}건` : "Form 4"}>
           <div className={styles.insiderList}>
-            {insiders.map((it) => (
+            {insidersToShow.map((it) => (
               <div key={it.id} className={styles.insiderRow}>
                 <span>{it.name}</span>
                 <span className={styles.monoCell}>{it.action}</span>
