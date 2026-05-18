@@ -5,10 +5,12 @@ import {
   DataTable,
   type DataTableColumn,
 } from "../../../components/primitives/DataTable";
+import { Money } from "../../../components/primitives/Money";
 import type {
   PortfolioTransaction,
   PortfolioTransactionType,
 } from "../../../lib/api-client";
+import type { Currency } from "../../../lib/currency";
 import styles from "./TransactionsTable.module.css";
 
 const TX_TYPE_LABEL: Record<PortfolioTransactionType, string> = {
@@ -27,15 +29,6 @@ const TX_TYPE_BADGE: Record<
   dividend: "accent",
   deposit: "neutral",
 };
-
-function formatMoney(value: number, currency: string): string {
-  const sign = currency === "KRW" ? "₩" : currency === "USD" ? "$" : "";
-  const digits = currency === "KRW" ? 0 : 2;
-  return `${sign}${value.toLocaleString("ko-KR", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  })}`;
-}
 
 const columns: DataTableColumn<PortfolioTransaction>[] = [
   {
@@ -68,14 +61,13 @@ const columns: DataTableColumn<PortfolioTransaction>[] = [
     key: "price",
     header: "단가",
     align: "right",
-    render: (row) =>
-      row.price !== null ? formatMoney(row.price, row.currency) : "—",
+    render: (row) => <Money value={row.price} currency={row.currency as Currency} />,
   },
   {
     key: "amount",
     header: "금액",
     align: "right",
-    render: (row) => formatMoney(row.amount, row.currency),
+    render: (row) => <Money value={row.amount} currency={row.currency as Currency} />,
   },
   {
     key: "currency",

@@ -120,6 +120,10 @@ Shared tab bar. `items` accepts either `readonly TId[]` (string tabs — labels 
 
 Star-icon save toggle. Reads `isSaved` + `toggle` from `useSavedItems` so callers no longer need to wire those by hand. `kind: "report" | "stock" | "master" | "news"`; `title` is the human label persisted alongside the saved-item record (shown in `/mypage` saved list). Stops click propagation so it can live inside a clickable table row without triggering navigation. Used by `/stocks`, `/masters` list pages.
 
+### `Money({ value, currency, mode?, showSign?, emptyText?, className? })`
+
+Render a money value with consistent prefix (`$` / `₩`), digits (USD 2 / KRW 0), and tabular-num font. `value: number | null | undefined` — null/NaN renders the muted `emptyText` (defaults to "—"). `mode: "full" | "short"` — short emits `$1.2B` / `₩3.5억` etc. `showSign` adds a leading `+` for positives (negatives already include `-`). Built on top of `lib/currency#formatCurrency`. Use it whenever a row holds a raw number + ISO currency; legacy rows that already carry pre-formatted strings (Stocks list, TopMovers fixture) are migrated as their row types are refactored.
+
 ### Primitive Selection Rules
 
 Defaults — use these _before_ writing route-local alternatives. See `docs/FRONTEND.md` rule C-11 for the full reasoning and blocker criteria.
