@@ -5,11 +5,25 @@ type PriceChartProps = {
   bars: QuoteBar[];
   height?: number;
   ariaLabel: string;
+  overlays?: { ma20?: boolean; ma60?: boolean };
 };
+
+function sma(values: number[], period: number): (number | null)[] {
+  const out: (number | null)[] = new Array(values.length).fill(null);
+  if (values.length < period) return out;
+  let sum = 0;
+  for (let i = 0; i < period; i++) sum += values[i];
+  out[period - 1] = sum / period;
+  for (let i = period; i < values.length; i++) {
+    sum += values[i] - values[i - period];
+    out[i] = sum / period;
+  }
+  return out;
+}
 
 const PADDING = { top: 8, right: 8, bottom: 18, left: 36 };
 
-export function PriceChart({ bars, height = 280, ariaLabel }: PriceChartProps) {
+export function PriceChart({ bars, height = 280, ariaLabel, overlays }: PriceChartProps) {
   if (bars.length === 0) {
     return (
       <div className={styles.empty} style={{ minHeight: height }}>
@@ -68,6 +82,30 @@ export function PriceChart({ bars, height = 280, ariaLabel }: PriceChartProps) {
         strokeWidth={1.5}
         points={points}
       />
+      {overlays?.ma20 && bars.length >= 20 ? (
+        <polyline
+          fill="none"
+          stroke="var(--accent)"
+          strokeWidth={1}
+          opacity={0.8}
+          points={sma(closes, 20)
+            .map((v, i) => v == null ? null : `${PADDING.left + i * stepX},${yFor(v)}`)
+            .filter((p): p is string => p !== null)
+            .join(" ")}
+        />
+      ) : null}
+      {overlays?.ma60 && bars.length >= 60 ? (
+        <polyline
+          fill="none"
+          stroke="var(--warning)"
+          strokeWidth={1}
+          opacity={0.8}
+          points={sma(closes, 60)
+            .map((v, i) => v == null ? null : `${PADDING.left + i * stepX},${yFor(v)}`)
+            .filter((p): p is string => p !== null)
+            .join(" ")}
+        />
+      ) : null}
       <circle cx={lastX} cy={lastY} r={3} fill={stroke} />
     </svg>
   );

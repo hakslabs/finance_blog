@@ -117,6 +117,10 @@ export function ChartSection({ detail }: ChartSectionProps) {
           bars={state.quote.bars}
           height={300}
           ariaLabel={`${detail.symbol} ${activePeriod} ${chartType} 차트`}
+          overlays={{
+            ma20: activeIndicators.has("MA(20)"),
+            ma60: activeIndicators.has("MA(60)"),
+          }}
         />
       ) : (
         <ChartPlaceholder
