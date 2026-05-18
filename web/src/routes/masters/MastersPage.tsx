@@ -6,6 +6,7 @@ import { Card } from "../../components/primitives/Card";
 import { DataTable } from "../../components/primitives/DataTable";
 import { MASTERS } from "../../fixtures/masters";
 import type { MasterListItem, MasterStrategy } from "../../fixtures/masters";
+import { useMasters } from "../../lib/useMasters";
 import { useSavedItems } from "../../lib/saved-items";
 import styles from "./MastersPage.module.css";
 
@@ -52,6 +53,26 @@ const baseColumns = [
 export function MastersPage() {
   const navigate = useNavigate();
   const { isSaved, toggle } = useSavedItems();
+  const live = useMasters();
+  const liveRows: MasterListItem[] = live.status === "ready"
+    ? live.data.masters.map((m) => ({
+        id: m.slug,
+        name: m.name,
+        firm: m.firm ?? "—",
+        strategy: [],
+        style: m.style ?? "—",
+        aum: m.aum != null
+          ? `$${(m.aum / 1e9).toFixed(1)}B`
+          : "—",
+        holdingsCount: 0,
+        latestFiling: "—",
+        cagr5y: "—",
+      }))
+    : [];
+  const rows = liveRows.length > 0 ? liveRows : MASTERS;
+  const sourceLabel = live.status === "ready" && liveRows.length > 0
+    ? `DB · ${liveRows.length}명`
+    : live.status === "loading" ? "DB 로딩 중 · fixture" : "DB 비어있음 · fixture";
   const columns = [
     {
       key: "bookmark",
@@ -83,12 +104,12 @@ export function MastersPage() {
     <PageContainer
       eyebrow="Masters"
       title="고수 따라잡기"
-      description="거장들의 포트폴리오, 투자 철학, 13F 분기 변화를 정적으로 훑어봅니다."
+      description={sourceLabel}
     >
       <Card title="거장 목록" eyebrow="13F + 투자 철학">
         <DataTable<MasterListItem>
           columns={columns}
-          rows={MASTERS}
+          rows={rows}
           getRowKey={(row) => row.id}
           density="compact"
           emptyMessage="거장 목록이 없습니다."
