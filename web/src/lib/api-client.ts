@@ -491,6 +491,13 @@ export const apiClient = {
   getNotices(): Promise<NoticesResponse> {
     return request<NoticesResponse>("/v1/notices");
   },
+  createNotice(body: { tag?: string; title: string; description?: string }): Promise<NoticeDb> {
+    return request<NoticeDb>("/v1/notices", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  },
   getPortfolioSnapshot(): Promise<PortfolioSnapshotResponse> {
     return request<PortfolioSnapshotResponse>("/v1/portfolios/me/snapshot");
   },

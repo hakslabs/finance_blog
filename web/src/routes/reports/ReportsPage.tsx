@@ -31,6 +31,23 @@ export function ReportsPage() {
   const [savedOnly, setSavedOnly] = useState(false);
   const savedCount = items.filter((entry) => entry.kind === "report").length;
   const live = useReports(50);
+  const liveKpis = live.status === "ready"
+    ? (() => {
+        const rs = live.data.reports;
+        const total = rs.length;
+        const sources = new Set(rs.map((r) => r.source)).size;
+        const recentDays = 14;
+        const cutoff = new Date(Date.now() - recentDays * 86400000);
+        const recent = rs.filter((r) => new Date(r.published_at) >= cutoff).length;
+        const ko = rs.filter((r) => r.language === "ko").length;
+        return [
+          { id: "total", label: "총 보고서", value: `${total}`, detail: `${sources}개 소스` },
+          { id: "new", label: `최근 ${recentDays}일 신규`, value: `+${recent}`, detail: "DB 기준" },
+          { id: "sources", label: "활성 소스", value: `${sources}`, detail: "공공·SEC·증권사" },
+          { id: "lang", label: "국문 비중", value: total ? `${Math.round((ko / total) * 100)}%` : "—", detail: `${ko}/${total}` },
+        ];
+      })()
+    : null;
   const liveReports: ReportListItem[] = live.status === "ready"
     ? live.data.reports.map((r) => ({
         id: r.id,
@@ -76,7 +93,7 @@ export function ReportsPage() {
       }
     >
       <ReportFilters />
-      <ReportKpiStrip kpis={REPORT_KPIS} />
+      <ReportKpiStrip kpis={liveKpis ?? REPORT_KPIS} />
       <ReportsTable
         reports={reports}
         onOpenReport={(report) => {

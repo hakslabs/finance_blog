@@ -56,6 +56,14 @@ class Settings(BaseSettings):
     krx_api_key: Optional[str] = Field(default=None, alias="KRX_API_KEY")
     sec_user_agent: Optional[str] = Field(default=None, alias="SEC_USER_AGENT")
     cron_secret: Optional[str] = Field(default=None, alias="CRON_SECRET")
+    admin_emails: List[str] = Field(default_factory=list, alias="VITE_ADMIN_EMAILS")
+
+    @field_validator("admin_emails", "cors_origins", mode="before")
+    @classmethod
+    def _split_admin(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [item.strip().lower() for item in value.split(",") if item.strip()]
+        return value
 
     @field_validator("cors_origins", mode="before")
     @classmethod
