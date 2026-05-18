@@ -428,6 +428,13 @@ Each migration ships with RLS policies, grants, indexes, and `updated_at` trigge
   - `api/app/jobs/ingest_13f.py` — collapse holdings dedup from `(instrument_id, position_kind)` to `instrument_id` only. The `filing_holdings` PK is `(filing_id, instrument_id)`, so an issuer that appears both as common stock and as options (Marks, Klarman) was triggering a `21000` cardinality violation. Surviving position label uses priority long > call > put; shares and market value are summed.
 - [x] Acceptance: All 8 masters now ingest cleanly against remote. Per-filing holdings counts: Marks 140–177, Pabrai 3–5, Klarman 22–36 (previously had 1 of 4 fail), Burry/Buffett/Ackman/Munger/Einhorn unchanged.
 
+### PR-36 — CUSIP-* placeholder backfill via OpenFIGI
+
+- [x] Scope: Resolve the `CUSIP-<digits>` placeholder instruments that `ingest_13f` created when a CUSIP had no alias yet, so master-detail holdings tables show real tickers/names instead of opaque CUSIP slugs.
+  - `scripts/backfill_cusip_placeholders.py` — pulls all CUSIP-* placeholders, batches CUSIPs through OpenFIGI (free, unauth: 10/req @ 25 req/min), picks the best US-exchange equity record, then for each match: gets-or-creates the real instrument, replaces the stale `cusip` alias, rewrites `filing_holdings.instrument_id` to the real id (merging shares + market value on PK collision), and drops the now-orphan placeholder.
+- [x] Run against remote: 396/440 CUSIPs resolved by OpenFIGI (90%); of those, 207 mapped to a US exchange and were retired (505 holdings moved to real instruments). 189 OpenFIGI matches were foreign-only listings (LN/HK/etc — typically delisted/restructured names) and 44 returned no OpenFIGI hit at all; both groups are left in place as `CUSIP-*` for a future manual or paid-source pass.
+- [x] Acceptance: 233 placeholders remain (down from 440); script is idempotent (next 13F ingest reuses the new aliases instead of recreating placeholders).
+
 - PR-01 through PR-10 are merged.
 - The dashboard renders real watchlist data and `/stocks/AAPL` renders real market data through the backend path.
 - Initial Supabase schema and security notes are documented and applied.
