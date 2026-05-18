@@ -7,6 +7,8 @@ import { useWatchlist } from "../../lib/useWatchlist";
 import { useMacroIndicators } from "../../lib/useMacros";
 import { useBreadth, useEconomicEvents, useFearGreed } from "../../lib/useDashboardLive";
 import { useTodos } from "../../lib/useTodos";
+import { usePortfolioSnapshot } from "../../lib/usePortfolioSnapshot";
+import type { PortfolioAsset, PortfolioSummary, TopHolding } from "../../fixtures/dashboard";
 import type {
   EconomicEvent,
   EventType,
@@ -68,6 +70,7 @@ export function DashboardPage() {
   const eventsState = useEconomicEvents(10);
   const krBreadthState = useBreadth("KR");
   const todosApi = useTodos();
+  const snapshot = usePortfolioSnapshot();
   const [todos, setTodos] = useState(TODOS);
   // Live todos take precedence when signed in; otherwise local fixture state.
   const liveTodos = todosApi.state.status === "ready"
@@ -170,6 +173,49 @@ export function DashboardPage() {
       : [];
   const eventsToShow = liveEvents.length > 0 ? liveEvents : ECONOMIC_EVENTS;
 
+  const compColors = ["#1f7a55", "#2a6fdb", "#9a6a16", "#7a5cff", "#c83b3b", "#696d70"];
+  const fmtMoney = (n: number, ccy: string) => {
+    const sign = ccy === "KRW" ? "₩" : "$";
+    if (ccy === "KRW") return `${sign}${Math.round(n).toLocaleString("ko-KR")}`;
+    return `${sign}${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+  const fmtShort = (n: number, ccy: string) => {
+    const sign = ccy === "KRW" ? "₩" : "$";
+    if (n >= 1e8) return `${sign}${(n / 1e8).toFixed(1)}억`;
+    if (n >= 1e4) return `${sign}${(n / 1e4).toFixed(0)}만`;
+    return fmtMoney(n, ccy);
+  };
+  const snapReady = snapshot.status === "ready" && snapshot.data.holdings.length > 0;
+  const liveSummary: PortfolioSummary | null = snapReady
+    ? {
+        totalAssets: fmtMoney(snapshot.data.totals.total_value, snapshot.data.totals.currency),
+        totalAssetsShort: fmtShort(snapshot.data.totals.total_value, snapshot.data.totals.currency),
+        todayPnl: `${snapshot.data.totals.today_pnl >= 0 ? "+" : ""}${fmtMoney(snapshot.data.totals.today_pnl, snapshot.data.totals.currency)}`,
+        todayPnlPercent: `${snapshot.data.totals.today_pct >= 0 ? "+" : ""}${snapshot.data.totals.today_pct.toFixed(2)}%`,
+        totalReturn: `${snapshot.data.totals.total_return_pct >= 0 ? "+" : ""}${snapshot.data.totals.total_return_pct.toFixed(2)}%`,
+      }
+    : null;
+  const liveComposition: PortfolioAsset[] = snapReady
+    ? snapshot.data.composition.map((c, i) => ({
+        label: c.label,
+        percent: Math.round(c.percent),
+        color: compColors[i % compColors.length],
+        amount: fmtShort(c.amount, snapshot.data.totals.currency),
+      }))
+    : [];
+  const liveTopHoldings: TopHolding[] = snapReady
+    ? snapshot.data.top_holdings.map((h) => ({
+        symbol: h.symbol,
+        name: h.name,
+        weight: Math.round(h.weight_pct ?? 0),
+        change: `${(h.today_pct ?? 0) >= 0 ? "+" : ""}${(h.today_pct ?? 0).toFixed(2)}%`,
+        up: (h.today_pct ?? 0) >= 0,
+      }))
+    : [];
+  const summaryToShow = liveSummary ?? PORTFOLIO_SUMMARY;
+  const compositionToShow = liveComposition.length > 0 ? liveComposition : PORTFOLIO_COMPOSITION;
+  const topHoldingsToShow = liveTopHoldings.length > 0 ? liveTopHoldings : TOP_HOLDINGS;
+
   return (
     <PageContainer
       title="오늘의 투자 상황판"
@@ -181,7 +227,7 @@ export function DashboardPage() {
       }
       actions={
         <GreetingActions
-          summary={PORTFOLIO_SUMMARY}
+          summary={summaryToShow}
           onOpenAssets={() => handleAction({ type: "route", to: "/mypage?tab=portfolio" })}
           onOpenTodayPnl={() => handleAction({ type: "detail", detail: returnSeriesDetail(RETURN_DATA, "1D") })}
           onOpenTotalReturn={() => handleAction({ type: "detail", detail: returnSeriesDetail(RETURN_DATA, "ALL") })}
@@ -274,9 +320,9 @@ export function DashboardPage() {
             onSendReview={() => handleAction({ type: "planned", message: "수익률 복기 저장은 PR-19 Thesis/반응 메모 저장에서 연결됩니다." })}
           />
           <PortfolioSummaryCard
-            assets={PORTFOLIO_COMPOSITION}
-            holdings={TOP_HOLDINGS}
-            totalAssetsShort={PORTFOLIO_SUMMARY.totalAssetsShort}
+            assets={compositionToShow}
+            holdings={topHoldingsToShow}
+            totalAssetsShort={summaryToShow.totalAssetsShort}
             onOpenPortfolio={() =>
               handleAction({
                 type: "detail",

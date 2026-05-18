@@ -330,6 +330,26 @@ export type TodoPatch = Partial<{ title: string; body: string; done: boolean; du
 export type NoticeDb = { id: string; tag: string; title: string; description: string | null; published_at: string };
 export type NoticesResponse = { items: NoticeDb[] };
 
+export type PortfolioSnapshotHolding = {
+  symbol: string; name: string; exchange: string; currency: string;
+  quantity: number; average_cost: number; cost_basis: number;
+  last_price: number | null; market_value: number | null;
+  today_change: number | null; today_pct: number | null;
+  weight_pct: number | null; pnl: number | null; pnl_pct: number | null;
+};
+export type PortfolioSnapshotTotals = {
+  currency: string; total_value: number; total_cost: number;
+  today_pnl: number; today_pct: number;
+  total_return: number; total_return_pct: number;
+};
+export type PortfolioSnapshotComp = { label: string; percent: number; amount: number };
+export type PortfolioSnapshotResponse = {
+  totals: PortfolioSnapshotTotals;
+  composition: PortfolioSnapshotComp[];
+  top_holdings: PortfolioSnapshotHolding[];
+  holdings: PortfolioSnapshotHolding[];
+};
+
 async function buildHeaders(): Promise<HeadersInit> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (supabase) {
@@ -459,5 +479,8 @@ export const apiClient = {
   },
   getNotices(): Promise<NoticesResponse> {
     return request<NoticesResponse>("/v1/notices");
+  },
+  getPortfolioSnapshot(): Promise<PortfolioSnapshotResponse> {
+    return request<PortfolioSnapshotResponse>("/v1/portfolios/me/snapshot");
   },
 };
