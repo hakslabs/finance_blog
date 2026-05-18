@@ -510,7 +510,20 @@ export const apiClient = {
   getStockNextEarning(symbol: string): Promise<NextEarningResponse> {
     return request<NextEarningResponse>(`/v1/stocks/${encodeURIComponent(symbol)}/next-earning`);
   },
+  listActivity(): Promise<ActivityResponse> {
+    return request<ActivityResponse>("/v1/activity");
+  },
+  createActivity(body: { kind: string; payload?: Record<string, unknown> }): Promise<ActivityRowDb> {
+    return request<ActivityRowDb>("/v1/activity", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  },
 };
+
+export type ActivityRowDb = { id: string; kind: string; payload: Record<string, unknown>; created_at: string };
+export type ActivityResponse = { items: ActivityRowDb[] };
 
 export type NextEarningDb = {
   date: string | null;

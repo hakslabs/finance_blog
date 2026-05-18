@@ -8,6 +8,7 @@ import {
   type PropsWithChildren,
 } from "react";
 import { useAuth } from "./auth-state";
+import { apiClient } from "./api-client";
 
 export type SavedItemKind = "report" | "stock" | "master" | "news";
 
@@ -94,6 +95,10 @@ export function SavedItemsProvider({ children }: PropsWithChildren) {
     setItems((current) => {
       const exists = current.some((entry) => entry.id === id);
       if (exists) {
+        void apiClient.createActivity({
+          kind: `unsave:${input.kind}`,
+          payload: { refId: input.refId, title: input.title },
+        }).catch(() => {});
         return current.filter((entry) => entry.id !== id);
       }
       const next: SavedItem = {
@@ -105,6 +110,10 @@ export function SavedItemsProvider({ children }: PropsWithChildren) {
         savedAt: new Date().toISOString(),
         note: input.note,
       };
+      void apiClient.createActivity({
+        kind: `save:${input.kind}`,
+        payload: { refId: input.refId, title: input.title },
+      }).catch(() => {});
       return [next, ...current];
     });
   }, []);

@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { apiClient } from "../../lib/api-client";
 import { Link, useSearchParams } from "react-router-dom";
 import { PageContainer } from "../../components/layout/PageContainer";
 import { ActionNotice } from "../../components/interaction/ActionNotice";
@@ -195,6 +196,28 @@ export function MyPage() {
   const [activeTab, setActiveTab] = useState<MyPageTab>(initialTab);
   const { detail, notice, handleAction, closeDetail } = useInteractionActions();
   const auth = useAuth();
+  const [liveActivity, setLiveActivity] = useState<ActivityLog[] | null>(null);
+  useEffect(() => {
+    if (auth.status !== "signed-in") return;
+    let cancelled = false;
+    apiClient.listActivity().then((r) => {
+      if (cancelled) return;
+      const rows: ActivityLog[] = r.items.map((a) => ({
+        id: a.id,
+        date: a.created_at.slice(0, 10),
+        action: a.kind,
+        target: typeof (a.payload as { title?: unknown })?.title === "string"
+          ? String((a.payload as { title?: string }).title)
+          : JSON.stringify(a.payload).slice(0, 80),
+      }));
+      setLiveActivity(rows);
+    }).catch(() => { if (!cancelled) setLiveActivity([]); });
+    return () => { cancelled = true; };
+  }, [auth.status]);
+  const activityRows = liveActivity && liveActivity.length > 0 ? liveActivity : ACTIVITY_LOGS;
+  const liveActivityLabel = liveActivity == null
+    ? (auth.status === "signed-in" ? "로딩 중" : "로그인 시 본인 활동")
+    : liveActivity.length > 0 ? `라이브 ${liveActivity.length}건` : "비어있음 · fixture";
   const { pick } = useLanguage();
   const displayName =
     auth.status === "signed-in" ? getUserDisplayName(auth.user) : "사용자";
@@ -489,10 +512,10 @@ export function MyPage() {
               ))}
             </div>
           </Card>
-          <Card title="최근 활동">
+          <Card title="최근 활동" eyebrow={liveActivityLabel}>
             <DataTable<ActivityLog>
               columns={activityColumns}
-              rows={ACTIVITY_LOGS}
+              rows={activityRows}
               getRowKey={(row) => row.id}
               density="compact"
               onRowClick={(row) => handleAction({ type: "detail", detail: activityDetail(row) })}
