@@ -629,3 +629,8 @@ export function getStockDetail(symbol: string): StockDetail {
   const upper = symbol.toUpperCase();
   return DETAIL_MAP[upper] ?? buildShell(upper);
 }
+
+/** True when `symbol` is in the curated fixture map (not a shell). */
+export function hasStockFixture(symbol: string): boolean {
+  return symbol.toUpperCase() in DETAIL_MAP;
+}

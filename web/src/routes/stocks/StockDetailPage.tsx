@@ -6,11 +6,12 @@ import { DetailPanel } from "../../components/interaction/DetailPanel";
 import { BackLink } from "../../components/primitives/BackLink";
 import { Card } from "../../components/primitives/Card";
 import { Badge } from "../../components/primitives/Badge";
+import { EmptyState } from "../../components/primitives/EmptyState";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
 import { useQuote } from "../../lib/useQuote";
 import { useStockProfile } from "../../lib/useStockExtras";
 import type { FilingItem, NewsItem, StockDetail, StockTab } from "../../fixtures/stocks";
-import { getStockDetail, STOCK_TABS } from "../../fixtures/stocks";
+import { getStockDetail, hasStockFixture, STOCK_TABS } from "../../fixtures/stocks";
 import {
   FED_RATE_PROBABILITIES,
   MARKET_INDICES,
@@ -273,9 +274,29 @@ export function StockDetailPage() {
   const [activeTab, setActiveTab] = useState<StockTab>("개요");
   const { detail: panelDetail, notice, handleAction, closeDetail } = useInteractionActions();
 
-  const detail = getStockDetail(rawSymbol);
-  const quoteState = useQuote(rawSymbol.toUpperCase(), "1mo");
-  const profileState = useStockProfile(rawSymbol.toUpperCase());
+  const trimmedSymbol = rawSymbol.trim();
+  const detail = getStockDetail(trimmedSymbol);
+  const quoteState = useQuote(trimmedSymbol.toUpperCase(), "1mo");
+  const profileState = useStockProfile(trimmedSymbol.toUpperCase());
+
+  // 404 guard: only when the ticker isn't curated locally AND the live
+  // quote API explicitly failed do we treat this as an unknown symbol.
+  // (Empty/loading states fall through to the normal render so the page
+  // doesn't flash a not-found while data is in flight.)
+  const isUnknownTicker =
+    !trimmedSymbol ||
+    (!hasStockFixture(trimmedSymbol) && quoteState.status === "error");
+  if (isUnknownTicker) {
+    return (
+      <PageContainer eyebrow="리서치 / 종목" title="종목을 찾을 수 없습니다">
+        <BackLink to="/stocks" label="종목 목록으로" />
+        <EmptyState
+          title={trimmedSymbol ? `'${trimmedSymbol}' 종목 정보가 없습니다` : "종목 코드가 비어있습니다"}
+          description="입력한 종목 코드를 다시 확인하거나 종목 목록에서 검색해 주세요."
+        />
+      </PageContainer>
+    );
+  }
   const liveMetrics = profileState.status === "ready" ? profileState.data.metrics : {};
   const liveProfileMarketCap = profileState.status === "ready" ? profileState.data.profile?.market_cap ?? null : null;
 
