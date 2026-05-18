@@ -80,11 +80,13 @@ function TabContent({
   tab,
   onOpenNews,
   onOpenFiling,
+  liveMetrics,
 }: {
   detail: StockDetail;
   tab: StockTab;
   onOpenNews: (news: NewsItem) => void;
   onOpenFiling: (filing: FilingItem) => void;
+  liveMetrics: Record<string, number | null | undefined>;
 }) {
   switch (tab) {
     case "개요":
@@ -351,6 +353,7 @@ export function StockDetailPage() {
               tab={activeTab}
               onOpenNews={(news) => handleAction({ type: "detail", detail: stockNewsDetail(news, detail.symbol) })}
               onOpenFiling={(filing) => handleAction({ type: "detail", detail: filingDetail(filing, detail.symbol) })}
+              liveMetrics={liveMetrics}
             />
           </section>
         </main>

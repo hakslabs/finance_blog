@@ -23,7 +23,26 @@ type ValuationSectionProps = {
   metrics: ValuationMetric[];
   peers: PeerComparison[];
   fairValues: FairValueEstimate[];
+  liveMetrics?: Record<string, number | null | undefined>;
 };
+
+function overlay(metrics: ValuationMetric[], live?: Record<string, number | null | undefined>): ValuationMetric[] {
+  if (!live) return metrics;
+  const map: Record<string, { key: string; fmt: (v: number) => string }> = {
+    "val-per": { key: "pe_ttm", fmt: (v) => v.toFixed(2) },
+    "val-pbr": { key: "pb", fmt: (v) => v.toFixed(2) },
+    "val-roe": { key: "roe_ttm", fmt: (v) => `${v.toFixed(2)}%` },
+    "val-div": { key: "dividend_yield", fmt: (v) => `${v.toFixed(2)}%` },
+    "val-beta": { key: "beta", fmt: (v) => v.toFixed(2) },
+  };
+  return metrics.map((m) => {
+    const ov = map[m.id];
+    if (!ov) return m;
+    const v = live[ov.key];
+    if (typeof v !== "number" || Number.isNaN(v)) return m;
+    return { ...m, value: ov.fmt(v), context: "Finnhub 라이브" };
+  });
+}
 
 function MetricCards({ metrics }: { metrics: ValuationMetric[] }) {
   return (
@@ -103,10 +122,11 @@ export function ValuationSection({
   metrics,
   peers,
   fairValues,
+  liveMetrics,
 }: ValuationSectionProps) {
   return (
     <div className={styles.container}>
-      <MetricCards metrics={metrics} />
+      <MetricCards metrics={overlay(metrics, liveMetrics)} />
 
       <div className={styles.valGrid}>
         <Card title="PER · PBR 5년 추이">
