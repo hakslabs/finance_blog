@@ -8,6 +8,7 @@ import { Card } from "../../components/primitives/Card";
 import { Badge } from "../../components/primitives/Badge";
 import { DataSource } from "../../components/primitives/DataSource";
 import { EmptyState } from "../../components/primitives/EmptyState";
+import { Tabs } from "../../components/primitives/Tabs";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
 import { useQuote } from "../../lib/useQuote";
 import { useStockProfile } from "../../lib/useStockExtras";
@@ -365,21 +366,12 @@ export function StockDetailPage() {
         {/* Main content area with tabs */}
         <main className={styles.main}>
           {/* Tab bar */}
-          <nav className={styles.tabBar} aria-label="종목 상세 탭">
-            {STOCK_TABS.map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                className={`${styles.tab} ${
-                  activeTab === tab ? styles.tabActive : ""
-                }`}
-                onClick={() => setActiveTab(tab)}
-                aria-pressed={activeTab === tab}
-              >
-                {tab}
-              </button>
-            ))}
-          </nav>
+          <Tabs
+            items={STOCK_TABS}
+            active={activeTab}
+            onChange={setActiveTab}
+            ariaLabel="종목 상세 탭"
+          />
 
           {/* Tab content */}
           <section aria-label={`${activeTab} 탭`}>

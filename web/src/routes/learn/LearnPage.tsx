@@ -6,6 +6,7 @@ import { Badge } from "../../components/primitives/Badge";
 import { Card } from "../../components/primitives/Card";
 import { DataTable } from "../../components/primitives/DataTable";
 import { EmptyState } from "../../components/primitives/EmptyState";
+import { Tabs } from "../../components/primitives/Tabs";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
 import { GUIDE_ARTICLES, GLOSSARY_TERMS, LEARN_CATEGORIES, LEARN_TABS } from "../../fixtures/learn";
 import type { GlossaryTerm, GuideArticle, LearnCategory, LearnTab } from "../../fixtures/learn";
@@ -280,19 +281,12 @@ export function LearnPage() {
       title="학습"
       description="입문서, 칼럼, 용어 사전, 리포트 라이브러리를 투자 흐름 가까이에 둡니다."
     >
-      <nav className={styles.tabBar} aria-label="학습 탭">
-        {LEARN_TABS.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            className={`${styles.tab} ${activeTab === tab ? styles.tabActive : ""}`}
-            onClick={() => setActiveTab(tab)}
-            aria-pressed={activeTab === tab}
-          >
-            {tab}
-          </button>
-        ))}
-      </nav>
+      <Tabs
+        items={LEARN_TABS}
+        active={activeTab}
+        onChange={setActiveTab}
+        ariaLabel="학습 탭"
+      />
 
       {activeTab === "입문서·칼럼" ? (
         <Guides

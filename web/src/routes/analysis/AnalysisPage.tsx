@@ -3,6 +3,7 @@ import { PageContainer } from "../../components/layout/PageContainer";
 import { ActionNotice } from "../../components/interaction/ActionNotice";
 import { DetailPanel } from "../../components/interaction/DetailPanel";
 import { DataSource } from "../../components/primitives/DataSource";
+import { Tabs } from "../../components/primitives/Tabs";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
 import {
   ANALYSIS_TABS,
@@ -32,7 +33,6 @@ import { QuantFactorSection } from "./sections/QuantFactorSection";
 import { DcfSection } from "./sections/DcfSection";
 import { SectorFlowSection } from "./sections/SectorFlowSection";
 import { SignalsSection } from "./sections/SignalsSection";
-import styles from "./AnalysisPage.module.css";
 
 function toolDetail(tool: AnalysisTool) {
   return {
@@ -193,21 +193,12 @@ export function AnalysisPage() {
       description="시장 한눈에 · 심리 · 기술적 · 재무 · 퀀트 팩터 · 적정주가 — 모든 분석 도구의 진입점"
       actions={<DataSource state="fixture" source="모든 탭" detail="라이브 파이프라인 미연결" />}
     >
-      <nav className={styles.tabBar} aria-label="분석 탭">
-        {ANALYSIS_TABS.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            className={`${styles.tab} ${
-              activeTab === tab ? styles.tabActive : ""
-            }`}
-            onClick={() => setActiveTab(tab)}
-            aria-pressed={activeTab === tab}
-          >
-            {tab}
-          </button>
-        ))}
-      </nav>
+      <Tabs
+        items={ANALYSIS_TABS}
+        active={activeTab}
+        onChange={setActiveTab}
+        ariaLabel="분석 탭"
+      />
 
       <section aria-label={`${activeTab} 탭`}>
         <TabContent

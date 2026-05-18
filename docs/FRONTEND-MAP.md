@@ -112,6 +112,10 @@ Inline status chip telling the user where a section's data comes from. `state: "
 
 Shared back-arrow link for detail pages. Always renders "← {label}" at the route-local detail page top. Replaces the three independent `.backLink` CSS rules that used to live in `StockDetailPage.module.css`, `MasterDetailPage.module.css`, `ReportDetailPage.module.css`.
 
+### `Tabs<TId>({ items, active, onChange, ariaLabel, variant? })`
+
+Shared tab bar. `items` accepts either `readonly TId[]` (string tabs — labels shown as-is) or `readonly TabItem<TId>[]` (`{ id, label }` for type-narrowed ids with display labels). `variant: "underline" | "pill"`, default `"underline"`. Used by `/stocks/:symbol`, `/analysis`, `/learn` (underline) and `/mypage` (pill). Replaces the four independent `.tabBar`/`.tab`/`.tabActive` CSS rules those routes used to copy.
+
 ### Primitive Selection Rules
 
 Defaults — use these _before_ writing route-local alternatives. See `docs/FRONTEND.md` rule C-11 for the full reasoning and blocker criteria.

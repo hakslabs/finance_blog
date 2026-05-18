@@ -84,44 +84,11 @@
   outline-offset: 2px;
 }
 
-.tabBar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 4px;
-  background: var(--surface);
-  border: 1px solid var(--hairline);
-}
-
 .tabSourceRow {
   display: flex;
   justify-content: flex-end;
   margin-top: -10px;
   margin-bottom: -6px;
-}
-
-.tab,
-.tabActive {
-  min-height: 34px;
-  padding: 0 12px;
-  color: var(--muted);
-  font: inherit;
-  font-size: var(--fs-base);
-  font-weight: var(--fw-bold);
-  background: transparent;
-  border: 1px solid transparent;
-  cursor: pointer;
-}
-
-.tab:hover {
-  color: var(--ink);
-  border-color: var(--hairline);
-}
-
-.tabActive {
-  color: var(--ink);
-  background: var(--bg);
-  border-color: var(--line);
 }
 
 .stack {

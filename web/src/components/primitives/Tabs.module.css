@@ -1,0 +1,66 @@
+.underlineBar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--hairline);
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.underlineTab {
+  padding: 8px 14px;
+  font: inherit;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-regular);
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  position: relative;
+  top: 1px;
+  transition: color 0.15s ease;
+}
+
+.underlineTab:hover {
+  color: var(--ink);
+}
+
+.underlineTabActive {
+  composes: underlineTab;
+  color: var(--ink);
+  font-weight: var(--fw-semibold);
+  border-bottom-color: var(--ink);
+}
+
+.pillBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+}
+
+.pillTab {
+  min-height: 34px;
+  padding: 0 12px;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-bold);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.pillTab:hover {
+  color: var(--ink);
+  border-color: var(--hairline);
+}
+
+.pillTabActive {
+  composes: pillTab;
+  color: var(--ink);
+  background: var(--bg);
+  border-color: var(--line);
+}

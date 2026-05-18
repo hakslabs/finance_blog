@@ -10,6 +10,7 @@ import { DataSource } from "../../components/primitives/DataSource";
 import { DataTable } from "../../components/primitives/DataTable";
 import { EmptyState } from "../../components/primitives/EmptyState";
 import { KpiTile } from "../../components/primitives/KpiTile";
+import { Tabs } from "../../components/primitives/Tabs";
 import { REPORTS } from "../../fixtures/reports";
 import type { ReportListItem } from "../../fixtures/reports";
 import { useAuth } from "../../lib/auth-state";
@@ -323,19 +324,13 @@ export function MyPage() {
         ) : null}
       </Card>
 
-      <nav className={styles.tabBar} aria-label="마이페이지 섹션">
-        {MYPAGE_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            className={activeTab === tab.id ? styles.tabActive : styles.tab}
-            aria-current={activeTab === tab.id ? "page" : undefined}
-            onClick={() => selectTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
+      <Tabs
+        items={MYPAGE_TABS}
+        active={activeTab}
+        onChange={selectTab}
+        ariaLabel="마이페이지 섹션"
+        variant="pill"
+      />
 
       <div className={styles.tabSourceRow}>
         {activeTab === "activity" ? (
