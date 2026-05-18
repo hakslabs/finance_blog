@@ -21,7 +21,6 @@ import {
   FEAR_GREED,
   MACRO_INDICATORS,
   NEWS,
-  NOTICE,
   PORTFOLIO_COMPOSITION,
   PORTFOLIO_SUMMARY,
   RETURN_DATA,
@@ -40,7 +39,6 @@ import {
 import { HeatmapCard } from "./sections/HeatmapCard";
 import { IndicatorStrip } from "./sections/IndicatorStrip";
 import { NewsList } from "./sections/NewsList";
-import { NoticeBanner } from "./sections/NoticeBanner";
 import { PortfolioSummaryCard } from "./sections/PortfolioSummaryCard";
 import { ReturnsChart } from "./sections/ReturnsChart";
 import { TopMoversCard } from "./sections/TopMoversCard";
@@ -53,7 +51,6 @@ import {
   holdingDetail,
   macroDetail,
   newsDetail,
-  noticeDetail,
   portfolioAssetDetail,
   portfolioOverviewDetail,
   returnContributorDetail,
@@ -240,10 +237,6 @@ export function DashboardPage() {
       }
     >
       <div className={styles.sections}>
-        <NoticeBanner
-          notice={NOTICE}
-          onOpen={() => handleAction({ type: "detail", detail: noticeDetail(NOTICE) })}
-        />
         <ActionPrompts
           todos={todosForUi}
           onOpenTodo={(todo) => handleAction({ type: "detail", detail: todoDetail(todo) })}

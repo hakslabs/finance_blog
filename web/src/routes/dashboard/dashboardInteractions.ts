@@ -4,33 +4,12 @@ import type {
   FearGreedData,
   MacroIndicator,
   NewsItem,
-  Notice,
   PortfolioAsset,
   ReturnContributor,
   ReturnSeries,
   TopHolding,
   TodoItem,
 } from "../../fixtures/dashboard";
-
-export function noticeDetail(notice: Notice): DetailContent {
-  return {
-    id: `notice-${notice.date}`,
-    eyebrow: notice.tag,
-    title: notice.title,
-    meta: notice.date,
-    summary: notice.description,
-    sections: [
-      {
-        title: "왜 중요한가",
-        body: "마이페이지와 Thesis 흐름은 개인 투자 판단의 기록과 복기를 한곳으로 모으는 핵심 사용자 허브입니다.",
-      },
-      {
-        title: "다음 연결",
-        body: "프로필 저장, 메모 저장, 알림 반응 기록은 후속 저장 PR에서 실제 데이터로 연결됩니다.",
-      },
-    ],
-  };
-}
 
 export function todoDetail(todo: TodoItem): DetailContent {
   return {

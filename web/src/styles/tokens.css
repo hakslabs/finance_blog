@@ -30,6 +30,29 @@
   --warning: #9a6a16;
   --focus: #7a5cff;
   --mono: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  color: #e9e9e7;
+  background: #14161a;
+  --bg: #14161a;
+  --surface: #1c1f24;
+  --surface-muted: #23262c;
+  --ink: #e9e9e7;
+  --muted: #9aa0a6;
+  --faint: #6c7079;
+  --line: #4a4f57;
+  --hairline: #2c3038;
+  --accent: #6b9cff;
+  /* KR convention preserved; soften backgrounds for dark surface. */
+  --positive: #ff6f6f;
+  --negative: #6b9cff;
+  --positive-bg: rgba(255, 111, 111, 0.12);
+  --negative-bg: rgba(107, 156, 255, 0.12);
+  --warning: #d9a341;
+  --focus: #9d85ff;
+  color-scheme: dark;
 
   /* Type scale — single source of truth.
      Use semantic tokens, not raw rem values, in component CSS. */

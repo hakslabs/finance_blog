@@ -6,21 +6,24 @@ import { AuthProvider } from "./lib/auth-context";
 import { CurrencyProvider } from "./lib/currency";
 import { LanguageProvider } from "./lib/language";
 import { SavedItemsProvider } from "./lib/saved-items";
+import { ThemeProvider } from "./lib/theme";
 import "./styles/tokens.css";
 import "./styles/base.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AuthProvider>
-      <LanguageProvider>
-        <CurrencyProvider>
-          <SavedItemsProvider>
-            <BrowserRouter>
-              <App />
-            </BrowserRouter>
-          </SavedItemsProvider>
-        </CurrencyProvider>
-      </LanguageProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <LanguageProvider>
+          <CurrencyProvider>
+            <SavedItemsProvider>
+              <BrowserRouter>
+                <App />
+              </BrowserRouter>
+            </SavedItemsProvider>
+          </CurrencyProvider>
+        </LanguageProvider>
+      </AuthProvider>
+    </ThemeProvider>
   </StrictMode>,
 );

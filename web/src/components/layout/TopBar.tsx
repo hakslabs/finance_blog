@@ -9,7 +9,9 @@ import {
   Home,
   Languages,
   LogOut,
+  Moon,
   Search,
+  Sun,
   User,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -20,6 +22,7 @@ import { useAuth } from "../../lib/auth-state";
 import { getUserDisplayName, getUserEmail, getUserInitial, isAdminUser } from "../../lib/auth-user";
 import { useCurrency } from "../../lib/currency";
 import { SHELL_LABELS, useLanguage } from "../../lib/language";
+import { useTheme } from "../../lib/theme";
 import {
   getCurrentNavItem,
   getVisibleNavItems,
@@ -131,6 +134,7 @@ export function TopBar() {
   const isAdmin = auth.status === "signed-in" && isAdminUser(auth.user);
   const { currency, toggle: toggleCurrency } = useCurrency();
   const { lang, toggle: toggleLang, pick } = useLanguage();
+  const { theme, toggle: toggleTheme } = useTheme();
   const [accountOpen, setAccountOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -284,6 +288,20 @@ export function TopBar() {
         >
           <Languages size={15} aria-hidden="true" strokeWidth={1.8} />
           <span>{lang === "ko" ? "한" : "EN"}</span>
+        </button>
+        <button
+          type="button"
+          className={styles.chipButton}
+          aria-label={`테마 전환 (현재 ${theme === "dark" ? "다크" : "라이트"})`}
+          aria-pressed={theme === "dark"}
+          onClick={toggleTheme}
+        >
+          {theme === "dark" ? (
+            <Sun size={15} aria-hidden="true" strokeWidth={1.8} />
+          ) : (
+            <Moon size={15} aria-hidden="true" strokeWidth={1.8} />
+          )}
+          <span>{theme === "dark" ? "라이트" : "다크"}</span>
         </button>
         <Link
           className={styles.actionButton}
