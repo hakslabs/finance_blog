@@ -330,6 +330,17 @@ export type TodoPatch = Partial<{ title: string; body: string; done: boolean; du
 export type NoticeDb = { id: string; tag: string; title: string; description: string | null; published_at: string };
 export type NoticesResponse = { items: NoticeDb[] };
 
+export type StockHolderDb = {
+  filer_name: string;
+  master_slug: string | null;
+  filed_at: string | null;
+  shares: number;
+  market_value: number | null;
+  weight_pct: number | null;
+  position_kind: string;
+};
+export type StockHoldersResponse = { symbol: string; items: StockHolderDb[] };
+
 export type PortfolioSnapshotHolding = {
   symbol: string; name: string; exchange: string; currency: string;
   quantity: number; average_cost: number; cost_basis: number;
@@ -482,5 +493,8 @@ export const apiClient = {
   },
   getPortfolioSnapshot(): Promise<PortfolioSnapshotResponse> {
     return request<PortfolioSnapshotResponse>("/v1/portfolios/me/snapshot");
+  },
+  getStockHolders(symbol: string, limit = 20): Promise<StockHoldersResponse> {
+    return request<StockHoldersResponse>(`/v1/stocks/${encodeURIComponent(symbol)}/holders?limit=${limit}`);
   },
 };

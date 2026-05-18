@@ -9,6 +9,7 @@ from app.routes.macros import router as macros_router
 from app.routes.market import router as market_router
 from app.routes.masters import router as masters_router
 from app.routes.events import router as events_router
+from app.routes.holders import router as holders_router
 from app.routes.movers import router as movers_router
 from app.routes.news import router as news_router
 from app.routes.notices import router as notices_router
@@ -49,6 +50,7 @@ app.include_router(market_router, prefix="/v1")
 app.include_router(masters_router, prefix="/v1")
 app.include_router(movers_router, prefix="/v1")
 app.include_router(events_router, prefix="/v1")
+app.include_router(holders_router, prefix="/v1")
 app.include_router(news_router, prefix="/v1")
 app.include_router(notices_router, prefix="/v1")
 app.include_router(sentiment_router, prefix="/v1")

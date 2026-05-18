@@ -123,6 +123,7 @@ function TabContent({
     case "수급":
       return (
         <SupplyDemandSection
+          symbol={detail.symbol}
           kpis={detail.supplyKpis}
           holders={detail.institutionalHolders}
           insiders={detail.insiderTrades}

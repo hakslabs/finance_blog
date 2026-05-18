@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Card } from "../../../components/primitives/Card";
 import { ChartPlaceholder } from "../../../components/primitives/ChartPlaceholder";
 import type {
@@ -5,7 +6,22 @@ import type {
   InstitutionalHolder,
   InsiderTrade,
 } from "../../../fixtures/stocks";
+import { useEffect, useState } from "react";
+import { apiClient, type StockHolderDb } from "../../../lib/api-client";
 import styles from "./SupplyDemandSection.module.css";
+
+function fmtShares(n: number): string {
+  if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+  return n.toFixed(0);
+}
+function fmtValue(n: number | null): string {
+  if (n == null) return "—";
+  if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+  return `$${n.toFixed(0)}`;
+}
 
 const KPI_TONE_CLASS: Record<SupplyDemandKpi["tone"], string> = {
   positive: styles.positive,
@@ -20,16 +36,30 @@ const QOQ_TONE_MAP: Record<string, string> = {
 };
 
 type SupplyDemandSectionProps = {
+  symbol: string;
   kpis: SupplyDemandKpi[];
   holders: InstitutionalHolder[];
   insiders: InsiderTrade[];
 };
 
 export function SupplyDemandSection({
+  symbol,
   kpis,
   holders,
   insiders,
 }: SupplyDemandSectionProps) {
+  const [live, setLive] = useState<StockHolderDb[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    apiClient.getStockHolders(symbol, 20).then((r) => {
+      if (!cancelled) setLive(r.items);
+    }).catch(() => { if (!cancelled) setLive([]); });
+    return () => { cancelled = true; };
+  }, [symbol]);
+  const useLive = (live ?? []).length > 0;
+  const sourceLabel = useLive
+    ? `13F · 라이브 ${(live ?? []).length}건`
+    : live === null ? "DB 로딩 중 · fixture" : "13F 미수록 · fixture";
   return (
     <div className={styles.container}>
       <p className={styles.notice}>
@@ -71,8 +101,8 @@ export function SupplyDemandSection({
       </div>
 
       <Card
-        title="대형 보유 기관 — 13F 최근 변경"
-        eyebrow="2025 Q3 기준"
+        title="대형 보유 기관 — 13F"
+        eyebrow={sourceLabel}
       >
         <table className={styles.instTable}>
           <thead>
@@ -86,22 +116,31 @@ export function SupplyDemandSection({
             </tr>
           </thead>
           <tbody>
-            {holders.map((h) => (
-              <tr key={h.id}>
-                <td>{h.name}</td>
-                <td>{h.shares}</td>
-                <td>{h.value}</td>
-                <td>{h.weight}</td>
-                <td
-                  className={
-                    QOQ_TONE_MAP[h.qoqChange[0]] || styles.neutral
-                  }
-                >
-                  {h.qoqChange}
-                </td>
-                <td className={styles.activityCell}>{h.activity}</td>
-              </tr>
-            ))}
+            {useLive
+              ? (live as StockHolderDb[]).map((h, i) => (
+                  <tr key={`${h.filer_name}-${i}`}>
+                    <td>
+                      {h.master_slug
+                        ? <Link to={`/masters/${h.master_slug}`}>{h.filer_name}</Link>
+                        : h.filer_name}
+                    </td>
+                    <td>{fmtShares(h.shares)}</td>
+                    <td>{fmtValue(h.market_value)}</td>
+                    <td>{h.weight_pct != null ? `${h.weight_pct.toFixed(2)}%` : "—"}</td>
+                    <td className={styles.neutral}>—</td>
+                    <td className={styles.activityCell}>{h.position_kind}</td>
+                  </tr>
+                ))
+              : holders.map((h) => (
+                  <tr key={h.id}>
+                    <td>{h.name}</td>
+                    <td>{h.shares}</td>
+                    <td>{h.value}</td>
+                    <td>{h.weight}</td>
+                    <td className={QOQ_TONE_MAP[h.qoqChange[0]] || styles.neutral}>{h.qoqChange}</td>
+                    <td className={styles.activityCell}>{h.activity}</td>
+                  </tr>
+                ))}
           </tbody>
         </table>
       </Card>
