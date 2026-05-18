@@ -8,7 +8,7 @@
   align-items: center;
   min-height: 56px;
   padding: 0 20px;
-  background: rgb(247 247 244 / 94%);
+  background: var(--bg-translucent, var(--bg));
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(12px);
 }
