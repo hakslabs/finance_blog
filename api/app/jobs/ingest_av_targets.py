@@ -83,42 +83,57 @@ async def _pick_rotation(
 ) -> List[Dict[str, str]]:
     """Return up to `limit` US instruments to refresh this run.
 
-    Priority: never-seen-today first (left-join via PostgREST is awkward,
-    so we fetch in two passes), then the ones with the oldest target-price
-    asof. Cheap because both queries hit small result sets.
+    Priority order:
+      1. Skip anything already snapshotted today (idempotent reruns).
+      2. Instruments never snapshotted (oldest = NULL) first.
+      3. Then by oldest existing `target_price.asof` ascending — so a
+         given symbol gets revisited only after the rest of the rotation
+         has had a turn.
+
+    PostgREST can't join+aggregate in a single call, so we resolve in
+    memory: pull all target-price snapshots and the US instrument list,
+    then sort here. Both result sets are small (low thousands).
     """
-    # 1. Today's already-refreshed symbols.
-    refreshed = await _sb_get(
+    snaps = await _sb_get(
         client, settings, "consensus_snapshots",
         {
             "metric": "eq.target_price",
-            "asof": f"eq.{today}",
-            "select": "instrument_id",
+            "select": "instrument_id,asof",
+            "order": "asof.desc",
+            # PostgREST default cap is 1000; bump explicitly so a
+            # multi-thousand-row history doesn't truncate the lookup.
+            "limit": "10000",
         },
     )
-    skip_ids = {row["instrument_id"] for row in refreshed}
+    latest_asof: Dict[str, str] = {}
+    for row in snaps:
+        iid = row.get("instrument_id")
+        asof = row.get("asof")
+        if iid and asof and iid not in latest_asof:
+            # `order=asof.desc` means the first occurrence is the latest.
+            latest_asof[iid] = asof
 
-    # 2. Pull more US instruments than we need so we can skip the
-    #    already-refreshed ones in memory.
-    candidates = await _sb_get(
+    instruments = await _sb_get(
         client, settings, "instruments",
         {
             "select": "id,symbol",
             "country_code": "eq.US",
             "is_active": "eq.true",
             "asset_type": "eq.stock",
-            "order": "symbol.asc",
-            "limit": str(limit * 4),
+            # Limit to a generous candidate pool — sort is in Python.
+            "limit": "2000",
         },
     )
-    out: List[Dict[str, str]] = []
-    for inst in candidates:
-        if inst["id"] in skip_ids:
+    # Skip today's refreshed, then sort by (asof, symbol).
+    ranked: List[tuple[str, str, Dict[str, str]]] = []
+    for inst in instruments:
+        asof = latest_asof.get(inst["id"])
+        if asof == today:
             continue
-        out.append(inst)
-        if len(out) >= limit:
-            break
-    return out
+        # Never-snapshotted: sort key "" so they come first.
+        ranked.append((asof or "", inst.get("symbol") or "", inst))
+    ranked.sort(key=lambda t: (t[0], t[1]))
+    return [r[2] for r in ranked[:limit]]
 
 
 async def _ingest_one(
