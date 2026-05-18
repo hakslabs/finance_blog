@@ -86,3 +86,45 @@
   background: var(--surface);
   box-shadow: 0 1px 2px rgb(26 24 21 / 8%);
 }
+
+.kpiStrip {
+  padding: 0;
+  margin-bottom: 8px;
+}
+
+.kpiRow {
+  display: flex;
+}
+
+.kpiCell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-right: 1px solid var(--hairline);
+}
+
+.kpiCell:last-child {
+  border-right: 0;
+}
+
+.kpiLabel {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-weight: var(--fw-semibold);
+}
+
+.kpiVal,
+.kpiUp,
+.kpiDown {
+  font-family: var(--mono);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.kpiUp { color: var(--positive); }
+.kpiDown { color: var(--negative); }

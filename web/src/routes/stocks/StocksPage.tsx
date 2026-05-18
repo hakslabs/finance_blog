@@ -7,6 +7,8 @@ import { Badge } from "../../components/primitives/Badge";
 import { STOCK_LIST } from "../../fixtures/stocks";
 import type { StockListItem } from "../../fixtures/stocks";
 import { useMovers } from "../../lib/useMovers";
+import { useBreadth } from "../../lib/useDashboardLive";
+import { Card } from "../../components/primitives/Card";
 import { useSavedItems } from "../../lib/saved-items";
 import styles from "./StocksPage.module.css";
 
@@ -24,6 +26,7 @@ export function StocksPage() {
   const { isSaved, toggle } = useSavedItems();
   const [market, setMarket] = useState<"US" | "KR">("US");
   const live = useMovers(market, 30);
+  const breadth = useBreadth(market);
   const liveRows: StockListItem[] = live.status === "ready"
     ? live.data.items.map((m) => ({
         id: `live-${m.symbol}`,
@@ -134,6 +137,32 @@ export function StocksPage() {
         </div>
       }
     >
+      {breadth.status === "ready" ? (
+        <Card className={styles.kpiStrip}>
+          <div className={styles.kpiRow}>
+            <div className={styles.kpiCell}>
+              <span className={styles.kpiLabel}>상승</span>
+              <span className={styles.kpiUp}>{breadth.data.rising}</span>
+            </div>
+            <div className={styles.kpiCell}>
+              <span className={styles.kpiLabel}>하락</span>
+              <span className={styles.kpiDown}>{breadth.data.falling}</span>
+            </div>
+            <div className={styles.kpiCell}>
+              <span className={styles.kpiLabel}>보합</span>
+              <span className={styles.kpiVal}>{breadth.data.flat}</span>
+            </div>
+            <div className={styles.kpiCell}>
+              <span className={styles.kpiLabel}>총 종목</span>
+              <span className={styles.kpiVal}>{breadth.data.total}</span>
+            </div>
+            <div className={styles.kpiCell}>
+              <span className={styles.kpiLabel}>상승 비율</span>
+              <span className={styles.kpiVal}>{breadth.data.score.toFixed(0)}%</span>
+            </div>
+          </div>
+        </Card>
+      ) : null}
       <DataTable<StockListItem>
         columns={columns}
         rows={rows}
