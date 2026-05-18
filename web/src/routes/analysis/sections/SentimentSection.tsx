@@ -5,6 +5,7 @@ import {
   DataTable,
   type DataTableColumn,
 } from "../../../components/primitives/DataTable";
+import { useFearGreed } from "../../../lib/useDashboardLive";
 import {
   SENTIMENT_INDICATORS,
   INDICATOR_GLOSSARY,
@@ -70,6 +71,14 @@ function regionRows(region: SentimentIndicator["region"]): SentimentIndicator[] 
   return SENTIMENT_INDICATORS.filter((s) => s.region === region);
 }
 
+function fgBand(v: number): { status: SentimentIndicator["status"]; label: string } {
+  if (v >= 75) return { status: "stress", label: "Extreme Greed" };
+  if (v >= 55) return { status: "caution", label: "Greed" };
+  if (v >= 45) return { status: "neutral", label: "Neutral" };
+  if (v >= 25) return { status: "stable", label: "Fear" };
+  return { status: "panic", label: "Extreme Fear" };
+}
+
 export function SentimentSection({
   onOpenIndicator,
   onOpenGlossary,
@@ -80,6 +89,28 @@ export function SentimentSection({
   onOpenChart?: (label: string) => void;
 }) {
   const regions: SentimentIndicator["region"][] = ["US", "KR", "Global"];
+  const fg = useFearGreed();
+  const liveUsRow: SentimentIndicator | null = fg.status === "ready" && fg.data.items.length > 0
+    ? (() => {
+        const it = fg.data.items[0];
+        if (it.value == null) return null;
+        const band = fgBand(it.value);
+        return {
+          id: "live-cnn-fg",
+          region: "US" as const,
+          label: "CNN Fear & Greed",
+          description: it.label ?? "CNN 공포·탐욕 지수",
+          value: `${Math.round(it.value)}`,
+          status: band.status,
+          statusLabel: band.label,
+        };
+      })()
+    : null;
+  const rowsFor = (region: SentimentIndicator["region"]): SentimentIndicator[] => {
+    const base = regionRows(region);
+    if (region === "US" && liveUsRow) return [liveUsRow, ...base];
+    return base;
+  };
 
   return (
     <div className={styles.root}>
@@ -96,7 +127,7 @@ export function SentimentSection({
           <Card key={region} title={REGION_LABEL[region]}>
             <DataTable<SentimentIndicator>
               columns={indicatorColumns}
-              rows={regionRows(region)}
+              rows={rowsFor(region)}
               getRowKey={(r) => r.id}
               density="compact"
               onRowClick={onOpenIndicator}

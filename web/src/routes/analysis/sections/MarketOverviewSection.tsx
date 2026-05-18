@@ -24,6 +24,8 @@ import {
   type AnalysisTab,
   type AnalysisTool,
 } from "../../../fixtures/analysis";
+import { useMacroIndicators } from "../../../lib/useMacros";
+import { useMovers } from "../../../lib/useMovers";
 import styles from "./MarketOverviewSection.module.css";
 
 const CHANGE_CLASS = {
@@ -122,9 +124,41 @@ export function MarketOverviewSection({
 }) {
   const [selectedIndexIds, setSelectedIndexIds] = useState<string[]>(DEFAULT_MARKET_INDEX_IDS);
   const [showAllIndices, setShowAllIndices] = useState(false);
+  const macros = useMacroIndicators();
+  const moversUS = useMovers("US", 5);
+  const liveIndices: MarketIndex[] = macros.status === "ready"
+    ? macros.data.indicators
+        .filter((m) => m.value != null)
+        .map((m) => {
+          const decimals = m.unit === "idx" ? 1 : 2;
+          return {
+            id: `mac-${m.series_id}`,
+            label: m.label,
+            value: `${m.value!.toFixed(decimals)}${m.unit && m.unit !== "idx" ? m.unit : ""}`,
+            change: m.change != null
+              ? `${m.change >= 0 ? "+" : ""}${m.change.toFixed(decimals)}`
+              : "—",
+            up: (m.change ?? 0) >= 0,
+            group: m.country_code === "KR" ? "KR" : (m.series_id === "VIXCLS" ? "Volatility" : "US"),
+            description: `FRED ${m.series_id}`,
+          } satisfies MarketIndex;
+        })
+    : [];
+  const indicesPool = liveIndices.length > 0 ? liveIndices : MARKET_INDICES;
   const visibleIndices = showAllIndices
-    ? MARKET_INDICES
-    : MARKET_INDICES.filter((index) => selectedIndexIds.includes(index.id));
+    ? indicesPool
+    : (liveIndices.length > 0 ? indicesPool : MARKET_INDICES.filter((i) => selectedIndexIds.includes(i.id)));
+
+  const liveSignals: RecentSignal[] = moversUS.status === "ready"
+    ? moversUS.data.items.map((m) => ({
+        id: `live-${m.symbol}`,
+        ticker: m.symbol,
+        signal: `1일 ${m.change_pct >= 0 ? "+" : ""}${m.change_pct.toFixed(2)}%`,
+        time: `${m.last.toFixed(2)} ${m.market === "KR" ? "원" : "USD"}`,
+        direction: (m.change_pct > 0 ? "up" : m.change_pct < 0 ? "down" : "neutral") as RecentSignal["direction"],
+      }))
+    : [];
+  const signalsToShow = liveSignals.length > 0 ? liveSignals : RECENT_SIGNALS;
 
   function toggleIndex(id: string) {
     setSelectedIndexIds((current) => {
@@ -286,7 +320,7 @@ export function MarketOverviewSection({
         >
           <DataTable<RecentSignal>
             columns={signalColumns}
-            rows={RECENT_SIGNALS}
+            rows={signalsToShow}
             getRowKey={(r) => r.id}
             density="compact"
             onRowClick={onOpenSignal}
