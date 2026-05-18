@@ -35,6 +35,38 @@ const OPINION_FILL_CLASS: Record<OpinionKey, string> = {
   strongSell: styles.fillStrongSell,
 };
 
+function TargetRangeBar({ low, high, mean, median }: { low: number; high: number; mean: number; median: number | null }) {
+  const range = high - low || 1;
+  const pos = (v: number) => `${Math.max(0, Math.min(100, ((v - low) / range) * 100))}%`;
+  return (
+    <div style={{ position: "relative", marginTop: 14, marginBottom: 18 }}>
+      <div style={{ height: 6, background: "var(--surface-muted)", borderRadius: 3 }} />
+      <div style={{
+        position: "absolute", top: 0, left: pos(low), right: `${100 - parseFloat(pos(high))}%`,
+        height: 6, background: "linear-gradient(90deg, var(--negative-bg), var(--surface-muted), var(--positive-bg))",
+        borderRadius: 3,
+      }} />
+      <div style={{
+        position: "absolute", top: -2, left: pos(mean), width: 2, height: 10, background: "var(--accent)",
+      }} title={`평균 $${mean.toFixed(2)}`} />
+      {median != null ? (
+        <div style={{
+          position: "absolute", top: -2, left: pos(median), width: 2, height: 10, background: "var(--ink)",
+        }} title={`중간값 $${median.toFixed(2)}`} />
+      ) : null}
+      <div style={{
+        display: "flex", justifyContent: "space-between",
+        fontSize: "var(--fs-xs)", color: "var(--muted)", marginTop: 18,
+        fontFamily: "var(--mono)",
+      }}>
+        <span>저 ${low.toFixed(2)}</span>
+        <span style={{ color: "var(--accent)", fontWeight: 700 }}>평균 ${mean.toFixed(2)}</span>
+        <span>고 ${high.toFixed(2)}</span>
+      </div>
+    </div>
+  );
+}
+
 type ConsensusSectionProps = {
   symbol: string;
   consensus: ConsensusSummary;
@@ -101,13 +133,24 @@ export function ConsensusSection({
 
       {/* Target distribution + Opinion distribution */}
       <div className={styles.conGrid}>
-        <Card title="목표가 분포">
-          <ChartPlaceholder label="목표가 분포 히스토그램" height={160} />
-          <div className={styles.targetRange}>
-            <span>$160</span>
-            <span className={styles.targetCurrent}>현재가 $184.32</span>
-            <span>$280</span>
-          </div>
+        <Card title="목표가 분포" eyebrow={livePT ? "Finnhub" : "fixture"}>
+          {livePT && livePT.target_low != null && livePT.target_high != null && livePT.target_mean != null ? (
+            <TargetRangeBar
+              low={livePT.target_low}
+              high={livePT.target_high}
+              mean={livePT.target_mean}
+              median={livePT.target_median ?? null}
+            />
+          ) : (
+            <>
+              <ChartPlaceholder label="목표가 분포 히스토그램" height={120} />
+              <div className={styles.targetRange}>
+                <span>$160</span>
+                <span className={styles.targetCurrent}>현재가 $184.32</span>
+                <span>$280</span>
+              </div>
+            </>
+          )}
         </Card>
 
         <Card title="의견 분포">
