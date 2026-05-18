@@ -2,7 +2,9 @@ import { Card } from "../../../components/primitives/Card";
 import { ChartPlaceholder } from "../../../components/primitives/ChartPlaceholder";
 import { Badge } from "../../../components/primitives/Badge";
 import type { FilingItem, EarningsEvent } from "../../../fixtures/stocks";
+import { useEffect, useState } from "react";
 import { useStockFilings } from "../../../lib/useStockExtras";
+import { apiClient, type NextEarningDb } from "../../../lib/api-client";
 import styles from "./FilingsSection.module.css";
 
 const FILING_TONE_CLASS: Record<FilingItem["tone"], string> = {
@@ -20,6 +22,26 @@ type FilingsSectionProps = {
 
 export function FilingsSection({ symbol, filings, nextEarnings, onOpenFiling }: FilingsSectionProps) {
   const live = useStockFilings(symbol, 25);
+  const [next, setNext] = useState<NextEarningDb | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    apiClient.getStockNextEarning(symbol).then((r) => {
+      if (!cancelled) setNext(r.next);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [symbol]);
+  const ne = next ? {
+    date: next.date ?? nextEarnings.date,
+    quarter: next.year && next.quarter ? `${next.year} Q${next.quarter}` : nextEarnings.quarter,
+    timing: next.hour === "bmo" ? "장 시작 전" : next.hour === "amc" ? "장 마감 후" : nextEarnings.timing,
+    consensusRevenue: next.revenue_estimate != null
+      ? `$${(next.revenue_estimate / 1e9).toFixed(2)}B`
+      : nextEarnings.consensusRevenue,
+    consensusEps: next.eps_estimate != null
+      ? `$${next.eps_estimate.toFixed(2)}`
+      : nextEarnings.consensusEps,
+    consensusOpMargin: nextEarnings.consensusOpMargin,
+  } : nextEarnings;
   const liveItems: FilingItem[] =
     live.status === "ready"
       ? live.data.items.map((f) => ({
@@ -52,15 +74,15 @@ export function FilingsSection({ symbol, filings, nextEarnings, onOpenFiling }: 
           <div className={styles.nextEarnings}>
             <div className={styles.earnRow}>
               <span className={styles.earnLabel}>예정일</span>
-              <span className={styles.earnValue}>{nextEarnings.date}</span>
+              <span className={styles.earnValue}>{ne.date}</span>
             </div>
             <div className={styles.earnRow}>
               <span className={styles.earnLabel}>분기</span>
-              <span className={styles.earnValue}>{nextEarnings.quarter}</span>
+              <span className={styles.earnValue}>{ne.quarter}</span>
             </div>
             <div className={styles.earnRow}>
               <span className={styles.earnLabel}>시점</span>
-              <span className={styles.earnValue}>{nextEarnings.timing}</span>
+              <span className={styles.earnValue}>{ne.timing}</span>
             </div>
             <div className={styles.earnDivider} />
             <p className={styles.earnSectionTitle}>
@@ -69,19 +91,19 @@ export function FilingsSection({ symbol, filings, nextEarnings, onOpenFiling }: 
             <div className={styles.earnRow}>
               <span className={styles.earnLabel}>매출</span>
               <span className={styles.earnValue}>
-                {nextEarnings.consensusRevenue}
+                {ne.consensusRevenue}
               </span>
             </div>
             <div className={styles.earnRow}>
               <span className={styles.earnLabel}>EPS</span>
               <span className={styles.earnValue}>
-                {nextEarnings.consensusEps}
+                {ne.consensusEps}
               </span>
             </div>
             <div className={styles.earnRow}>
               <span className={styles.earnLabel}>영업이익률</span>
               <span className={styles.earnValue}>
-                {nextEarnings.consensusOpMargin}
+                {ne.consensusOpMargin}
               </span>
             </div>
           </div>

@@ -500,7 +500,20 @@ export const apiClient = {
   getMasterQuarterChanges(slug: string): Promise<MasterQuartersResponse> {
     return request<MasterQuartersResponse>(`/v1/masters/${encodeURIComponent(slug)}/quarter-changes`);
   },
+  getStockNextEarning(symbol: string): Promise<NextEarningResponse> {
+    return request<NextEarningResponse>(`/v1/stocks/${encodeURIComponent(symbol)}/next-earning`);
+  },
 };
+
+export type NextEarningDb = {
+  date: string | null;
+  hour: string | null;
+  eps_estimate: number | null;
+  revenue_estimate: number | null;
+  year: number | null;
+  quarter: number | null;
+};
+export type NextEarningResponse = { symbol: string; next: NextEarningDb | null };
 
 export type MasterQuarterRowDb = {
   instrument_id: string;

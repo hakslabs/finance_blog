@@ -290,6 +290,50 @@ async def _kr_corp_code(symbol: str, settings: Settings) -> Optional[str]:
         return rows[0].get("corp_code")
 
 
+class NextEarning(BaseModel):
+    date: Optional[str] = None
+    hour: Optional[str] = None
+    eps_estimate: Optional[float] = None
+    revenue_estimate: Optional[float] = None
+    year: Optional[int] = None
+    quarter: Optional[int] = None
+
+
+class NextEarningResponse(BaseModel):
+    symbol: str
+    next: Optional[NextEarning] = None
+
+
+@router.get("/{symbol}/next-earning", response_model=NextEarningResponse)
+async def stock_next_earning(
+    symbol: str,
+    settings: Settings = Depends(get_settings),
+) -> NextEarningResponse:
+    from datetime import date as _date, timedelta as _td
+    sym = symbol.upper()
+    if not settings.finnhub_api_key:
+        return NextEarningResponse(symbol=sym, next=None)
+    today = _date.today()
+    try:
+        rows = await finnhub.fetch_earnings_calendar(
+            sym, settings.finnhub_api_key,
+            from_date=today.isoformat(),
+            to_date=(today + _td(days=120)).isoformat(),
+        )
+    except HTTPException:
+        rows = []
+    if not rows:
+        return NextEarningResponse(symbol=sym, next=None)
+    rows.sort(key=lambda r: r.get("date") or "")
+    n = rows[0]
+    return NextEarningResponse(symbol=sym, next=NextEarning(
+        date=n.get("date"), hour=n.get("hour"),
+        eps_estimate=n.get("epsEstimate"),
+        revenue_estimate=n.get("revenueEstimate"),
+        year=n.get("year"), quarter=n.get("quarter"),
+    ))
+
+
 @router.get("/{symbol}/filings", response_model=FilingsResponse)
 async def stock_filings(
     symbol: str,

@@ -147,6 +147,19 @@ async def fetch_financials_reported(
     return out
 
 
+async def fetch_earnings_calendar(
+    symbol: str, api_key: str, *, from_date: str, to_date: str
+) -> List[Dict[str, Any]]:
+    data = await _get(
+        "/calendar/earnings",
+        {"from": from_date, "to": to_date, "symbol": symbol},
+        api_key,
+    )
+    if not isinstance(data, dict):
+        return []
+    return data.get("earningsCalendar") or []
+
+
 async def fetch_economic_calendar(
     api_key: str, *, from_date: str, to_date: str
 ) -> List[Dict[str, Any]]:
