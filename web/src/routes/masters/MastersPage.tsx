@@ -3,6 +3,7 @@ import { Star } from "lucide-react";
 import { PageContainer } from "../../components/layout/PageContainer";
 import { Badge } from "../../components/primitives/Badge";
 import { Card } from "../../components/primitives/Card";
+import { DataSource } from "../../components/primitives/DataSource";
 import { DataTable } from "../../components/primitives/DataTable";
 import { MASTERS } from "../../fixtures/masters";
 import type { MasterListItem, MasterStrategy } from "../../fixtures/masters";
@@ -22,33 +23,31 @@ const STRATEGY_TONE: Record<MasterStrategy, BadgeTone> = {
   정량: "neutral",
 };
 
-const baseColumns = [
-  {
-    key: "name",
-    header: "거장",
-    render: (row: MasterListItem) => (
-      <Link to={`/masters/${row.id}`} className={styles.masterLink}>
-        <span className={styles.name}>{row.name}</span>
-        <span className={styles.firm}>{row.firm} · {row.style}</span>
-      </Link>
-    ),
-  },
-  {
-    key: "strategy",
-    header: "전략",
-    render: (row: MasterListItem) => (
-      <span className={styles.badges}>
-        {row.strategy.map((strategy) => (
-          <Badge key={strategy} tone={STRATEGY_TONE[strategy]}>{strategy}</Badge>
-        ))}
-      </span>
-    ),
-  },
-  { key: "aum", header: "AUM", align: "right" as const, render: (row: MasterListItem) => <span className={styles.mono}>{row.aum}</span> },
-  { key: "holdings", header: "보유", align: "right" as const, render: (row: MasterListItem) => <span className={styles.mono}>{row.holdingsCount}</span> },
-  { key: "filing", header: "최근 신고", render: (row: MasterListItem) => row.latestFiling },
-  { key: "cagr", header: "5Y CAGR", align: "right" as const, render: (row: MasterListItem) => <span className={styles.mono}>{row.cagr5y}</span> },
-];
+const NAME_COL = {
+  key: "name",
+  header: "거장",
+  render: (row: MasterListItem) => (
+    <Link to={`/masters/${row.id}`} className={styles.masterLink}>
+      <span className={styles.name}>{row.name}</span>
+      <span className={styles.firm}>{row.firm} · {row.style}</span>
+    </Link>
+  ),
+};
+const STRATEGY_COL = {
+  key: "strategy",
+  header: "전략",
+  render: (row: MasterListItem) => (
+    <span className={styles.badges}>
+      {row.strategy.map((strategy) => (
+        <Badge key={strategy} tone={STRATEGY_TONE[strategy]}>{strategy}</Badge>
+      ))}
+    </span>
+  ),
+};
+const AUM_COL = { key: "aum", header: "AUM", align: "right" as const, render: (row: MasterListItem) => <span className={styles.mono}>{row.aum}</span> };
+const HOLDINGS_COL = { key: "holdings", header: "보유", align: "right" as const, render: (row: MasterListItem) => <span className={styles.mono}>{row.holdingsCount}</span> };
+const FILING_COL = { key: "filing", header: "최근 신고", render: (row: MasterListItem) => row.latestFiling };
+const CAGR_COL = { key: "cagr", header: "5Y CAGR", align: "right" as const, render: (row: MasterListItem) => <span className={styles.mono}>{row.cagr5y}</span> };
 
 export function MastersPage() {
   const navigate = useNavigate();
@@ -69,10 +68,8 @@ export function MastersPage() {
         cagr5y: "—",
       }))
     : [];
-  const rows = liveRows.length > 0 ? liveRows : MASTERS;
-  const sourceLabel = live.status === "ready" && liveRows.length > 0
-    ? `DB · ${liveRows.length}명`
-    : live.status === "loading" ? "DB 로딩 중 · fixture" : "DB 비어있음 · fixture";
+  const usingLive = liveRows.length > 0;
+  const rows = usingLive ? liveRows : MASTERS;
   const columns = [
     {
       key: "bookmark",
@@ -98,13 +95,22 @@ export function MastersPage() {
         );
       },
     },
-    ...baseColumns,
+    NAME_COL,
+    ...(usingLive ? [] : [STRATEGY_COL]),
+    AUM_COL,
+    ...(usingLive ? [] : [HOLDINGS_COL, FILING_COL, CAGR_COL]),
   ];
   return (
     <PageContainer
       eyebrow="Masters"
       title="고수 따라잡기"
-      description={sourceLabel}
+      actions={
+        <DataSource
+          state={usingLive ? "live" : live.status === "loading" ? "loading" : "fixture"}
+          source={usingLive ? "/v1/masters" : "MASTERS"}
+          detail={usingLive ? `${liveRows.length}명` : undefined}
+        />
+      }
     >
       <Card title="거장 목록" eyebrow="13F + 투자 철학">
         <DataTable<MasterListItem>

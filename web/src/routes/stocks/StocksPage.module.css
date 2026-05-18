@@ -59,6 +59,12 @@
   border-color: var(--hairline);
 }
 
+.actionsRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .marketSwitch {
   display: inline-flex;
   padding: 2px;

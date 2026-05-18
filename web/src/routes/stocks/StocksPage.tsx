@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Star } from "lucide-react";
 import { PageContainer } from "../../components/layout/PageContainer";
+import { DataSource } from "../../components/primitives/DataSource";
 import { DataTable } from "../../components/primitives/DataTable";
 import { Badge } from "../../components/primitives/Badge";
 import { STOCK_LIST } from "../../fixtures/stocks";
@@ -41,12 +42,8 @@ export function StocksPage() {
         volume: m.volume >= 1e6 ? `${(m.volume / 1e6).toFixed(1)}M` : `${(m.volume / 1e3).toFixed(0)}K`,
       }))
     : [];
-  const rows = liveRows.length > 0 ? liveRows : STOCK_LIST;
-  const sourceLabel = live.status === "ready" && liveRows.length > 0
-    ? `DB · ${liveRows.length}건 · ${market}`
-    : live.status === "loading"
-      ? "DB 로딩 중 · fixture"
-      : "DB 비어있음 · fixture";
+  const usingLive = liveRows.length > 0;
+  const rows = usingLive ? liveRows : STOCK_LIST;
 
   const columns = [
     {
@@ -83,11 +80,15 @@ export function StocksPage() {
         </Link>
       ),
     },
-    {
-      key: "exchange",
-      header: "거래소",
-      render: (row: StockListItem) => <Badge tone="neutral">{row.exchange}</Badge>,
-    },
+    ...(usingLive
+      ? []
+      : [
+          {
+            key: "exchange",
+            header: "거래소",
+            render: (row: StockListItem) => <Badge tone="neutral">{row.exchange}</Badge>,
+          },
+        ]),
     {
       key: "price",
       header: "현재가",
@@ -102,38 +103,48 @@ export function StocksPage() {
         <span className={CHANGE_CLASS[row.up ? "up" : "down"]}>{row.change}</span>
       ),
     },
-    {
-      key: "marketCap",
-      header: "시가총액",
-      align: "right" as const,
-      render: (row: StockListItem) => row.marketCap,
-    },
-    {
-      key: "sector",
-      header: "섹터",
-      render: (row: StockListItem) => (
-        <span className={styles.sectorCell}>{row.sector}</span>
-      ),
-    },
+    ...(usingLive
+      ? []
+      : [
+          {
+            key: "marketCap",
+            header: "시가총액",
+            align: "right" as const,
+            render: (row: StockListItem) => row.marketCap,
+          },
+          {
+            key: "sector",
+            header: "섹터",
+            render: (row: StockListItem) => (
+              <span className={styles.sectorCell}>{row.sector}</span>
+            ),
+          },
+        ]),
   ];
 
   return (
     <PageContainer
       eyebrow="Stocks"
       title="종목 목록"
-      description={`${sourceLabel} · 일일 변동률 큰 순`}
+      description={usingLive ? `${liveRows.length}건 · 일일 변동률 큰 순` : "일일 변동률 큰 순"}
       actions={
-        <div className={styles.marketSwitch}>
-          {(["US", "KR"] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              className={m === market ? styles.marketActive : styles.marketBtn}
-              onClick={() => setMarket(m)}
-            >
-              {m}
-            </button>
-          ))}
+        <div className={styles.actionsRow}>
+          <DataSource
+            state={usingLive ? "live" : live.status === "loading" ? "loading" : "fixture"}
+            source={usingLive ? "/v1/movers" : "STOCK_LIST"}
+          />
+          <div className={styles.marketSwitch}>
+            {(["US", "KR"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                className={m === market ? styles.marketActive : styles.marketBtn}
+                onClick={() => setMarket(m)}
+              >
+                {m === "US" ? "미국" : "한국"}
+              </button>
+            ))}
+          </div>
         </div>
       }
     >
