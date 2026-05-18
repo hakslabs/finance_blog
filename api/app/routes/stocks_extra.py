@@ -205,26 +205,77 @@ async def stock_profile(
     return ProfileResponse(symbol=symbol, profile=profile, metrics=metrics)
 
 
+async def _db_price_target(symbol: str, settings: Settings) -> Optional[Dict[str, Any]]:
+    """Read latest target-price snapshot from consensus_snapshots."""
+    if not settings.supabase_url or not settings.supabase_service_role_key:
+        return None
+    headers = {
+        "apikey": settings.supabase_service_role_key,
+        "Authorization": f"Bearer {settings.supabase_service_role_key}",
+        "Accept": "application/json",
+    }
+    base = settings.supabase_url.rstrip("/")
+    async with httpx.AsyncClient(timeout=6.0, headers=headers) as client:
+        inst = await client.get(
+            f"{base}/rest/v1/instruments",
+            params={
+                "symbol": f"eq.{symbol}",
+                "country_code": "eq.US",
+                "select": "id",
+                "limit": "1",
+            },
+        )
+        if inst.status_code >= 400 or not inst.json():
+            return None
+        instrument_id = inst.json()[0]["id"]
+        snap = await client.get(
+            f"{base}/rest/v1/consensus_snapshots",
+            params={
+                "instrument_id": f"eq.{instrument_id}",
+                "metric": "eq.target_price",
+                "order": "asof.desc",
+                "select": "mean,n,asof,source",
+                "limit": "1",
+            },
+        )
+        if snap.status_code >= 400:
+            return None
+        rows = snap.json()
+        if not rows:
+            return None
+        row = rows[0]
+        return {
+            "target_high": None,
+            "target_low": None,
+            "target_mean": float(row["mean"]) if row.get("mean") is not None else None,
+            "target_median": None,
+            "last_updated": row.get("asof"),
+            "number_of_analysts": row.get("n"),
+        }
+
+
 @router.get("/{symbol}/consensus", response_model=ConsensusResponse)
 async def stock_consensus(
     symbol: str,
     settings: Settings = Depends(get_settings),
 ) -> ConsensusResponse:
     symbol = symbol.upper()
-    if not settings.finnhub_api_key:
-        return ConsensusResponse(symbol=symbol, recommendations=[], price_target=None)
     recommendations: List[Dict[str, Any]] = []
-    target: Optional[Dict[str, Any]] = None
-    try:
-        recommendations = await finnhub.fetch_recommendation_trends(
-            symbol, settings.finnhub_api_key
-        )
-    except HTTPException:
-        recommendations = []
-    try:
-        target = await finnhub.fetch_price_target(symbol, settings.finnhub_api_key)
-    except HTTPException:
-        target = None
+    if settings.finnhub_api_key:
+        try:
+            recommendations = await finnhub.fetch_recommendation_trends(
+                symbol, settings.finnhub_api_key
+            )
+        except HTTPException:
+            recommendations = []
+    # Target-price: DB first (populated daily by ingest_av_targets), then
+    # Finnhub as a courtesy fallback (returns None on free tier).
+    target = await _db_price_target(symbol, settings)
+    if not target and settings.finnhub_api_key:
+        try:
+            target = await finnhub.fetch_price_target(symbol, settings.finnhub_api_key)
+        except HTTPException:
+            target = None
     return ConsensusResponse(
         symbol=symbol,
         recommendations=[RecommendationBucket(**r) for r in recommendations],

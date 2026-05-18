@@ -436,6 +436,15 @@ Each migration ships with RLS policies, grants, indexes, and `updated_at` trigge
 - [x] Acceptance: 233 placeholders remain (down from 440); script is idempotent (next 13F ingest reuses the new aliases instead of recreating placeholders).
 - [x] Follow-up — `scripts/backfill_cusip_by_name.py` runs a second pass that searches OpenFIGI by issuer *name* (scoped to `exchCode="US"`) and accepts only matches whose normalized name overlaps ≥60% with the placeholder. Caught the foreign issuers and bond-CUSIP-shaped entries the first pass missed: 170/233 retired (429 more holdings rewritten — 389 moved + 40 merged). 63 placeholders remain (delisted/restructured names like ConsolEnergy NEW, NEW YORK CMNTY BANCORP, IMMUNOCORE pre-merger; out of scope without a paid CUSIP-history source). Cumulative: **377/440 (86%) of original placeholders retired, 934 holdings now point at real instruments.**
 
+### PR-37 — Analyst price targets via Alpha Vantage OVERVIEW
+
+- [x] Scope: Fill the consensus-target gap left by PR-29 (Finnhub `/stock/price-target` is paid-only on the free tier). Alpha Vantage's `OVERVIEW` endpoint includes `AnalystTargetPrice` plus the buy/hold/sell distribution for free under a 25 calls/day quota.
+  - `api/app/sources/alphavantage.py` — new `fetch_analyst_overview(symbol, api_key)` that returns `target_mean`, the rating buckets, and analyst count. Handles the quota-exhaustion (`Information`) and burst-throttle (`Note`) response shapes by returning None.
+  - `api/app/jobs/ingest_av_targets.py` — rotates up to 20 US instruments per run, prioritizing symbols without a `target_price` snapshot for today. Upserts into `consensus_snapshots(metric='target_price', source='alphavantage')`. Caps at 20/run so 5 calls of the daily AV budget stay free for dev / interactive use.
+  - `/v1/internal/cron/ingest-av-targets` route + daily cron entry (04:00 UTC).
+  - `/v1/stocks/{symbol}/consensus` — now reads `consensus_snapshots` first for `target_price`, with Finnhub kept as a courtesy fallback (returns None on free tier). `recommendations` continue to come live from Finnhub `/stock/recommendation`.
+- [x] Acceptance: First run on remote populated 19/20 attempted symbols (AAPL 308.07/48 analysts, ABBV 252.90/32, ABNB 156.29/43, ABT 118.64/28, AAP 56.84/25). Job is idempotent via the consensus_snapshots PK; daily cron will keep refreshing the rotation over time. `web && npm run build` clean.
+
 - PR-01 through PR-10 are merged.
 - The dashboard renders real watchlist data and `/stocks/AAPL` renders real market data through the backend path.
 - Initial Supabase schema and security notes are documented and applied.

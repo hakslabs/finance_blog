@@ -32,6 +32,10 @@
     {
       "path": "/api/v1/internal/cron/ingest-13f",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/v1/internal/cron/ingest-av-targets",
+      "schedule": "0 4 * * *"
     }
   ]
 }

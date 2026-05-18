@@ -2,12 +2,16 @@
 
 Per docs/design-docs/data-sources.md: per-symbol top-up when Polygon is
 unreachable. Single retry path; not the daily-cron source.
+
+Also exposes `fetch_analyst_overview` for the consensus-target backfill
+(Finnhub free tier doesn't include analyst targets; AV's OVERVIEW does,
+within a 25 calls/day quota).
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import List
+from typing import Any, Dict, List, Optional
 
 import httpx
 from fastapi import HTTPException
@@ -103,3 +107,72 @@ async def fetch_daily_quote(
         last_refreshed_at=datetime.now(tz=timezone.utc),
         stale=False,
     )
+
+
+def _to_float(value: Any) -> Optional[float]:
+    if value in (None, "", "None", "-"):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _to_int(value: Any) -> Optional[int]:
+    f = _to_float(value)
+    return int(f) if f is not None else None
+
+
+async def fetch_analyst_overview(
+    symbol: str,
+    api_key: str,
+    *,
+    client: Optional[httpx.AsyncClient] = None,
+) -> Optional[Dict[str, Any]]:
+    """Return analyst consensus fields from AV `OVERVIEW`.
+
+    Free-tier note: OVERVIEW costs 1 of the daily 25-call budget. Returns
+    None on rate limit / missing-key style responses so the caller can
+    fall through to whatever data path it already has.
+    """
+    own_client = client is None
+    http = client or httpx.AsyncClient(timeout=10.0)
+    params = {"function": "OVERVIEW", "symbol": symbol, "apikey": api_key}
+    try:
+        try:
+            response = await http.get(BASE_URL, params=params)
+        except httpx.HTTPError:
+            return None
+    finally:
+        if own_client:
+            await http.aclose()
+    if response.status_code >= 400:
+        return None
+    body = response.json() if response.content else {}
+    if not isinstance(body, dict) or not body:
+        return None
+    # AV responds with `{ "Information": "..." }` on quota exhaustion and
+    # `{ "Note": "..." }` on burst throttling. Neither is an error code.
+    if "Information" in body or "Note" in body:
+        return None
+    if not body.get("Symbol"):
+        return None
+    target = _to_float(body.get("AnalystTargetPrice"))
+    strong_buy = _to_int(body.get("AnalystRatingStrongBuy")) or 0
+    buy = _to_int(body.get("AnalystRatingBuy")) or 0
+    hold = _to_int(body.get("AnalystRatingHold")) or 0
+    sell = _to_int(body.get("AnalystRatingSell")) or 0
+    strong_sell = _to_int(body.get("AnalystRatingStrongSell")) or 0
+    total = strong_buy + buy + hold + sell + strong_sell
+    if target is None and total == 0:
+        return None
+    return {
+        "target_mean": target,
+        "strong_buy": strong_buy,
+        "buy": buy,
+        "hold": hold,
+        "sell": sell,
+        "strong_sell": strong_sell,
+        "number_of_analysts": total or None,
+        "latest_quarter": body.get("LatestQuarter"),
+    }
