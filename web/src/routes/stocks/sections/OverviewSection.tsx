@@ -1,6 +1,9 @@
 import { Card } from "../../../components/primitives/Card";
 import { ChartPlaceholder } from "../../../components/primitives/ChartPlaceholder";
+import { PriceChart } from "../../../components/primitives/PriceChart";
 import type { StockDetail, TechnicalSignal } from "../../../fixtures/stocks";
+import { useQuote } from "../../../lib/useQuote";
+import { useStockProfile } from "../../../lib/useStockExtras";
 import styles from "./OverviewSection.module.css";
 
 const SIGNAL_TONE_CLASS: Record<TechnicalSignal["tone"], string> = {
@@ -21,12 +24,32 @@ type OverviewSectionProps = {
 
 export function OverviewSection({ detail }: OverviewSectionProps) {
   const { companyOverview, sectorPosition, technicalSignals, keyStats } = detail;
+  const quote = useQuote(detail.symbol, "1y");
+  const profile = useStockProfile(detail.symbol);
+  const livePro = profile.status === "ready" ? profile.data.profile : null;
+  const liveCO = livePro
+    ? {
+        description: companyOverview.description,
+        headquarters: livePro.country ?? companyOverview.headquarters,
+        founded: livePro.ipo ? Number(livePro.ipo.slice(0, 4)) || companyOverview.founded : companyOverview.founded,
+        ceo: companyOverview.ceo,
+        employees: companyOverview.employees,
+        fiscalYearEnd: companyOverview.fiscalYearEnd,
+        industry: livePro.industry ?? null,
+        exchange: livePro.exchange ?? null,
+        weburl: livePro.weburl ?? null,
+      }
+    : { ...companyOverview, industry: null as string | null, exchange: null as string | null, weburl: null as string | null };
 
   return (
     <div className={styles.grid}>
       {/* Price chart area */}
       <Card title="가격 · 1년 추이" eyebrow="일별 종가">
-        <ChartPlaceholder label={`${detail.symbol} 1Y 가격 차트`} height={200} />
+        {quote.status === "ready" && quote.quote.bars.length > 0 ? (
+          <PriceChart bars={quote.quote.bars} height={200} ariaLabel={`${detail.symbol} 1Y 가격 차트`} />
+        ) : (
+          <ChartPlaceholder label={`${detail.symbol} 1Y 가격 차트`} height={200} />
+        )}
       </Card>
 
       {/* Right column: key stats + signals */}
@@ -74,18 +97,18 @@ export function OverviewSection({ detail }: OverviewSectionProps) {
       </div>
 
       {/* Company overview */}
-      <Card title="기업 개요">
+      <Card title="기업 개요" eyebrow={livePro ? "Finnhub · 라이브" : "fixture"}>
         <p className={styles.overviewText}>
-          {companyOverview.description}
+          {liveCO.description}
           <br />
           <br />
-          <strong>본사</strong> {companyOverview.headquarters} ·{" "}
-          <strong>설립</strong> {companyOverview.founded}
+          <strong>본사</strong> {liveCO.headquarters} · <strong>설립</strong> {liveCO.founded}
           <br />
-          <strong>CEO</strong> {companyOverview.ceo} ·{" "}
-          <strong>직원</strong> {companyOverview.employees}
+          <strong>CEO</strong> {liveCO.ceo} · <strong>직원</strong> {liveCO.employees}
           <br />
-          <strong>회계연도 마감</strong> {companyOverview.fiscalYearEnd}
+          <strong>회계연도 마감</strong> {liveCO.fiscalYearEnd}
+          {liveCO.industry ? (<><br/><strong>섹터</strong> {liveCO.industry}{liveCO.exchange ? ` · ${liveCO.exchange}` : ""}</>) : null}
+          {liveCO.weburl ? (<><br/><strong>웹</strong> <a href={liveCO.weburl} target="_blank" rel="noreferrer">{liveCO.weburl}</a></>) : null}
         </p>
       </Card>
 
