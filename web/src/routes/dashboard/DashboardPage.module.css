@@ -1,17 +1,24 @@
 .sections {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .pair {
   display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 6px;
+}
+
+.pairEqual {
+  display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px;
+  gap: 6px;
 }
 
 @media (max-width: 860px) {
-  .pair {
+  .pair,
+  .pairEqual {
     grid-template-columns: 1fr;
   }
 }

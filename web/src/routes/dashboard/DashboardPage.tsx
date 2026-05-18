@@ -338,7 +338,7 @@ export function DashboardPage() {
           />
         </div>
 
-        <div className={styles.pair}>
+        <div className={styles.pairEqual}>
           <HeatmapCard
             title="한국 시장 지도"
             sub="KOSPI 시총 가중"

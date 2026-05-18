@@ -1,5 +1,5 @@
 .card {
-  padding: 10px 12px;
+  padding: 8px 10px;
   background: var(--surface);
   border: 1px solid var(--hairline);
   border-radius: 4px;
@@ -9,8 +9,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin-bottom: 6px;
 }
 
 .eyebrow {
