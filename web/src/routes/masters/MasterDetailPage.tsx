@@ -9,7 +9,7 @@ import { ChartPlaceholder } from "../../components/primitives/ChartPlaceholder";
 import { DataSource } from "../../components/primitives/DataSource";
 import { DataTable, type DataTableColumn } from "../../components/primitives/DataTable";
 import { EmptyState } from "../../components/primitives/EmptyState";
-import { KpiTile } from "../../components/primitives/KpiTile";
+import { KpiStrip } from "../../components/primitives/KpiStrip";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
 import type { MasterQuarterRowDb } from "../../lib/api-client";
 import { useMaster } from "../../lib/useMaster";
@@ -183,12 +183,15 @@ export function MasterDetailPage() {
     >
       <BackLink to="/masters" label="거장 목록으로" />
 
-      <div className={styles.kpiGrid}>
-        <KpiTile label="운용자산" value={master.aum} detail={master.firm} />
-        <KpiTile label="보유 종목" value={`${master.holdingsCount}`} detail="최근 13F 기준" />
-        <KpiTile label="최근 신고" value={master.latestFiling} detail="SEC EDGAR" />
-        <KpiTile label="5Y CAGR" value={master.cagr5y} detail="벤치마크 비교" />
-      </div>
+      <KpiStrip
+        ariaLabel="거장 요약 지표"
+        items={[
+          { id: "aum", label: "운용자산", value: master.aum, detail: master.firm },
+          { id: "holdings", label: "보유 종목", value: `${master.holdingsCount}`, detail: "최근 13F 기준" },
+          { id: "filing", label: "최근 신고", value: master.latestFiling, detail: "SEC EDGAR" },
+          { id: "cagr", label: "5Y CAGR", value: master.cagr5y, detail: "벤치마크 비교" },
+        ]}
+      />
 
       <div className={styles.detailGrid}>
         <Card title="상위 보유 종목" eyebrow={holdingsSource}>

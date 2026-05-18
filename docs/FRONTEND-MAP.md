@@ -124,6 +124,10 @@ Star-icon save toggle. Reads `isSaved` + `toggle` from `useSavedItems` so caller
 
 Render a money value with consistent prefix (`$` / `₩`), digits (USD 2 / KRW 0), and tabular-num font. `value: number | null | undefined` — null/NaN renders the muted `emptyText` (defaults to "—"). `mode: "full" | "short"` — short emits `$1.2B` / `₩3.5억` etc. `showSign` adds a leading `+` for positives (negatives already include `-`). Built on top of `lib/currency#formatCurrency`. Use it whenever a row holds a raw number + ISO currency; legacy rows that already carry pre-formatted strings (Stocks list, TopMovers fixture) are migrated as their row types are refactored.
 
+### `KpiStrip({ items, ariaLabel })`
+
+Horizontal grid wrapping an array of `KpiTile`s with a shared 1px outline, hairline separators between cells, and a single-column collapse below 560px. `items: { id, label, value, detail?, trend? }[]`. Width is driven by the items count (CSS custom prop `--kpi-strip-cols`). Used by `/portfolio` (3 KPIs), `/reports` list page (variable), `/reports/:id` summary (3 KPIs), `/masters/:id` (4 KPIs). For the inline compact "breadth" row on `/stocks` we keep route-local markup since the visual is intentionally tighter than a KPI tile.
+
 ### Primitive Selection Rules
 
 Defaults — use these _before_ writing route-local alternatives. See `docs/FRONTEND.md` rule C-11 for the full reasoning and blocker criteria.

@@ -1,6 +1,6 @@
 .strip {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--kpi-strip-cols, 3), minmax(0, 1fr));
   border: 1px solid var(--line);
   background: var(--surface);
 }
@@ -17,16 +17,6 @@
 
 .item:last-child {
   border-right: none;
-}
-
-.positive {
-  color: var(--positive);
-  font-weight: var(--fw-bold);
-}
-
-.negative {
-  color: var(--negative);
-  font-weight: var(--fw-bold);
 }
 
 @media (max-width: 560px) {
