@@ -327,6 +327,9 @@ export type TodosResponse = { items: TodoDb[] };
 export type TodoCreate = { title: string; body?: string; due_at?: string };
 export type TodoPatch = Partial<{ title: string; body: string; done: boolean; due_at: string }>;
 
+export type NoticeDb = { id: string; tag: string; title: string; description: string | null; published_at: string };
+export type NoticesResponse = { items: NoticeDb[] };
+
 async function buildHeaders(): Promise<HeadersInit> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (supabase) {
@@ -453,5 +456,8 @@ export const apiClient = {
   },
   deleteTodo(id: string): Promise<unknown> {
     return request(`/v1/todos/${encodeURIComponent(id)}`, { method: "DELETE" });
+  },
+  getNotices(): Promise<NoticesResponse> {
+    return request<NoticesResponse>("/v1/notices");
   },
 };
