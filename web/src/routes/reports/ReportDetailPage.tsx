@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { PageContainer } from "../../components/layout/PageContainer";
 import { ActionNotice } from "../../components/interaction/ActionNotice";
 import { DetailPanel } from "../../components/interaction/DetailPanel";
+import { BackLink } from "../../components/primitives/BackLink";
 import { EmptyState } from "../../components/primitives/EmptyState";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
 import { useReport } from "../../lib/useReport";
@@ -59,7 +60,7 @@ export function ReportDetailPage() {
       title={report.title}
       description={`${report.source} · ${report.department} · ${report.date} 발간 · ${report.pages}페이지 · ${report.language.toUpperCase()} · ${sourceLabel}`}
     >
-      <Link to="/reports" className={styles.backLink}>← 리포트 목록으로</Link>
+      <BackLink to="/reports" label="리포트 목록으로" />
 
       <ReportDetailHeader report={report} />
       <ReportSummary report={report} />

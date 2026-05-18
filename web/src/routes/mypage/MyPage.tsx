@@ -6,6 +6,7 @@ import { ActionNotice } from "../../components/interaction/ActionNotice";
 import { DetailPanel } from "../../components/interaction/DetailPanel";
 import { Badge } from "../../components/primitives/Badge";
 import { Card } from "../../components/primitives/Card";
+import { DataSource } from "../../components/primitives/DataSource";
 import { DataTable } from "../../components/primitives/DataTable";
 import { EmptyState } from "../../components/primitives/EmptyState";
 import { KpiTile } from "../../components/primitives/KpiTile";
@@ -226,6 +227,18 @@ export function MyPage() {
     auth.status === "signed-in"
       ? new Date(auth.user.created_at).toLocaleDateString("ko-KR")
       : "";
+  const provider =
+    auth.status === "signed-in"
+      ? (auth.user.app_metadata as { provider?: string })?.provider ?? "email"
+      : "";
+  const providerLabel = (() => {
+    if (!provider) return "";
+    if (provider === "google") return "Google";
+    if (provider === "github") return "GitHub";
+    if (provider === "apple") return "Apple";
+    if (provider === "email") return "이메일";
+    return provider;
+  })();
   const [nameInput, setNameInput] = useState(displayName);
   const [trackedDisplayName, setTrackedDisplayName] = useState(displayName);
   const [nameSaved, setNameSaved] = useState(false);
@@ -261,11 +274,13 @@ export function MyPage() {
     >
       <Card>
         <div className={styles.identity}>
-          <div className={styles.avatar} aria-hidden="true" />
+          <div className={styles.avatar} aria-hidden="true">
+            {displayName.trim().slice(0, 1).toUpperCase() || "?"}
+          </div>
           <div className={styles.identityText}>
             <strong>{displayName}</strong>
             <span>{email} · 일반회원 · 가입일 {createdAt}</span>
-            <span>Google OAuth로 로그인됨</span>
+            <span>{providerLabel}로 로그인됨</span>
           </div>
           <div className={styles.quickLinks} aria-label="마이페이지 빠른 전환">
             <button type="button" onClick={() => selectTab("portfolio")}>
@@ -321,6 +336,20 @@ export function MyPage() {
           </button>
         ))}
       </nav>
+
+      <div className={styles.tabSourceRow}>
+        {activeTab === "activity" ? (
+          liveActivity == null ? (
+            <DataSource state="loading" source="/v1/activity" />
+          ) : liveActivity.length > 0 ? (
+            <DataSource state="live" source="/v1/activity" detail={`${liveActivity.length}건`} />
+          ) : (
+            <DataSource state="empty" source="/v1/activity" detail="아직 기록 없음" />
+          )
+        ) : (
+          <DataSource state="fixture" source={`${activeTab} 탭`} detail="DB 연결 예정" />
+        )}
+      </div>
 
       {activeTab === "overview" ? (
         <>

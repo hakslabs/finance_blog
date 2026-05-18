@@ -54,6 +54,12 @@
   border: 1px solid var(--line);
   border-radius: 50%;
   background: var(--surface-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  color: var(--muted);
 }
 
 .kpiGrid {
@@ -85,6 +91,13 @@
   padding: 4px;
   background: var(--surface);
   border: 1px solid var(--hairline);
+}
+
+.tabSourceRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -10px;
+  margin-bottom: -6px;
 }
 
 .tab,

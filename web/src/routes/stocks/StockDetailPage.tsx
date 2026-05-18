@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { PageContainer } from "../../components/layout/PageContainer";
 import { ActionNotice } from "../../components/interaction/ActionNotice";
 import { DetailPanel } from "../../components/interaction/DetailPanel";
+import { BackLink } from "../../components/primitives/BackLink";
 import { Card } from "../../components/primitives/Card";
 import { Badge } from "../../components/primitives/Badge";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
@@ -317,7 +318,7 @@ export function StockDetailPage() {
         </span>
       }
     >
-      <Link to="/stocks" className={styles.backLink}>← 종목 목록으로</Link>
+      <BackLink to="/stocks" label="종목 목록으로" />
 
       <KeyStatsStrip
         detail={detail}

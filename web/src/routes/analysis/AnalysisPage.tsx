@@ -2,6 +2,7 @@ import { useState } from "react";
 import { PageContainer } from "../../components/layout/PageContainer";
 import { ActionNotice } from "../../components/interaction/ActionNotice";
 import { DetailPanel } from "../../components/interaction/DetailPanel";
+import { DataSource } from "../../components/primitives/DataSource";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
 import {
   ANALYSIS_TABS,
@@ -190,6 +191,7 @@ export function AnalysisPage() {
       eyebrow="Analysis"
       title="분석"
       description="시장 한눈에 · 심리 · 기술적 · 재무 · 퀀트 팩터 · 적정주가 — 모든 분석 도구의 진입점"
+      actions={<DataSource state="fixture" source="모든 탭" detail="라이브 파이프라인 미연결" />}
     >
       <nav className={styles.tabBar} aria-label="분석 탭">
         {ANALYSIS_TABS.map((tab) => (

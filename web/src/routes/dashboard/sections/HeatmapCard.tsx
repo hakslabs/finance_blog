@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Card } from "../../../components/primitives/Card";
+import { DataSource } from "../../../components/primitives/DataSource";
 import { useBreadth } from "../../../lib/useDashboardLive";
 import styles from "./HeatmapCard.module.css";
 
@@ -70,11 +71,16 @@ export function HeatmapCard({
     ? `상승 ${live.data.rising} · 하락 ${live.data.falling} · 총 ${live.data.total}`
     : sub;
 
+  const usingLive = liveCells.length > 0;
   return (
     <Card className={styles.card}>
       <div className={styles.header}>
         <h2 className={styles.title}>{title}</h2>
         <span className={styles.sub}>{liveSub}</span>
+        <DataSource
+          state={usingLive ? "live" : "fixture"}
+          source={usingLive ? "/v1/market/breadth" : `${market} 시장`}
+        />
       </div>
       <div className={styles.grid}>
         {cells.map((cell) => (

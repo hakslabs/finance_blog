@@ -104,6 +104,14 @@ Accessible shimmer placeholder for loading states. `variant: "text" | "title" | 
 
 Inline SVG line chart for daily closes. Used by `/stocks/:symbol` once `useQuote` resolves. `height` defaults to 280px. Renders three y-axis ticks and a colored polyline (positive vs negative based on first→last close). No deps; viewBox-based so it scales to container width.
 
+### `DataSource({ state, source?, detail? })`
+
+Inline status chip telling the user where a section's data comes from. `state: "live" | "loading" | "empty" | "error" | "fixture"`. Use whenever a section can show either real or fixture data — the chip's color + dashed border for `fixture` makes the source obvious without burying the meaning in eyebrow text. Pass `source` for the endpoint or table name ("/v1/activity", "FRED" …); `detail` is read-by-screen-reader extra context.
+
+### `BackLink({ to, label })`
+
+Shared back-arrow link for detail pages. Always renders "← {label}" at the route-local detail page top. Replaces the three independent `.backLink` CSS rules that used to live in `StockDetailPage.module.css`, `MasterDetailPage.module.css`, `ReportDetailPage.module.css`.
+
 ### Primitive Selection Rules
 
 Defaults — use these _before_ writing route-local alternatives. See `docs/FRONTEND.md` rule C-11 for the full reasoning and blocker criteria.

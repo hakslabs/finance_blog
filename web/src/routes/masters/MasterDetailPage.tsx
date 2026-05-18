@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { PageContainer } from "../../components/layout/PageContainer";
 import { ActionNotice } from "../../components/interaction/ActionNotice";
 import { DetailPanel } from "../../components/interaction/DetailPanel";
+import { BackLink } from "../../components/primitives/BackLink";
 import { Badge } from "../../components/primitives/Badge";
 import { Card } from "../../components/primitives/Card";
 import { ChartPlaceholder } from "../../components/primitives/ChartPlaceholder";
@@ -168,7 +169,7 @@ export function MasterDetailPage() {
         </button>
       }
     >
-      <Link to="/masters" className={styles.backLink}>← 거장 목록으로</Link>
+      <BackLink to="/masters" label="거장 목록으로" />
 
       <div className={styles.kpiGrid}>
         <KpiTile label="운용자산" value={master.aum} detail={master.firm} />

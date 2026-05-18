@@ -2,6 +2,7 @@ import { useState } from "react";
 import { PageContainer } from "../../components/layout/PageContainer";
 import { ActionNotice } from "../../components/interaction/ActionNotice";
 import { DetailPanel } from "../../components/interaction/DetailPanel";
+import { DataSource } from "../../components/primitives/DataSource";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
 import { useWatchlist } from "../../lib/useWatchlist";
 import { useMacroIndicators } from "../../lib/useMacros";
@@ -226,12 +227,16 @@ export function DashboardPage() {
         />
       }
       actions={
-        <GreetingActions
-          summary={summaryToShow}
-          onOpenAssets={() => handleAction({ type: "route", to: "/mypage?tab=portfolio" })}
-          onOpenTodayPnl={() => handleAction({ type: "detail", detail: returnSeriesDetail(RETURN_DATA, "1D") })}
-          onOpenTotalReturn={() => handleAction({ type: "detail", detail: returnSeriesDetail(RETURN_DATA, "ALL") })}
-        />
+        liveSummary ? (
+          <GreetingActions
+            summary={liveSummary}
+            onOpenAssets={() => handleAction({ type: "route", to: "/mypage?tab=portfolio" })}
+            onOpenTodayPnl={() => handleAction({ type: "detail", detail: returnSeriesDetail(RETURN_DATA, "1D") })}
+            onOpenTotalReturn={() => handleAction({ type: "detail", detail: returnSeriesDetail(RETURN_DATA, "ALL") })}
+          />
+        ) : (
+          <DataSource state="empty" source="포트폴리오" detail="로그인 후 보유종목을 추가하세요" />
+        )
       }
     >
       <div className={styles.sections}>

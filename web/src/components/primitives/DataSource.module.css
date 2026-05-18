@@ -1,0 +1,78 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 22px;
+  padding: 2px 8px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  line-height: 1.2;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.label {
+  color: inherit;
+}
+
+.source {
+  color: var(--faint);
+  font-weight: var(--fw-regular);
+}
+
+.live {
+  composes: chip;
+  color: var(--positive);
+  border-color: rgba(226, 58, 58, 0.35);
+  background: rgba(226, 58, 58, 0.04);
+}
+
+.loading {
+  composes: chip;
+  color: var(--muted);
+}
+
+.loading .dot {
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 1; }
+}
+
+.empty {
+  composes: chip;
+  color: var(--faint);
+  border-style: dashed;
+}
+
+.error {
+  composes: chip;
+  color: var(--warning);
+  border-color: rgba(154, 106, 22, 0.4);
+  background: rgba(154, 106, 22, 0.05);
+}
+
+.fixture {
+  composes: chip;
+  color: var(--faint);
+  border-color: var(--hairline);
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--surface),
+    var(--surface) 6px,
+    var(--surface-muted) 6px,
+    var(--surface-muted) 8px
+  );
+}
