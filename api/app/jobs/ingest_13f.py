@@ -153,13 +153,31 @@ async def _ingest_one_master(
         return {"slug": master["slug"], "status": "skip", "reason": "no_cik"}
     user_agent = settings.sec_user_agent or "finance-lab/1.0 dev@example.com"
 
-    accessions = await sec.list_filings_by_form(cik, "13F-HR", user_agent, limit=1)
+    accessions = await sec.list_filings_by_form(cik, "13F-HR", user_agent, limit=4)
     if not accessions:
         return {"slug": master["slug"], "status": "skip", "reason": "no_13f"}
-    acc = accessions[0]
+    results: List[Dict[str, Any]] = []
+    for acc in accessions:
+        try:
+            res = await _ingest_one_accession(client, settings, master, acc, cik, user_agent)
+            results.append(res)
+        except IngestionError as exc:
+            results.append({"accession": acc["accession"], "status": "error", "error": str(exc)[:120]})
+        await asyncio.sleep(0.3)
+    return {"slug": master["slug"], "status": "ok", "filings": results}
+
+
+async def _ingest_one_accession(
+    client: httpx.AsyncClient,
+    settings: Settings,
+    master: Dict[str, Any],
+    acc: Dict[str, Any],
+    cik: str,
+    user_agent: str,
+) -> Dict[str, Any]:
     holdings = await sec.fetch_information_table(cik, acc["accession"], user_agent)
     if not holdings:
-        return {"slug": master["slug"], "status": "skip", "reason": "empty_table"}
+        return {"accession": acc["accession"], "status": "skip", "reason": "empty_table"}
 
     # Upsert filing row.
     filed_at = acc.get("filed_at")
@@ -267,9 +285,8 @@ async def _ingest_one_master(
     )
 
     return {
-        "slug": master["slug"],
-        "status": "ok",
         "accession": acc["accession"],
+        "status": "ok",
         "holdings_written": len(holding_rows),
         "holdings_skipped": skipped,
     }

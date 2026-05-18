@@ -497,4 +497,23 @@ export const apiClient = {
   getStockHolders(symbol: string, limit = 20): Promise<StockHoldersResponse> {
     return request<StockHoldersResponse>(`/v1/stocks/${encodeURIComponent(symbol)}/holders?limit=${limit}`);
   },
+  getMasterQuarterChanges(slug: string): Promise<MasterQuartersResponse> {
+    return request<MasterQuartersResponse>(`/v1/masters/${encodeURIComponent(slug)}/quarter-changes`);
+  },
+};
+
+export type MasterQuarterRowDb = {
+  instrument_id: string;
+  symbol: string | null;
+  name: string | null;
+  weights: (number | null)[];
+  market_values: (number | null)[];
+  latest_weight: number | null;
+  prev_weight: number | null;
+  change_kind: "up" | "down" | "flat" | "new" | "exit";
+};
+export type MasterQuartersResponse = {
+  slug: string;
+  quarters: string[];
+  rows: MasterQuarterRowDb[];
 };

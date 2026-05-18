@@ -9,7 +9,12 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.models.masters import MasterHoldingsResponse, MasterListResponse, MasterResponse
+from app.models.masters import (
+    MasterHoldingsResponse,
+    MasterListResponse,
+    MasterQuartersResponse,
+    MasterResponse,
+)
 from app.repos.masters import MasterRepo, get_master_repo
 
 
@@ -38,3 +43,11 @@ async def get_master_holdings(
     repo: MasterRepo = Depends(get_master_repo),
 ) -> MasterHoldingsResponse:
     return MasterHoldingsResponse(**await repo.get_holdings(slug, limit=limit))
+
+
+@router.get("/{slug}/quarter-changes", response_model=MasterQuartersResponse)
+async def get_master_quarter_changes(
+    slug: str,
+    repo: MasterRepo = Depends(get_master_repo),
+) -> MasterQuartersResponse:
+    return MasterQuartersResponse(**await repo.get_quarter_changes(slug))

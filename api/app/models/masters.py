@@ -71,3 +71,20 @@ class MasterHoldingsResponse(BaseModel):
     period_end: Optional[str] = None
     filed_at: Optional[str] = None
     holdings: List[MasterHolding]
+
+
+class MasterQuarterRow(BaseModel):
+    instrument_id: str
+    symbol: Optional[str] = None
+    name: Optional[str] = None
+    weights: List[Optional[float]] = []        # parallel to quarters
+    market_values: List[Optional[float]] = []
+    latest_weight: Optional[float] = None
+    prev_weight: Optional[float] = None
+    change_kind: str = "flat"                  # up/down/flat/new/exit
+
+
+class MasterQuartersResponse(BaseModel):
+    slug: str
+    quarters: List[str]                        # filing dates (newest first → desc)
+    rows: List[MasterQuarterRow]

@@ -17,6 +17,7 @@ from app.models.masters import (
     MasterBook,
     MasterHolding,
     MasterPrinciple,
+    MasterQuarterRow,
     MasterStrategy,
     MasterSummary,
 )
@@ -112,6 +113,89 @@ class MasterRepo:
             "filed_at": latest_rows[0].get("filed_at"),
             "holdings": holdings,
         }
+
+    async def get_quarter_changes(self, slug: str) -> Dict[str, Any]:
+        """Per-instrument weight time series across the last N filings."""
+        url = f"{self._base_url}/rest/v1/master_filings"
+        params = {
+            "master_slug": f"eq.{slug}",
+            "select": "filing_id,filed_at,instrument_id,weight_pct,market_value",
+            "order": "filed_at.desc",
+            "limit": "1500",
+        }
+        rows = await self._get(url, params)
+        if not rows:
+            return {"slug": slug, "quarters": [], "rows": []}
+        # Order filings newest→oldest, keep top 5 unique filing_ids.
+        seen: Dict[str, str] = {}
+        for r in rows:
+            fid = r["filing_id"]
+            if fid not in seen:
+                seen[fid] = (r.get("filed_at") or "")[:10]
+        quarters_ordered = list(seen.values())[:5]
+        quarter_ids = list(seen.keys())[:5]
+        if not quarter_ids:
+            return {"slug": slug, "quarters": [], "rows": []}
+        idx_of = {fid: i for i, fid in enumerate(quarter_ids)}
+
+        per_inst: Dict[str, Dict[str, Any]] = {}
+        for r in rows:
+            fid = r["filing_id"]
+            if fid not in idx_of:
+                continue
+            i = idx_of[fid]
+            iid = r["instrument_id"]
+            if iid not in per_inst:
+                per_inst[iid] = {
+                    "instrument_id": iid,
+                    "weights": [None] * len(quarter_ids),
+                    "market_values": [None] * len(quarter_ids),
+                }
+            per_inst[iid]["weights"][i] = float(r["weight_pct"]) if r.get("weight_pct") is not None else None
+            per_inst[iid]["market_values"][i] = float(r["market_value"]) if r.get("market_value") is not None else None
+
+        instrument_ids = sorted(per_inst.keys())
+        inst_map: Dict[str, Dict[str, Any]] = {}
+        if instrument_ids:
+            inst_url = f"{self._base_url}/rest/v1/instruments"
+            chunk = instrument_ids[:300]
+            inst_rows = await self._get(inst_url, {
+                "id": f"in.({','.join(chunk)})",
+                "select": "id,symbol,name",
+            })
+            inst_map = {r["id"]: r for r in inst_rows}
+
+        out: List[MasterQuarterRow] = []
+        for iid, data in per_inst.items():
+            weights = data["weights"]
+            latest = weights[0]
+            prev = weights[1] if len(weights) > 1 else None
+            if latest is None and prev is not None:
+                kind = "exit"
+            elif latest is not None and prev is None:
+                kind = "new"
+            elif latest is not None and prev is not None:
+                if latest > prev + 0.05:
+                    kind = "up"
+                elif latest < prev - 0.05:
+                    kind = "down"
+                else:
+                    kind = "flat"
+            else:
+                kind = "flat"
+            inst = inst_map.get(iid, {})
+            out.append(MasterQuarterRow(
+                instrument_id=iid,
+                symbol=inst.get("symbol"),
+                name=inst.get("name"),
+                weights=weights,
+                market_values=data["market_values"],
+                latest_weight=latest,
+                prev_weight=prev,
+                change_kind=kind,
+            ))
+        out.sort(key=lambda r: (r.latest_weight or 0), reverse=True)
+        return {"slug": slug, "quarters": quarters_ordered, "rows": out}
 
     async def _get(self, url: str, params: Dict[str, str]) -> List[Dict[str, Any]]:
         try:

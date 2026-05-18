@@ -11,6 +11,7 @@ import { KpiTile } from "../../components/primitives/KpiTile";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
 import { useMaster } from "../../lib/useMaster";
 import { useMasterHoldings } from "../../lib/useMasterHoldings";
+import { useMasterQuarters } from "../../lib/useMasterQuarters";
 import { getMaster } from "../../fixtures/masters";
 import type { MasterHolding, MasterQuarterChange, HoldingChange } from "../../fixtures/masters";
 import styles from "./MasterDetailPage.module.css";
@@ -42,6 +43,55 @@ const quarterColumns = [
   { key: "latest", header: "2026 Q1", align: "right" as const, render: (row: MasterQuarterChange) => row.latest },
   { key: "change", header: "변화", align: "right" as const, render: (row: MasterQuarterChange) => <Badge tone={CHANGE_TONE[row.kind]}>{row.change}</Badge> },
 ];
+
+function QuarterChangesCard({ slug, fixture }: { slug?: string; fixture: MasterQuarterChange[] }) {
+  const live = useMasterQuarters(slug);
+  if (live.status === "ready" && live.data.rows.length > 0) {
+    const quarters: string[] = live.data.quarters;
+    const rows = live.data.rows.slice(0, 30);
+    const fmtPct = (v: number | null) => (v == null ? "—" : `${v.toFixed(2)}%`);
+    return (
+      <Card title="13F 분기 변화" eyebrow={`최근 ${quarters.length}분기 · DB 라이브`}>
+        <table style={{ width: "100%", fontSize: "var(--fs-sm)", fontFamily: "var(--mono)" }}>
+          <thead>
+            <tr style={{ color: "var(--muted)", textAlign: "left" }}>
+              <th>티커</th>
+              <th>종목</th>
+              {quarters.map((q: string) => (
+                <th key={q} style={{ textAlign: "right" }}>{q.slice(2)}</th>
+              ))}
+              <th style={{ textAlign: "right" }}>변화</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.instrument_id} style={{ borderTop: "1px solid var(--hairline)" }}>
+                <td style={{ fontWeight: 600 }}>{r.symbol ?? "—"}</td>
+                <td style={{ color: "var(--muted)" }}>{r.name ?? "—"}</td>
+                {r.weights.map((w: number | null, i: number) => (
+                  <td key={i} style={{ textAlign: "right" }}>{fmtPct(w)}</td>
+                ))}
+                <td style={{ textAlign: "right" }}>
+                  <Badge tone={CHANGE_TONE[r.change_kind as HoldingChange]}>{r.change_kind}</Badge>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+    );
+  }
+  return (
+    <Card title="13F 분기 변화 — 최근 5분기" eyebrow={live.status === "loading" ? "DB 로딩 중 · fixture" : "DB 비어있음 · fixture"}>
+      <DataTable<MasterQuarterChange>
+        columns={quarterColumns}
+        rows={fixture}
+        getRowKey={(row) => row.id}
+        density="compact"
+      />
+    </Card>
+  );
+}
 
 export function MasterDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -154,34 +204,7 @@ export function MasterDetailPage() {
         </Card>
       </div>
 
-      <Card title="13F 분기 변화 — 최근 5분기">
-        <DataTable<MasterQuarterChange>
-          columns={quarterColumns}
-          rows={master.quarterChanges}
-          getRowKey={(row) => row.id}
-          density="compact"
-          onRowClick={(row) =>
-            handleAction({
-              type: "detail",
-              detail: {
-                id: `master-quarter-${row.id}`,
-                eyebrow: `${master.name} · 13F 분기 변화`,
-                title: `${row.symbol} · ${row.name}`,
-                meta: `최근 ${row.latest} · 변화 ${row.change}`,
-                summary: "최근 5분기 보유 비중 변화입니다.",
-                sections: [
-                  {
-                    title: "분기별 비중",
-                    body: "13F 신고 기준 보유 비중입니다.",
-                    items: [`2025 Q1 ${row.q1}`, `Q2 ${row.q2}`, `Q3 ${row.q3}`, `Q4 ${row.q4}`, `2026 Q1 ${row.latest}`],
-                  },
-                ],
-              },
-            })
-          }
-          getRowAriaLabel={(row) => `${row.symbol} 13F 분기 변화 상세`}
-        />
-      </Card>
+      <QuarterChangesCard slug={id} fixture={master.quarterChanges} />
 
       <div className={styles.detailGrid}>
         <Card title="투자 원칙">
