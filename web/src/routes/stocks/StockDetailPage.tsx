@@ -7,6 +7,7 @@ import { Card } from "../../components/primitives/Card";
 import { Badge } from "../../components/primitives/Badge";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
 import { useQuote } from "../../lib/useQuote";
+import { useStockProfile } from "../../lib/useStockExtras";
 import type { FilingItem, NewsItem, StockDetail, StockTab } from "../../fixtures/stocks";
 import { getStockDetail, STOCK_TABS } from "../../fixtures/stocks";
 import {
@@ -142,29 +143,33 @@ function TabContent({
 }
 
 /** Key stats strip rendered above the tab area. */
-function KeyStatsStrip({ detail, liveVolume }: { detail: StockDetail; liveVolume: number | null }) {
-  const {
-    marketCap,
-    volume,
-    week52Range,
-    per,
-    pbr,
-    roe,
-    dividendYield,
-    beta,
-  } = detail.keyStats;
-
+function KeyStatsStrip({ detail, liveVolume, liveMetrics, liveProfileMarketCap }: {
+  detail: StockDetail;
+  liveVolume: number | null;
+  liveMetrics: Record<string, number | null | undefined>;
+  liveProfileMarketCap: number | null;
+}) {
+  const { marketCap, volume, week52Range, per, pbr, roe, dividendYield, beta } = detail.keyStats;
   const volumeText = liveVolume != null ? liveVolume.toLocaleString("ko-KR") : volume;
-
+  const num = (v: unknown, suffix = "", decimals = 2) =>
+    typeof v === "number" && !Number.isNaN(v) ? `${v.toFixed(decimals)}${suffix}` : null;
+  const mcap = liveProfileMarketCap != null
+    ? liveProfileMarketCap >= 1000
+      ? `$${(liveProfileMarketCap / 1000).toFixed(2)}T`
+      : `$${liveProfileMarketCap.toFixed(1)}B`
+    : marketCap;
+  const range = liveMetrics.week52_high != null && liveMetrics.week52_low != null
+    ? `${liveMetrics.week52_high!.toFixed(2)} / ${liveMetrics.week52_low!.toFixed(2)}`
+    : week52Range;
   const stats: [string, string][] = [
-    ["시가총액", marketCap],
+    ["시가총액", mcap],
     ["거래량", volumeText],
-    ["52W 고/저", week52Range],
-    ["PER", per],
-    ["PBR", pbr],
-    ["ROE", roe],
-    ["배당수익률", dividendYield],
-    ["베타", beta],
+    ["52W 고/저", range],
+    ["PER", num(liveMetrics.pe_ttm) ?? per],
+    ["PBR", num(liveMetrics.pb) ?? pbr],
+    ["ROE", num(liveMetrics.roe_ttm, "%") ?? roe],
+    ["배당수익률", num(liveMetrics.dividend_yield, "%") ?? dividendYield],
+    ["베타", num(liveMetrics.beta) ?? beta],
   ];
 
   return (
@@ -266,6 +271,9 @@ export function StockDetailPage() {
 
   const detail = getStockDetail(rawSymbol);
   const quoteState = useQuote(rawSymbol.toUpperCase(), "1mo");
+  const profileState = useStockProfile(rawSymbol.toUpperCase());
+  const liveMetrics = profileState.status === "ready" ? profileState.data.metrics : {};
+  const liveProfileMarketCap = profileState.status === "ready" ? profileState.data.profile?.market_cap ?? null : null;
 
   const liveQuote = quoteState.status === "ready" ? quoteState.quote : null;
   const liveUp = liveQuote ? liveQuote.change >= 0 : detail.up;
@@ -311,6 +319,8 @@ export function StockDetailPage() {
       <KeyStatsStrip
         detail={detail}
         liveVolume={liveQuote && liveQuote.bars.length > 0 ? liveQuote.bars[liveQuote.bars.length - 1].v : null}
+        liveMetrics={liveMetrics}
+        liveProfileMarketCap={liveProfileMarketCap}
       />
 
       <div className={styles.layout}>
