@@ -36,6 +36,25 @@
   --focus: #7a5cff;
   --mono: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
   color-scheme: light;
+
+  /* Type scale — single source of truth, mode-agnostic. Must live in
+     :root so both light and dark resolve the same px values. */
+  --fs-xs:   0.625rem;   /* 10px — eyebrows, captions, fine print */
+  --fs-sm:   0.6875rem;  /* 11px — compact UI (table cells, small badges) */
+  --fs-base: 0.75rem;    /* 12px — default body */
+  --fs-md:   0.8125rem;  /* 13px — emphasized body, KPI values */
+  --fs-lg:   0.9375rem;  /* 15px — section titles, card eyebrow values */
+  --fs-xl:   1.25rem;    /* 20px — page subtitle, large stats */
+  --fs-2xl:  1.5rem;     /* 24px — page title */
+  --fs-3xl:  2rem;       /* 32px — hero / dashboard headline value */
+
+  --fw-regular:  400;
+  --fw-medium:   500;
+  --fw-semibold: 600;
+  --fw-bold:     700;
+
+  /* Numeric defaults — apply via .num for all price/change cells. */
+  --num-feature: "tnum" 1, "lnum" 1;
 }
 
 [data-theme="dark"] {
@@ -59,25 +78,6 @@
   --warning: #d9a341;
   --focus: #9d85ff;
   color-scheme: dark;
-
-  /* Type scale — single source of truth.
-     Use semantic tokens, not raw rem values, in component CSS. */
-  --fs-xs:   0.625rem;   /* 10px — eyebrows, captions, fine print */
-  --fs-sm:   0.6875rem;  /* 11px — compact UI (table cells, small badges) */
-  --fs-base: 0.75rem;    /* 12px — default body */
-  --fs-md:   0.8125rem;  /* 13px — emphasized body, KPI values */
-  --fs-lg:   0.9375rem;  /* 15px — section titles, card eyebrow values */
-  --fs-xl:   1.25rem;    /* 20px — page subtitle, large stats */
-  --fs-2xl:  1.5rem;     /* 24px — page title */
-  --fs-3xl:  2rem;       /* 32px — hero / dashboard headline value */
-
-  --fw-regular:  400;
-  --fw-medium:   500;
-  --fw-semibold: 600;
-  --fw-bold:     700;
-
-  /* Numeric defaults — apply via .num for all price/change cells. */
-  --num-feature: "tnum" 1, "lnum" 1;
 }
 
 .num {
