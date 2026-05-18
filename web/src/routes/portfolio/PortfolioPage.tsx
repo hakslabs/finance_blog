@@ -4,6 +4,7 @@ import { ActionNotice } from "../../components/interaction/ActionNotice";
 import { DetailPanel } from "../../components/interaction/DetailPanel";
 import { Badge } from "../../components/primitives/Badge";
 import { Card } from "../../components/primitives/Card";
+import { DataSource } from "../../components/primitives/DataSource";
 import { Skeleton } from "../../components/primitives/Skeleton";
 import { POSITION_THESES, type PositionThesis } from "../../fixtures/mypage";
 import { STOCK_LIST, type StockListItem } from "../../fixtures/stocks";
@@ -370,7 +371,11 @@ function ThesisBoard({
   onOpenTemplate: (symbol: string) => void;
 }) {
   return (
-    <Card title="투자 근거 / 현재 판단" eyebrow="Thesis + reaction memo">
+    <Card
+      title="투자 근거 / 현재 판단"
+      eyebrow="Thesis + reaction memo"
+      actions={<DataSource state="fixture" source="샘플 thesis" detail="position_theses 테이블 연결 예정" />}
+    >
       <div className={styles.thesisGrid}>
         {positions.map((position) => (
           <div key={position.id} className={styles.thesisCard}>

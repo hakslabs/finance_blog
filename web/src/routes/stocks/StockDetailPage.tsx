@@ -6,6 +6,7 @@ import { DetailPanel } from "../../components/interaction/DetailPanel";
 import { BackLink } from "../../components/primitives/BackLink";
 import { Card } from "../../components/primitives/Card";
 import { Badge } from "../../components/primitives/Badge";
+import { DataSource } from "../../components/primitives/DataSource";
 import { EmptyState } from "../../components/primitives/EmptyState";
 import { useInteractionActions } from "../../lib/interaction/useInteractionActions";
 import { useQuote } from "../../lib/useQuote";
@@ -204,7 +205,12 @@ function SimilarStocksSidebar({
       <Card
         title="종목 분석 한눈에"
         eyebrow="Market + sentiment + rates"
-        actions={<Link to="/analysis" className={styles.cardLink}>분석 열기</Link>}
+        actions={
+          <span className={styles.cardActions}>
+            <DataSource state="fixture" source="시장·심리 지표" />
+            <Link to="/analysis" className={styles.cardLink}>분석 열기</Link>
+          </span>
+        }
       >
         <button type="button" className={styles.analysisSnapshot} onClick={onOpenAnalysis}>
           <span>
@@ -226,7 +232,11 @@ function SimilarStocksSidebar({
         </button>
       </Card>
 
-      <Card title="유사 종목" eyebrow="섹터 · 상관계수">
+      <Card
+        title="유사 종목"
+        eyebrow="섹터 · 상관계수"
+        actions={<DataSource state="fixture" source="섹터 매핑" />}
+      >
         <div className={styles.similarList}>
           {detail.similarStocks.map((s) => (
             <div key={s.id} className={styles.similarRow}>
@@ -246,7 +256,10 @@ function SimilarStocksSidebar({
         </div>
       </Card>
 
-      <Card title="섹터 평균 대비">
+      <Card
+        title="섹터 평균 대비"
+        actions={<DataSource state="fixture" source="섹터 평균" detail="실제 섹터 데이터 미연결" />}
+      >
         <div className={styles.sectorAvgList}>
           {[
             ["PER", detail.keyStats.per, "34.2"],
