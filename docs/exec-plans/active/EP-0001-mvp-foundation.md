@@ -403,7 +403,25 @@ Each migration ships with RLS policies, grants, indexes, and `updated_at` trigge
 - [x] Verified live-data paths: PR-10 quote/chart (`useQuote` → Polygon), PR-11 portfolio (`usePortfolio`), PR-13 cron (`/v1/internal/cron/refresh-us-daily`, registered in `vercel.json`), PR-15 auth (`ProtectedRoute` + sign-in/out handlers), PR-16 interaction handlers (no dead-clicks on production paths), PR-18 schema bugfixes, PR-19 reference tables (`instrument_aliases` now actively used by PR-28).
 - [x] No code changes required; this PR is documentation-only.
 
-### PR-32 — Fix Marks/Pabrai 13F ingestion
+### PR-32 — ECOS Korean macro indicators
+
+- [x] Scope: Merge KR macro series into the existing `/v1/macros/indicators` endpoint via a new ECOS source. Three KR series sit next to the six FRED series (BOK base rate / KR CPI YoY / KR GDP growth). Falls through cleanly when `ECOS_API_KEY` (or `FRED_API_KEY`) is missing.
+- [x] Files: `api/app/sources/ecos.py`, `api/app/routes/macros.py`, `api/app/settings.py` (also pre-registers `dart_api_key` + `krx_api_key` for PR-33/34).
+- [x] Acceptance: Indicator strip shows BOK / KR-CPI / KR-GDP next to the US macros.
+
+### PR-33 — DART Korean filings on stock detail
+
+- [x] Scope: Extend `/v1/stocks/{symbol}/filings` to prefer DART when the symbol resolves to a KR instrument with a `corp_code`, falling through to SEC EDGAR otherwise.
+- [x] Files: `api/app/sources/dart.py`, `api/app/routes/stocks_extra.py`, `supabase/migrations/0016_kr_instruments_seed.sql` (seeds 10 core KR tickers with DART `corp_code`).
+- [x] Acceptance: Samsung `005930.KS` returns 20 recent DART disclosures; US symbols unchanged.
+
+### PR-34 — KRX KOSPI/KOSDAQ daily ingestion
+
+- [x] Scope: Mirror the Polygon grouped-daily pattern for the Korean market. One KRX OpenAPI call (`stk_bydd_trd`) covers the full KOSPI+KOSDAQ universe; we filter to tracked instruments and upsert `price_bars_daily` with `source='krx'`. Defaults to D-2 because KRX publishes EOD after the 3:30 PM KST close.
+- [x] Files: `api/app/sources/krx.py`, `api/app/jobs/refresh_kr_daily.py`, `/v1/internal/cron/refresh-kr-daily` route, `vercel.json` cron entry (10:00 UTC weekdays ≈ 07:00 KST). Companion cron commit also schedules `ingest-finnhub` every 6h and `ingest-13f` 06:00 UTC Mondays.
+- [x] Acceptance: 10/10 seeded KR tickers ingest live against remote. Stock detail charts for KR symbols now render real KRX OHLCV through the same `/v1/quotes` path as US tickers. Follow-up UI work (live KR fear/greed, breadth heatmap, volume bars, `/stocks` market switch, MTS-style row design with KR red/blue convention) was bundled with PR-34 and is live on the dashboard and `/stocks` list.
+
+### PR-35 — Fix Marks/Pabrai 13F ingestion
 
 - [x] Scope: Resolve the two masters left empty after PR-28 so all 8 seeded investors yield real holdings.
   - Migration `0020_pabrai_filer_cik_fix.sql` — swap Pabrai's `filer_cik` from `0001173334` (Mohnish Pabrai personal; last 13F-HR in 2012 as a pre-XML `.txt`) to `0001549575` (Dalal Street LLC, his active filing entity).
