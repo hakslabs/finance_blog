@@ -3,6 +3,9 @@ import { Card } from "../../../components/primitives/Card";
 import { ChartPlaceholder } from "../../../components/primitives/ChartPlaceholder";
 import { PriceChart } from "../../../components/primitives/PriceChart";
 import { VolumeBars } from "../../../components/primitives/VolumeBars";
+import { RSIChart } from "../../../components/primitives/RSIChart";
+import { MACDChart } from "../../../components/primitives/MACDChart";
+import { rsi14, macd } from "../../../lib/indicators";
 import type { StockDetail } from "../../../fixtures/stocks";
 import { useQuote } from "../../../lib/useQuote";
 import type { QuoteRange } from "../../../lib/api-client";
@@ -139,25 +142,62 @@ export function ChartSection({ detail }: ChartSectionProps) {
         )}
       </div>
 
-      <div className={styles.subPanel}>
-        <div className={styles.subPanelHeader}>
-          <span>RSI(14)</span>
-          <span className={`${styles.subPanelValue} ${styles.subNeutral}`}>
-            {activeIndicators.has("RSI") ? "58.6 · 중립" : "숨김"}
-          </span>
-        </div>
-        <ChartPlaceholder label="RSI(14) 지표" height={50} />
-      </div>
-
-      <div className={styles.subPanel}>
-        <div className={styles.subPanelHeader}>
-          <span>MACD (12,26,9)</span>
-          <span className={`${styles.subPanelValue} ${styles.subPositive}`}>
-            {activeIndicators.has("MACD") ? "MACD 0.42 · Signal 0.28" : "숨김"}
-          </span>
-        </div>
-        <ChartPlaceholder label="MACD 지표" height={50} />
-      </div>
+{(() => {
+        const bars = state.status === "ready" ? state.quote.bars : [];
+        const closes = bars.map((b) => b.c);
+        const rsiSeries = closes.length >= 16 ? rsi14(closes) : [];
+        const lastRsi = (() => {
+          for (let i = rsiSeries.length - 1; i >= 0; i--) {
+            const v = rsiSeries[i];
+            if (v != null) return v;
+          }
+          return null;
+        })();
+        const rsiLabel = lastRsi != null
+          ? `${lastRsi.toFixed(1)} · ${lastRsi >= 70 ? "과매수" : lastRsi <= 30 ? "과매도" : "중립"}`
+          : "데이터 부족";
+        const macdSeries = closes.length >= 30 ? macd(closes) : [];
+        const lastM = (() => {
+          for (let i = macdSeries.length - 1; i >= 0; i--) {
+            if (macdSeries[i].macd != null && macdSeries[i].signal != null) return macdSeries[i];
+          }
+          return null;
+        })();
+        const macdLabel = lastM && lastM.macd != null && lastM.signal != null
+          ? `MACD ${(lastM.macd as number).toFixed(2)} · Signal ${(lastM.signal as number).toFixed(2)}`
+          : "데이터 부족";
+        const macdTone = lastM && lastM.hist != null && (lastM.hist as number) >= 0 ? styles.subPositive : styles.subNeutral;
+        return (
+          <>
+            <div className={styles.subPanel}>
+              <div className={styles.subPanelHeader}>
+                <span>RSI(14)</span>
+                <span className={`${styles.subPanelValue} ${styles.subNeutral}`}>
+                  {activeIndicators.has("RSI") ? rsiLabel : "숨김"}
+                </span>
+              </div>
+              {activeIndicators.has("RSI") && bars.length >= 16 ? (
+                <RSIChart bars={bars} height={60} ariaLabel={`${detail.symbol} RSI(14)`} />
+              ) : (
+                <ChartPlaceholder label="RSI(14) 지표" height={50} />
+              )}
+            </div>
+            <div className={styles.subPanel}>
+              <div className={styles.subPanelHeader}>
+                <span>MACD (12,26,9)</span>
+                <span className={`${styles.subPanelValue} ${macdTone}`}>
+                  {activeIndicators.has("MACD") ? macdLabel : "숨김"}
+                </span>
+              </div>
+              {activeIndicators.has("MACD") && bars.length >= 30 ? (
+                <MACDChart bars={bars} height={70} ariaLabel={`${detail.symbol} MACD`} />
+              ) : (
+                <ChartPlaceholder label="MACD 지표" height={50} />
+              )}
+            </div>
+          </>
+        );
+      })()}
     </Card>
   );
 }
