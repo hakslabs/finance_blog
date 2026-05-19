@@ -4,23 +4,27 @@ Index of `web/client/src/`. Read this before adding or wiring a new file. When a
 
 ## Routes → Pages → Backend
 
-Defined in `App.tsx`. Each page consumes only its own typed feature hooks; cross-domain composition is in the page.
+Defined in `App.tsx` (each page is `React.lazy`-loaded so it ships as its own JS chunk under a single `<Suspense>` boundary). Cross-domain composition happens in the page; feature modules stay isolated.
 
 | Route                  | Page                       | Feature modules used                                          | Backend endpoints                                              |
 | ---------------------- | -------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------- |
-| `/`                    | `pages/Home.tsx`           | `news`, `events`, `macros`, `movers`, `market`, `notices`     | `/v1/news`, `/v1/events/economic`, `/v1/macros/indicators`, `/v1/movers`, `/v1/market/breadth`, `/v1/notices` |
+| `/`                    | `pages/Home.tsx`           | `notices`, `sentiment`, `market`, `macros`, `movers`, `news`, `events` | `/v1/notices`, `/v1/sentiment/fear-greed`, `/v1/market/breadth`, `/v1/macros/indicators`, `/v1/movers`, `/v1/news`, `/v1/events/economic` |
 | `/news`                | `pages/News.tsx`           | `news`                                                        | `/v1/news`                                                     |
 | `/calendar`            | `pages/Calendar.tsx`       | `events`                                                      | `/v1/events/economic`                                          |
+| `/analysis`            | `pages/Analysis.tsx`       | `macros`, `market`, `sentiment`                               | `/v1/macros/indicators`, `/v1/market/breadth`, `/v1/sentiment/fear-greed` |
 | `/masters`             | `pages/Masters.tsx`        | `masters`                                                     | `/v1/masters`                                                  |
 | `/masters/:id`         | `pages/MasterDetail.tsx`   | `masters`                                                     | `/v1/masters/:slug`, `/v1/masters/:slug/holdings`              |
 | `/stocks`              | `pages/Stocks.tsx`         | `movers`                                                      | `/v1/movers`                                                   |
-| `/stocks/:ticker`      | `pages/StockDetail.tsx`    | (not yet wired — uses `lib/data` mock)                        | future: `/v1/quotes/:symbol`, `/v1/stocks/:symbol`             |
+| `/stocks/:ticker`      | `pages/StockDetail.tsx`    | `quotes`, `stocks`                                            | `/v1/quotes/:symbol`, `/v1/stocks/:symbol/{profile,consensus,holders,next-earning}` |
 | `/reports`             | `pages/Reports.tsx`        | `reports`                                                     | `/v1/reports`                                                  |
-| `/learn`               | `pages/Learn.tsx`          | (mock only)                                                   | future: `/v1/learn`                                            |
-| `/learn/:id`           | `pages/LearnDetail.tsx`    | (mock only)                                                   | future: `/v1/learn/:id`                                        |
-| `/analysis`            | `pages/Analysis.tsx`       | (mock only — sectors/macros, partial)                         | future: `/v1/market/sectors`, `/v1/macros/indicators`          |
-| `/mypage`              | `pages/MyPage.tsx`         | (localStorage via contexts; consumes mock `MASTERS` for cross-ref) | auth-required `/v1/portfolios/me`, `/v1/watchlists/me` (pending) |
-| `/admin`               | `pages/Admin.tsx`          | (mock only)                                                   | future: admin endpoints                                        |
+| `/reports/:id`         | `pages/ReportDetail.tsx`   | `reports`                                                     | `/v1/reports/:id`                                              |
+| `/learn`               | `pages/Learn.tsx`          | (none — preview page until backend exists)                    | future: `/v1/learn`                                            |
+| `/learn/:id`           | `pages/LearnDetail.tsx`    | (none — preview page until backend exists)                    | future: `/v1/learn/:id`                                        |
+| `/mypage`              | `pages/MyPage.tsx`         | `masters`, `reports` (BookmarksTab lookup); contexts for the other tabs | future: `/v1/portfolios/me`, `/v1/watchlists/me`               |
+| `/portfolio`           | `pages/Portfolio.tsx`      | (auth-required placeholder)                                   | future: `/v1/portfolios/me`                                    |
+| `/admin`               | `pages/Admin.tsx`          | (mock fixtures — not surfaced in nav)                         | future: admin endpoints                                        |
+
+Layout (`components/Layout.tsx`) reads two feature modules directly: `movers` (top scrolling ticker bar) and `notices` (bell dropdown).
 
 ## Feature Modules (`features/<domain>/`)
 
@@ -30,27 +34,27 @@ Each module owns three files plus a barrel `index.ts`:
 - `service.ts`   — thin fetcher wrappers around `lib/http.apiGet`, return unwrapped payload.
 - `use-<domain>.ts` — React hooks returning `{ data, loading, error }`.
 
-Live modules (all wired to real data on production):
+All 11 modules below are wired to real production data:
 
-| Module      | Hooks                                            | Backend                                                |
-| ----------- | ------------------------------------------------ | ------------------------------------------------------ |
-| `masters/`  | `useMastersList`, `useMasterDetail`, `useMasterHoldings` | `/v1/masters[, /:slug, /:slug/holdings]`       |
-| `news/`     | `useNewsList`                                    | `/v1/news`                                             |
-| `reports/`  | `useReportsList`, `useReportDetail`              | `/v1/reports[, /:id]`                                  |
-| `events/`   | `useEconomicEvents`                              | `/v1/events/economic`                                  |
-| `movers/`   | `useMovers`                                      | `/v1/movers`                                           |
-| `macros/`   | `useMacroIndicators`                             | `/v1/macros/indicators`                                |
-| `market/`   | `useBreadth`                                     | `/v1/market/breadth`                                   |
-| `notices/`  | `useNotices`                                     | `/v1/notices`                                          |
+| Module       | Hooks                                                              | Backend                                                |
+| ------------ | ------------------------------------------------------------------ | ------------------------------------------------------ |
+| `masters/`   | `useMastersList`, `useMasterDetail`, `useMasterHoldings`           | `/v1/masters[, /:slug, /:slug/holdings]`               |
+| `news/`      | `useNewsList`                                                      | `/v1/news`                                             |
+| `reports/`   | `useReportsList`, `useReportDetail`                                | `/v1/reports[, /:id]`                                  |
+| `events/`    | `useEconomicEvents`                                                | `/v1/events/economic`                                  |
+| `movers/`    | `useMovers`                                                        | `/v1/movers`                                           |
+| `macros/`    | `useMacroIndicators`                                               | `/v1/macros/indicators`                                |
+| `market/`    | `useBreadth`                                                       | `/v1/market/breadth`                                   |
+| `notices/`   | `useNotices`                                                       | `/v1/notices`                                          |
+| `sentiment/` | `useFearGreed`                                                     | `/v1/sentiment/fear-greed`                             |
+| `quotes/`    | `useQuote(symbol, range)`                                          | `/v1/quotes/:symbol?range=`                            |
+| `stocks/`    | `useStockProfile`, `useStockConsensus`, `useStockHolders`, `useStockNextEarning` | `/v1/stocks/:symbol/{profile,consensus,holders,next-earning}` |
 
-Pending modules (backend exists, frontend not yet wired):
+Pending modules (backend exists, frontend wiring requires Supabase JWT in `localStorage.supabase_jwt`):
 
-- `quotes/`     → `/v1/quotes/:symbol` (auth required) — for StockDetail.
-- `portfolios/` → `/v1/portfolios/me` (auth required) — for MyPage / Portfolio.
-- `watchlists/` → `/v1/watchlists/me` (auth required) — for MyPage / Home watchlist.
-- `holders/`    → `/v1/holders/:symbol/holders` — for StockDetail holder breakdown.
-- `sentiment/`  → `/v1/sentiment/...` — for Analysis page.
-- `activity/`   → `/v1/activity/...` — for activity feed.
+- `watchlists/` → `/v1/watchlists/me` — for MyPage WatchlistTab + Home watchlist row.
+- `portfolios/` → `/v1/portfolios/me` — for Portfolio page.
+- `activity/`   → `/v1/activity` — for activity feed.
 
 ## Contexts (`contexts/`)
 
@@ -68,15 +72,16 @@ LocalStorage-backed user-private state. These remain until a backend domain repl
 
 - `http.ts` — `apiGet`, `ApiError`. Adds `Authorization` from `localStorage.supabase_jwt` when present. Single source of fetch behavior.
 - `utils.ts` — `cn()` Tailwind class composer (shadcn convention).
-- `data.ts` — legacy; only used by `StockDetail.tsx` and `Stocks.tsx` historical helpers. Slated for removal as those pages migrate to real data.
+
+`lib/data.ts` was deleted (no callers after Portfolio / Stocks / StockDetail migrated).
 
 ## services/
 
-- `mockData.ts` — legacy. Currently still exports `MASTERS`, `REPORTS`, `LEARN_GUIDES`, etc. only because `MyPage.tsx` cross-references them. Each export disappears as its consumer migrates.
+- `mockData.ts` — trimmed to ~40 lines. Only `US_STOCKS` + `KR_STOCKS` remain, consumed by MyPage's WatchlistTab and AddTradeModal autocomplete. File header notes it dies when `/v1/search?q=` lands.
 
 ## components/
 
-- `Layout.tsx`     — app shell (sidebar, top bar). Used by App route tree.
+- `Layout.tsx`     — app shell (sidebar, top bar, scrolling movers ticker, notices dropdown). Reads `features/movers` and `features/notices`.
 - `ErrorBoundary.tsx` — top-level boundary; report-on-error UI.
 - `ManusDialog.tsx`, `Map.tsx` — feature-specific primitives; safe to leave until called out.
 - `ui/` — shadcn components. Do not modify in place; if a variant is needed, add a wrapper.

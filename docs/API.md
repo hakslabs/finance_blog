@@ -255,7 +255,14 @@ These power the live dashboard and listing pages. The full Pydantic shape is the
 | `GET /v1/macros/indicators`            | `{ indicators }` | `series_id, label, country_code, unit, date, value, previous_value, change` | Home macro card             |
 | `GET /v1/movers?market=&limit=`        | -               | `market, items[{rank, symbol, name, market, last, change, change_pct, volume}]` | Stocks, Home movers cards |
 | `GET /v1/market/breadth?market=`       | -               | `market, score, rising, falling, flat, total, cells[{symbol, name, change_pct, last}]` | Home breadth heatmap     |
-| `GET /v1/notices`                      | `{ items }`     | `id, tag, title, description, url, starts_at, ends_at, is_pinned`      | Home pinned strip                |
+| `GET /v1/notices`                      | `{ items }`     | `id, tag, title, description, url, starts_at, ends_at, is_pinned`      | Home pinned strip, Layout notification bell |
+| `GET /v1/sentiment/fear-greed`         | `{ items }`     | `market, market_code, value, label, previous_close/1_week/1_month/1_year, timestamp` | Home + Analysis sentiment cards |
+| `GET /v1/reports/:id`                  | `{ report }`    | summary fields + `summary, body_url`                                   | ReportDetail                     |
+| `GET /v1/quotes/:symbol?range=`        | -               | `symbol, currency, last, change, change_pct, as_of, bars[OHLCV], last_refreshed_at, stale` | StockDetail price chart |
+| `GET /v1/stocks/:symbol/profile`       | -               | `symbol, profile{name,country,currency,exchange,industry,ipo,market_cap,share_outstanding,logo,weburl,phone}, metrics{pe_ttm,pb,roe_ttm,dividend_yield,beta,week52_high/low,current_ratio,debt_equity,eps_ttm,revenue_per_share_ttm}` | StockDetail header + valuation grid |
+| `GET /v1/stocks/:symbol/consensus`     | -               | `symbol, recommendations[{period,strong_buy,buy,hold,sell,strong_sell}]` | StockDetail analyst stacked bar |
+| `GET /v1/stocks/:symbol/holders`       | -               | `symbol, items[{filer_name, master_slug, filed_at, shares, market_value, weight_pct, position_kind}]` | StockDetail master holders panel |
+| `GET /v1/stocks/:symbol/next-earning`  | -               | `symbol, next{date,hour,eps_estimate,revenue_estimate,year,quarter}`   | StockDetail next-earnings card   |
 
 ## Adding A New Endpoint
 
