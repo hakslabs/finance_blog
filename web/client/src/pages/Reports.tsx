@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { FileText, Loader2, Search } from "lucide-react";
+import { Link } from "wouter";
+import { ChevronRight, FileText, Loader2, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { useReportsList } from "@/features/reports";
@@ -121,27 +122,36 @@ export default function Reports() {
 
 function ReportRow({ report }: { report: ReportSummary }) {
   return (
-    <li className="rounded-lg border border-border/60 bg-card/60 hover:bg-card hover:border-violet-500/30 transition-colors p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-medium leading-snug">{report.title}</h3>
-          <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-muted-foreground">
-            <span className="font-mono uppercase">{report.source}</span>
-            {report.category && (
-              <Badge variant="outline" className="text-[10px]">
-                {report.category}
-              </Badge>
-            )}
-            {report.language && (
-              <span className="font-mono uppercase text-muted-foreground">
-                {report.language}
-              </span>
-            )}
-            {report.published_at && <span>· {report.published_at}</span>}
+    <li>
+      <Link href={`/reports/${report.id}`}>
+        <div className="group rounded-lg border border-border/60 bg-card/60 hover:bg-card hover:border-violet-500/30 transition-colors p-4 cursor-pointer">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-medium leading-snug group-hover:text-violet-400 transition-colors">
+                {report.title}
+              </h3>
+              <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-muted-foreground">
+                <span className="font-mono uppercase">{report.source}</span>
+                {report.category && (
+                  <Badge variant="outline" className="text-[10px]">
+                    {report.category}
+                  </Badge>
+                )}
+                {report.language && (
+                  <span className="font-mono uppercase text-muted-foreground">
+                    {report.language}
+                  </span>
+                )}
+                {report.published_at && <span>· {report.published_at}</span>}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {importanceBadge(report.importance)}
+              <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-violet-400 transition-colors" />
+            </div>
           </div>
         </div>
-        <div className="flex-shrink-0">{importanceBadge(report.importance)}</div>
-      </div>
+      </Link>
     </li>
   );
 }

@@ -25,6 +25,7 @@ const MasterDetail = lazy(() => import("./pages/MasterDetail"));
 const Stocks = lazy(() => import("./pages/Stocks"));
 const StockDetail = lazy(() => import("./pages/StockDetail"));
 const Reports = lazy(() => import("./pages/Reports"));
+const ReportDetail = lazy(() => import("./pages/ReportDetail"));
 const Learn = lazy(() => import("./pages/Learn"));
 const LearnDetail = lazy(() => import("./pages/LearnDetail"));
 const MyPage = lazy(() => import("./pages/MyPage"));
@@ -54,6 +55,7 @@ function Router() {
           <Route path="/stocks" component={Stocks} />
           <Route path="/stocks/:ticker" component={StockDetail} />
           <Route path="/reports" component={Reports} />
+          <Route path="/reports/:id" component={ReportDetail} />
           <Route path="/learn" component={Learn} />
           <Route path="/learn/:id" component={LearnDetail} />
           <Route path="/mypage" component={MyPage} />

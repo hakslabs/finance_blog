@@ -10,8 +10,7 @@ export interface ReportSummary {
 
 export interface ReportDetail extends ReportSummary {
   summary: string | null;
-  url: string | null;
-  tags: string[];
+  body_url: string | null;
 }
 
 export interface ReportListResponse {
