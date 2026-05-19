@@ -23,6 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useQuote } from "@/features/quotes";
 import type { QuoteRange } from "@/features/quotes";
+import { useNewsList } from "@/features/news";
 import {
   useStockConsensus,
   useStockHolders,
@@ -70,6 +71,7 @@ export default function StockDetail() {
   const { data: consensus } = useStockConsensus(ticker);
   const { data: holders } = useStockHolders(ticker);
   const { data: nextEarning } = useStockNextEarning(ticker);
+  const { data: relatedNews } = useNewsList({ symbol: ticker, limit: 6 });
 
   const chartData = useMemo(
     () =>
@@ -315,6 +317,32 @@ export default function StockDetail() {
 
         {/* Analyst consensus */}
         <ConsensusCard rows={consensus?.recommendations ?? null} />
+
+        {/* Related news */}
+        {relatedNews && relatedNews.length > 0 && (
+          <section>
+            <h2 className="text-xs font-mono uppercase tracking-wide text-muted-foreground mb-2">
+              관련 뉴스
+            </h2>
+            <ul className="space-y-2">
+              {relatedNews.map((n) => (
+                <li key={n.id} className="rounded-lg border border-border/60 bg-card/40 p-3 hover:bg-card/60 transition-colors">
+                  <a
+                    href={n.url ?? "#"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block"
+                  >
+                    <p className="text-xs font-medium leading-snug line-clamp-2">{n.title}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono mt-1">
+                      {n.source} · {(n.published_at ?? "").slice(0, 16).replace("T", " ")}
+                    </p>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
     </div>
   );

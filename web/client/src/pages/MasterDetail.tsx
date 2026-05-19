@@ -240,34 +240,45 @@ export default function MasterDetail() {
                       </tr>
                     </thead>
                     <tbody>
-                      {holdings.holdings.map((h) => (
-                        <tr
-                          key={h.instrument_id}
-                          className="border-t border-border/40 hover:bg-card/40"
-                        >
-                          <td className="px-3 py-2">
-                            <div className="font-mono">{h.symbol ?? "—"}</div>
-                            {h.name && (
-                              <div className="text-[10px] text-muted-foreground">
-                                {h.name}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 text-right font-mono">
-                            {h.shares.toLocaleString()}
-                          </td>
-                          <td className="px-3 py-2 text-right font-mono">
-                            {h.market_value
-                              ? `$${(h.market_value / 1e6).toFixed(1)}M`
-                              : "—"}
-                          </td>
-                          <td className="px-3 py-2 text-right font-mono">
-                            {h.weight_pct != null
-                              ? `${h.weight_pct.toFixed(2)}%`
-                              : "—"}
-                          </td>
-                        </tr>
-                      ))}
+                      {holdings.holdings.map((h) => {
+                        const symbolCell = h.symbol ? (
+                          <Link href={`/stocks/${h.symbol}`}>
+                            <span className="font-mono text-emerald-400 hover:underline cursor-pointer">
+                              {h.symbol}
+                            </span>
+                          </Link>
+                        ) : (
+                          <span className="font-mono text-muted-foreground">—</span>
+                        );
+                        return (
+                          <tr
+                            key={h.instrument_id}
+                            className="border-t border-border/40 hover:bg-card/40"
+                          >
+                            <td className="px-3 py-2">
+                              <div>{symbolCell}</div>
+                              {h.name && (
+                                <div className="text-[10px] text-muted-foreground">
+                                  {h.name}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono">
+                              {h.shares.toLocaleString()}
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono">
+                              {h.market_value
+                                ? `$${(h.market_value / 1e6).toFixed(1)}M`
+                                : "—"}
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono">
+                              {h.weight_pct != null
+                                ? `${h.weight_pct.toFixed(2)}%`
+                                : "—"}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
