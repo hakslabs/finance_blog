@@ -3,8 +3,10 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import List, Literal, Optional
 
+from typing import Annotated
+
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 ROOT_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
@@ -30,7 +32,7 @@ class Settings(BaseSettings):
         alias="LOG_LEVEL",
     )
     api_version: str = Field(default_factory=_api_version)
-    cors_origins: List[str] = Field(
+    cors_origins: Annotated[List[str], NoDecode] = Field(
         default=[
             "http://localhost:5173",
             "http://127.0.0.1:5173",
@@ -56,7 +58,9 @@ class Settings(BaseSettings):
     krx_api_key: Optional[str] = Field(default=None, alias="KRX_API_KEY")
     sec_user_agent: Optional[str] = Field(default=None, alias="SEC_USER_AGENT")
     cron_secret: Optional[str] = Field(default=None, alias="CRON_SECRET")
-    admin_emails: List[str] = Field(default_factory=list, alias="VITE_ADMIN_EMAILS")
+    admin_emails: Annotated[List[str], NoDecode] = Field(
+        default_factory=list, alias="VITE_ADMIN_EMAILS"
+    )
 
     @field_validator("admin_emails", "cors_origins", mode="before")
     @classmethod
