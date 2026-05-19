@@ -338,11 +338,27 @@ function NotificationButton() {
 // ── Header ────────────────────────────────────────────────────
 function Header({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
 
   const currentPage = NAV_ITEMS.find(item =>
     item.path === location || (item.path !== "/" && location.startsWith(item.path))
   );
+
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (!q) return;
+    const isLower = /^[a-z]/.test(q);
+    if (isLower) {
+      // looks like a master slug (e.g. "buffett", "klarman")
+      navigate(`/masters/${q}`);
+    } else {
+      // ticker-like — uppercase and route to stock detail
+      const symbol = q.replace(/\s+/g, "").toUpperCase();
+      navigate(`/stocks/${encodeURIComponent(symbol)}`);
+    }
+    setSearchQuery("");
+  };
 
   return (
     <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center px-4 gap-3 sticky top-0 z-30">
@@ -359,12 +375,12 @@ function Header({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
         )}
       </div>
 
-      <div className="flex-1 max-w-md mx-auto">
+      <form onSubmit={submitSearch} className="flex-1 max-w-md mx-auto">
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             type="search"
-            placeholder="종목 / 리포트 / 고수 검색…"
+            placeholder="종목(AAPL) 또는 거장(buffett) 검색 후 Enter"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-8 pl-8 pr-3 text-sm bg-muted/50 border border-border rounded-lg
@@ -372,7 +388,7 @@ function Header({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
               placeholder:text-muted-foreground transition-all duration-150"
           />
         </div>
-      </div>
+      </form>
 
       <div className="flex items-center gap-1">
         <ThemeToggle />
