@@ -1,3 +1,7 @@
 export * from "./types";
 export { mastersService } from "./service";
-export { useMastersList, useMasterDetail } from "./use-masters";
+export {
+  useMastersList,
+  useMasterDetail,
+  useMasterHoldings,
+} from "./use-masters";
