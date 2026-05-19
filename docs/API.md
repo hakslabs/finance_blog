@@ -240,11 +240,30 @@ Errors: `401 unauthenticated`, `503 upstream_unavailable`.
 
 ---
 
+## Public Read Endpoints (no auth)
+
+These power the live dashboard and listing pages. The full Pydantic shape is the source of truth in `api/app/models/<domain>.py`; the frontend mirrors it in `web/client/src/features/<domain>/types.ts`. Each endpoint below lists its envelope key and the shape's most-load-bearing fields.
+
+| Method · Path                          | Envelope        | Fields (load-bearing)                                                  | Frontend consumer                |
+| -------------------------------------- | --------------- | ---------------------------------------------------------------------- | -------------------------------- |
+| `GET /v1/masters`                      | `{ masters }`   | `id, slug, name, firm, country_code, style, aum, aum_currency`         | Masters                          |
+| `GET /v1/masters/{slug}`               | `{ master }`    | summary + `description, homepage_url, filer_cik, principles[], books[], strategies[]` | MasterDetail            |
+| `GET /v1/masters/{slug}/holdings?limit=` | -             | `slug, period_end, filed_at, holdings[{instrument_id, symbol, name, shares, market_value, weight_pct}]` | MasterDetail / holdings tab |
+| `GET /v1/news?limit=&symbol=`          | `{ items }`     | `id, source, title, summary, url, language, published_at, related_symbols[]` | News, Home news card     |
+| `GET /v1/reports?category=&limit=`     | `{ reports }`   | `id, source, title, category, published_at, language, importance`      | Reports                          |
+| `GET /v1/events/economic?from=&to=&country=` | `{ items }` | `time, country, event, impact, actual, estimate, prev, unit`         | Calendar, Home events card       |
+| `GET /v1/macros/indicators`            | `{ indicators }` | `series_id, label, country_code, unit, date, value, previous_value, change` | Home macro card             |
+| `GET /v1/movers?market=&limit=`        | -               | `market, items[{rank, symbol, name, market, last, change, change_pct, volume}]` | Stocks, Home movers cards |
+| `GET /v1/market/breadth?market=`       | -               | `market, score, rising, falling, flat, total, cells[{symbol, name, change_pct, last}]` | Home breadth heatmap     |
+| `GET /v1/notices`                      | `{ items }`     | `id, tag, title, description, url, starts_at, ends_at, is_pinned`      | Home pinned strip                |
+
 ## Adding A New Endpoint
 
-1. Add a section to this file with method, path, auth, params, success shape, error shape.
+1. Add a row (or full section for non-trivial shapes) to this file: method, path, auth, params, response envelope + fields.
 2. Add the Pydantic model in `api/app/models/` and the route in `api/app/routes/`.
-3. Add a typed wrapper in `web/src/lib/api-client.ts`.
-4. The PR description must link to the section here.
+3. Mirror the response shape in `web/client/src/features/<domain>/types.ts`.
+4. Add a typed wrapper in `web/client/src/features/<domain>/service.ts` and hooks in `use-<domain>.ts`.
+5. Page consumes the hooks. No direct `fetch` from pages. No adapter glue between backend and page shapes.
+6. The PR description must link to the row/section here.
 
 If the frontend and backend disagree on a field, fix this doc first, then both sides.
