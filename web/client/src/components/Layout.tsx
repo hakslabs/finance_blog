@@ -12,14 +12,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   Home, BarChart2, Newspaper, Users, FileText, BookOpen,
   User, Sun, Moon, Menu, ChevronLeft, ChevronRight, Calendar, Search,
-  TrendingUp, TrendingDown, Activity, Bell, Shield,
-  LogOut, Settings
+  TrendingUp, TrendingDown, Activity, Bell,
+  LogOut
 } from "lucide-react";
+import { useNotices } from "@/features/notices";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-const ADMIN_EMAILS = ["admin@financelab.pro", "superadmin@financelab.pro"];
+// Admin nav remains conditional on a real Supabase-issued admin claim. Until
+// that's wired we keep the entry hidden — no client-side email allowlist.
 
 const NAV_ITEMS = [
   { path: "/", icon: Home, label: "홈", sublabel: "Dashboard" },
@@ -91,42 +93,23 @@ function ThemeToggle() {
 
 // ── User Menu ─────────────────────────────────────────────────
 function UserMenu() {
-  const { user, login, logout } = useAuth();
+  const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const [, navigate] = useLocation();
 
   if (!user) {
     return (
-      <div className="relative">
-        <Button
-          size="sm"
-          className="h-8 text-xs font-medium gap-1.5"
-          onClick={() => setOpen(!open)}
-        >
-          <User size={13} /> 로그인
-        </Button>
-        {open && (
-          <div className="absolute right-0 top-10 w-52 bg-card border border-border rounded-xl shadow-xl z-50 p-2">
-            <p className="text-xs text-muted-foreground px-3 py-2">Google 계정으로 로그인</p>
-            <button
-              onClick={() => { login("user@example.com"); setOpen(false); toast.success("로그인 완료"); }}
-              className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-muted transition-colors"
-            >
-              일반 사용자로 로그인 (데모)
-            </button>
-            <button
-              onClick={() => { login("admin@financelab.pro"); setOpen(false); toast.success("관리자 로그인 완료"); }}
-              className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-muted transition-colors text-primary"
-            >
-              어드민으로 로그인 (데모)
-            </button>
-          </div>
-        )}
-      </div>
+      <Button
+        size="sm"
+        variant="outline"
+        disabled
+        className="h-8 text-xs font-medium gap-1.5 cursor-not-allowed opacity-70"
+        title="Supabase 인증 연결 예정"
+      >
+        <User size={13} /> 로그인 (준비중)
+      </Button>
     );
   }
-
-  const isAdmin = ADMIN_EMAILS.includes(user.email);
 
   return (
     <div className="relative">
@@ -146,11 +129,6 @@ function UserMenu() {
             <div className="px-3 py-2 border-b border-border mb-1">
               <div className="text-sm font-semibold">{user.name}</div>
               <div className="text-xs text-muted-foreground">{user.email}</div>
-              {isAdmin && (
-                <div className="flex items-center gap-1 mt-1 text-[10px] text-primary">
-                  <Shield size={9} /> 관리자
-                </div>
-              )}
             </div>
             <button
               onClick={() => { navigate("/mypage"); setOpen(false); }}
@@ -158,14 +136,6 @@ function UserMenu() {
             >
               <User size={13} className="text-muted-foreground" /> 마이페이지
             </button>
-            {isAdmin && (
-              <button
-                onClick={() => { navigate("/admin"); setOpen(false); }}
-                className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-muted transition-colors flex items-center gap-2 text-primary"
-              >
-                <Shield size={13} /> 어드민
-              </button>
-            )}
             <div className="border-t border-border mt-1 pt-1">
               <button
                 onClick={() => { logout(); setOpen(false); toast.info("로그아웃 완료"); }}
@@ -191,13 +161,8 @@ interface SidebarProps {
 
 function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
   const [location] = useLocation();
-  const { user } = useAuth();
-  const isAdmin = user && ADMIN_EMAILS.includes(user.email);
-
-  const navItems = [
-    ...NAV_ITEMS,
-    ...(isAdmin ? [{ path: "/admin", icon: Shield, label: "어드민", sublabel: "Admin" }] : []),
-  ];
+  // Admin nav stays hidden until real auth is wired.
+  const navItems = NAV_ITEMS;
 
   return (
     <>
@@ -223,8 +188,8 @@ function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProp
                 <Activity size={14} className="text-primary-foreground" />
               </div>
               <div className="min-w-0">
-                <div className="font-bold text-sm leading-tight text-sidebar-foreground font-['Outfit']">FinanceLab</div>
-                <div className="text-[10px] text-muted-foreground leading-tight">Pro Workspace</div>
+                <div className="font-bold text-sm leading-tight text-sidebar-foreground font-['Outfit']">Finance Lab</div>
+                <div className="text-[10px] text-muted-foreground leading-tight">Investing Workspace</div>
               </div>
             </Link>
           )}
@@ -282,22 +247,11 @@ function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProp
 }
 
 // ── Notification Button ──────────────────────────────────────
-const MOCK_NOTIFICATIONS = [
-  { id: 1, type: "alert", title: "NVDA 목표가 도달", body: "NVDA가 설정한 목표가 $950에 도달했습니다.", time: "5분 전", read: false },
-  { id: 2, type: "report", title: "새 리포트 등록", body: "버크셔 Q1 2025 13F 보고서가 등록되었습니다.", time: "1시간 전", read: false },
-  { id: 3, type: "master", title: "워런 버핏 포트폴리오 변화", body: "AAPL 비중 추가 축소 감지 (Q1 2025)", time: "3시간 전", read: true },
-  { id: 4, type: "market", title: "한국장 개장", body: "KOSPI 오전 9시 정규장 개장", time: "오전 9:00", read: true },
-];
-
 function NotificationButton() {
   const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  const markAllRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    toast.success("모든 알림을 읽음 처리했습니다");
-  };
+  const { data, loading } = useNotices();
+  const items = data ?? [];
+  const count = items.length;
 
   return (
     <div className="relative">
@@ -306,11 +260,12 @@ function NotificationButton() {
         size="icon"
         className="h-8 w-8 relative"
         onClick={() => setOpen(!open)}
+        title="공지사항"
       >
         <Bell size={16} />
-        {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 w-4 h-4 bg-destructive rounded-full text-[9px] text-white flex items-center justify-center font-bold">
-            {unreadCount}
+        {count > 0 && (
+          <span className="absolute top-1 right-1 w-4 h-4 bg-primary rounded-full text-[9px] text-primary-foreground flex items-center justify-center font-bold">
+            {count}
           </span>
         )}
       </Button>
@@ -319,50 +274,59 @@ function NotificationButton() {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-10 w-80 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold">알림</span>
-                {unreadCount > 0 && (
-                  <span className="text-[10px] bg-destructive text-white rounded-full px-1.5 py-0.5 font-bold">{unreadCount}</span>
-                )}
-              </div>
-              <button onClick={markAllRead} className="text-xs text-primary hover:underline">모두 읽음</button>
-            </div>
-            <div className="max-h-80 overflow-y-auto">
-              {notifications.length === 0 ? (
-                <div className="py-8 text-center text-sm text-muted-foreground">알림이 없습니다</div>
-              ) : (
-                notifications.map(n => (
-                  <div
-                    key={n.id}
-                    onClick={() => setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x))}
-                    className={cn(
-                      "flex items-start gap-3 px-4 py-3 border-b border-border/50 last:border-0 cursor-pointer transition-colors hover:bg-muted/30",
-                      !n.read && "bg-primary/5"
-                    )}
-                  >
-                    <div className={cn(
-                      "w-2 h-2 rounded-full mt-1.5 flex-shrink-0",
-                      n.type === "alert" ? "bg-down" :
-                      n.type === "report" ? "bg-primary" :
-                      n.type === "master" ? "bg-gold" : "bg-up"
-                    )} />
-                    <div className="flex-1 min-w-0">
-                      <div className={cn("text-sm font-medium leading-tight", !n.read && "text-foreground", n.read && "text-muted-foreground")}>{n.title}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5 leading-snug">{n.body}</div>
-                      <div className="text-[10px] text-muted-foreground/60 mt-1">{n.time}</div>
-                    </div>
-                    {!n.read && <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />}
-                  </div>
-                ))
+              <span className="text-sm font-semibold">공지사항</span>
+              {count > 0 && (
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  {count}건
+                </span>
               )}
             </div>
-            <div className="px-4 py-2.5 border-t border-border">
-              <button
-                onClick={() => { setOpen(false); toast.info("마이페이지 > 알람 탭에서 전체 알림을 관리할 수 있습니다"); }}
-                className="w-full text-xs text-center text-primary hover:underline"
-              >
-                전체 알림 보기 →
-              </button>
+            <div className="max-h-80 overflow-y-auto">
+              {loading ? (
+                <div className="py-8 text-center text-xs text-muted-foreground">
+                  불러오는 중…
+                </div>
+              ) : items.length === 0 ? (
+                <div className="py-8 text-center text-sm text-muted-foreground">
+                  새 공지가 없습니다
+                </div>
+              ) : (
+                items.map((n) => {
+                  const inner = (
+                    <div className="flex items-start gap-3 px-4 py-3 border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
+                      <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0 bg-primary" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="text-[10px] font-mono uppercase text-muted-foreground">
+                            {n.tag}
+                          </span>
+                          {n.is_pinned && (
+                            <span className="text-[10px] font-mono text-primary">
+                              ★
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm font-medium leading-tight">
+                          {n.title}
+                        </div>
+                        {n.description && (
+                          <div className="text-xs text-muted-foreground mt-0.5 leading-snug line-clamp-2">
+                            {n.description}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                  if (n.url) {
+                    return (
+                      <a key={n.id} href={n.url} target="_blank" rel="noreferrer">
+                        {inner}
+                      </a>
+                    );
+                  }
+                  return <div key={n.id}>{inner}</div>;
+                })
+              )}
             </div>
           </div>
         </>
@@ -376,8 +340,7 @@ function Header({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [location] = useLocation();
 
-  const allNavItems = [...NAV_ITEMS, { path: "/admin", icon: Shield, label: "어드민", sublabel: "Admin" }];
-  const currentPage = allNavItems.find(item =>
+  const currentPage = NAV_ITEMS.find(item =>
     item.path === location || (item.path !== "/" && location.startsWith(item.path))
   );
 
