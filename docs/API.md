@@ -263,6 +263,8 @@ These power the live dashboard and listing pages. The full Pydantic shape is the
 | `GET /v1/stocks/:symbol/consensus`     | -               | `symbol, recommendations[{period,strong_buy,buy,hold,sell,strong_sell}]` | StockDetail analyst stacked bar |
 | `GET /v1/stocks/:symbol/holders`       | -               | `symbol, items[{filer_name, master_slug, filed_at, shares, market_value, weight_pct, position_kind}]` | StockDetail master holders panel |
 | `GET /v1/stocks/:symbol/next-earning`  | -               | `symbol, next{date,hour,eps_estimate,revenue_estimate,year,quarter}`   | StockDetail next-earnings card   |
+| `GET /v1/stocks/:symbol/filings?limit=` | -              | `symbol, cik, items[{accession, form, filed_at, description, url}]`    | StockDetail SEC filings section  |
+| `GET /v1/masters/:slug/quarter-changes` | -              | `slug, quarters[ISO desc], rows[{instrument_id, symbol, name, weights[], market_values[], change_kind}]` | MasterDetail '분기 변화' tab |
 
 ## Adding A New Endpoint
 

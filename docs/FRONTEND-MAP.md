@@ -13,9 +13,9 @@ Defined in `App.tsx` (each page is `React.lazy`-loaded so it ships as its own JS
 | `/calendar`            | `pages/Calendar.tsx`       | `events`                                                      | `/v1/events/economic`                                          |
 | `/analysis`            | `pages/Analysis.tsx`       | `macros`, `market`, `sentiment`                               | `/v1/macros/indicators`, `/v1/market/breadth`, `/v1/sentiment/fear-greed` |
 | `/masters`             | `pages/Masters.tsx`        | `masters`                                                     | `/v1/masters`                                                  |
-| `/masters/:id`         | `pages/MasterDetail.tsx`   | `masters`                                                     | `/v1/masters/:slug`, `/v1/masters/:slug/holdings`              |
+| `/masters/:id`         | `pages/MasterDetail.tsx`   | `masters`                                                     | `/v1/masters/:slug`, `/v1/masters/:slug/holdings`, `/v1/masters/:slug/quarter-changes` |
 | `/stocks`              | `pages/Stocks.tsx`         | `movers`                                                      | `/v1/movers`                                                   |
-| `/stocks/:ticker`      | `pages/StockDetail.tsx`    | `quotes`, `stocks`                                            | `/v1/quotes/:symbol`, `/v1/stocks/:symbol/{profile,consensus,holders,next-earning}` |
+| `/stocks/:ticker`      | `pages/StockDetail.tsx`    | `quotes`, `stocks`, `news`                                    | `/v1/quotes/:symbol`, `/v1/stocks/:symbol/{profile,consensus,holders,next-earning,filings}`, `/v1/news?symbol=` |
 | `/reports`             | `pages/Reports.tsx`        | `reports`                                                     | `/v1/reports`                                                  |
 | `/reports/:id`         | `pages/ReportDetail.tsx`   | `reports`                                                     | `/v1/reports/:id`                                              |
 | `/learn`               | `pages/Learn.tsx`          | (none — preview page until backend exists)                    | future: `/v1/learn`                                            |
@@ -38,7 +38,7 @@ All 11 modules below are wired to real production data:
 
 | Module       | Hooks                                                              | Backend                                                |
 | ------------ | ------------------------------------------------------------------ | ------------------------------------------------------ |
-| `masters/`   | `useMastersList`, `useMasterDetail`, `useMasterHoldings`           | `/v1/masters[, /:slug, /:slug/holdings]`               |
+| `masters/`   | `useMastersList`, `useMasterDetail`, `useMasterHoldings`, `useMasterQuarters` | `/v1/masters[, /:slug, /:slug/holdings, /:slug/quarter-changes]` |
 | `news/`      | `useNewsList`                                                      | `/v1/news`                                             |
 | `reports/`   | `useReportsList`, `useReportDetail`                                | `/v1/reports[, /:id]`                                  |
 | `events/`    | `useEconomicEvents`                                                | `/v1/events/economic`                                  |
@@ -48,7 +48,7 @@ All 11 modules below are wired to real production data:
 | `notices/`   | `useNotices`                                                       | `/v1/notices`                                          |
 | `sentiment/` | `useFearGreed`                                                     | `/v1/sentiment/fear-greed`                             |
 | `quotes/`    | `useQuote(symbol, range)`                                          | `/v1/quotes/:symbol?range=`                            |
-| `stocks/`    | `useStockProfile`, `useStockConsensus`, `useStockHolders`, `useStockNextEarning` | `/v1/stocks/:symbol/{profile,consensus,holders,next-earning}` |
+| `stocks/`    | `useStockProfile`, `useStockConsensus`, `useStockHolders`, `useStockNextEarning`, `useStockFilings` | `/v1/stocks/:symbol/{profile,consensus,holders,next-earning,filings}` |
 
 Pending modules (backend exists, frontend wiring requires Supabase JWT in `localStorage.supabase_jwt`):
 
@@ -81,9 +81,8 @@ LocalStorage-backed user-private state. These remain until a backend domain repl
 
 ## components/
 
-- `Layout.tsx`     — app shell (sidebar, top bar, scrolling movers ticker, notices dropdown). Reads `features/movers` and `features/notices`.
+- `Layout.tsx`     — app shell (sidebar, top bar, scrolling movers ticker, notices dropdown, global search → /stocks/:TICKER or /masters/:slug on Enter). Reads `features/movers` and `features/notices`.
 - `ErrorBoundary.tsx` — top-level boundary; report-on-error UI.
-- `ManusDialog.tsx`, `Map.tsx` — feature-specific primitives; safe to leave until called out.
 - `ui/` — shadcn components. Do not modify in place; if a variant is needed, add a wrapper.
 
 ## hooks/
