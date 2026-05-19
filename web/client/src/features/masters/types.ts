@@ -62,3 +62,20 @@ export interface MasterHoldingsResponse {
   filed_at: string | null;
   holdings: MasterHolding[];
 }
+
+export interface MasterQuarterRow {
+  instrument_id: string;
+  symbol: string | null;
+  name: string | null;
+  weights: (number | null)[];
+  market_values: (number | null)[];
+  latest_weight: number | null;
+  prev_weight: number | null;
+  change_kind: "up" | "down" | "flat" | "new" | "exit" | string;
+}
+
+export interface MasterQuartersResponse {
+  slug: string;
+  quarters: string[]; // newest first
+  rows: MasterQuarterRow[];
+}

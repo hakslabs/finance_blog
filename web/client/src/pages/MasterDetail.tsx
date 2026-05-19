@@ -15,11 +15,13 @@ import { Badge } from "@/components/ui/badge";
 import {
   useMasterDetail,
   useMasterHoldings,
+  useMasterQuarters,
 } from "@/features/masters";
 
 const TABS = [
   { id: "overview", label: "개요", icon: Award },
   { id: "holdings", label: "13F 포트폴리오", icon: BarChart2 },
+  { id: "quarters", label: "분기 변화", icon: BarChart2 },
   { id: "philosophy", label: "투자철학", icon: BookOpen },
   { id: "books", label: "저서", icon: Briefcase },
 ] as const;
@@ -42,6 +44,9 @@ export default function MasterDetail() {
   const { data: master, loading, error } = useMasterDetail(id);
   const { data: holdings } = useMasterHoldings(
     tab === "holdings" ? id : undefined,
+  );
+  const { data: quarters } = useMasterQuarters(
+    tab === "quarters" ? id : undefined,
   );
 
   if (loading) {
@@ -283,6 +288,94 @@ export default function MasterDetail() {
                   </table>
                 </div>
               </>
+            )}
+          </section>
+        )}
+
+        {tab === "quarters" && (
+          <section>
+            {!quarters ? (
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground py-12">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                분기 변화를 불러오는 중…
+              </div>
+            ) : quarters.rows.length === 0 ? (
+              <Empty text="분기별 데이터가 아직 없습니다." />
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-border/60">
+                <table className="w-full text-xs">
+                  <thead className="bg-card/40 text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium sticky left-0 bg-card/40">
+                        종목
+                      </th>
+                      {quarters.quarters.map((q) => (
+                        <th
+                          key={q}
+                          className="px-3 py-2 text-right font-mono font-medium whitespace-nowrap"
+                        >
+                          {q.slice(2, 7)}
+                        </th>
+                      ))}
+                      <th className="px-3 py-2 text-right font-medium">
+                        변동
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {quarters.rows.slice(0, 30).map((r) => {
+                      const kindColor: Record<string, string> = {
+                        up: "text-up",
+                        down: "text-down",
+                        new: "text-sky-400",
+                        exit: "text-muted-foreground/60",
+                        flat: "text-muted-foreground",
+                      };
+                      const kindLabel: Record<string, string> = {
+                        up: "확대",
+                        down: "축소",
+                        new: "신규",
+                        exit: "정리",
+                        flat: "유지",
+                      };
+                      return (
+                        <tr
+                          key={r.instrument_id}
+                          className="border-t border-border/40 hover:bg-card/40 tabular-nums font-mono"
+                        >
+                          <td className="px-3 py-2 sticky left-0 bg-background">
+                            {r.symbol ? (
+                              <Link href={`/stocks/${r.symbol}`}>
+                                <span className="text-emerald-400 hover:underline cursor-pointer">
+                                  {r.symbol}
+                                </span>
+                              </Link>
+                            ) : (
+                              "—"
+                            )}
+                            {r.name && (
+                              <div className="text-[10px] text-muted-foreground font-sans">
+                                {r.name}
+                              </div>
+                            )}
+                          </td>
+                          {r.weights.map((w, idx) => (
+                            <td
+                              key={`${r.instrument_id}-${idx}`}
+                              className="px-3 py-2 text-right"
+                            >
+                              {w != null ? `${w.toFixed(2)}%` : "—"}
+                            </td>
+                          ))}
+                          <td className={`px-3 py-2 text-right ${kindColor[r.change_kind] ?? ""}`}>
+                            {kindLabel[r.change_kind] ?? r.change_kind}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </section>
         )}

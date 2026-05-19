@@ -3,6 +3,7 @@ import { mastersService } from "./service";
 import type {
   MasterDetail,
   MasterHoldingsResponse,
+  MasterQuartersResponse,
   MasterSummary,
 } from "./types";
 
@@ -68,5 +69,17 @@ export function useMasterHoldings(
         ? mastersService.holdings(slug, limit)
         : Promise.reject(new Error("slug required")),
     [slug, limit],
+  );
+}
+
+export function useMasterQuarters(
+  slug: string | undefined,
+): Loadable<MasterQuartersResponse> {
+  return useFetched(
+    () =>
+      slug
+        ? mastersService.quarterChanges(slug)
+        : Promise.reject(new Error("slug required")),
+    [slug],
   );
 }
