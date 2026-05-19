@@ -13,7 +13,8 @@ import { useState, useMemo, useContext, useCallback, useRef, useEffect } from "r
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { US_STOCKS, KR_STOCKS } from "@/services/mockData";
-import { MASTERS, REPORTS, LEARN_GUIDES } from "@/services/mockData";
+import { useMastersList } from "@/features/masters";
+import { useReportsList } from "@/features/reports";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
   LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar,
@@ -910,7 +911,11 @@ function BookmarksTab() {
   const bookmarkedReportIds = bookmarkCtx?.bookmarkedReportIds ?? [];
   const bookmarkedGuideIds = bookmarkCtx?.bookmarkedGuideIds ?? [];
   const masterIds = Array.from(new Set([...bookmarkedMasterIds, ...followedMasterIds]));
-  const masters = MASTERS.filter(m => masterIds.includes(m.id));
+
+  const { data: allMasters } = useMastersList();
+  const { data: allReports } = useReportsList({ limit: 200 });
+  const masters = (allMasters ?? []).filter(m => masterIds.includes(m.slug) || masterIds.includes(m.id));
+
   return (
     <div className="space-y-5">
       <div className="bg-card border border-border rounded-xl p-5">
@@ -928,23 +933,28 @@ function BookmarksTab() {
         ) : (
           <div className="space-y-2">
             {masters.map(m => {
-              const isFollowed = followedMasterIds.includes(m.id);
-              const isBookmarked = bookmarkedMasterIds.includes(m.id);
+              const matchKey = followedMasterIds.includes(m.slug) || followedMasterIds.includes(m.id);
+              const isFollowed = matchKey;
+              const isBookmarked = bookmarkedMasterIds.includes(m.slug) || bookmarkedMasterIds.includes(m.id);
               return (
                 <div key={m.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors">
-                  <Link href={`/masters/${m.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                  <Link href={`/masters/${m.slug}`} className="flex items-center gap-3 flex-1 min-w-0">
                     <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
-                      <span className="text-sm font-bold text-amber-400">{(m as any).nameKo?.charAt(0) ?? m.name.charAt(0)}</span>
+                      <span className="text-sm font-bold text-amber-400">{m.name.charAt(0)}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium">{(m as any).nameKo ?? m.name}</div>
-                      <div className="text-xs text-muted-foreground">{m.fund}</div>
+                      <div className="text-sm font-medium truncate">{m.name}</div>
+                      <div className="text-xs text-muted-foreground truncate">{m.firm ?? "—"}</div>
                     </div>
                   </Link>
                   <div className="flex items-center gap-1.5">
                     {isFollowed && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">팔로우</span>}
                     {isBookmarked && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">북마크</span>}
-                    <button onClick={() => { if (isFollowed) followCtx?.unfollow?.(m.id); if (isBookmarked) bookmarkCtx?.removeBookmark("master", m.id); toast.info("관심 해제"); }}
+                    <button onClick={() => {
+                      if (isFollowed) followCtx?.unfollow?.(m.slug); followCtx?.unfollow?.(m.id);
+                      if (isBookmarked) { bookmarkCtx?.removeBookmark("master", m.slug); bookmarkCtx?.removeBookmark("master", m.id); }
+                      toast.info("관심 해제");
+                    }}
                       className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-down transition-colors"><X size={12} /></button>
                   </div>
                 </div>
@@ -967,16 +977,22 @@ function BookmarksTab() {
         ) : (
           <div className="space-y-2">
             {bookmarkedReportIds.map(id => {
-              const report = REPORTS.find(r => r.id === id);
+              const report = (allReports ?? []).find(r => r.id === id);
               return (
-                <div key={id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors">
-                  <FileText size={13} className="text-blue-400 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm truncate">{report?.title ?? id}</div>
-                    {report && <div className="text-xs text-muted-foreground">{report.institution} · {report.date}</div>}
+                <Link key={id} href={`/reports/${id}`}>
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors cursor-pointer">
+                    <FileText size={13} className="text-blue-400 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm truncate">{report?.title ?? id}</div>
+                      {report && (
+                        <div className="text-xs text-muted-foreground truncate">
+                          {report.source} · {report.published_at ?? ""}
+                        </div>
+                      )}
+                    </div>
+                    <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); bookmarkCtx?.removeBookmark("report", id); toast.info("북마크 해제"); }} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-down flex-shrink-0"><X size={12} /></button>
                   </div>
-                  <button onClick={() => { bookmarkCtx?.removeBookmark("report", id); toast.info("북마크 해제"); }} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-down flex-shrink-0"><X size={12} /></button>
-                </div>
+                </Link>
               );
             })}
           </div>
@@ -990,23 +1006,20 @@ function BookmarksTab() {
         </div>
         {bookmarkedGuideIds.length === 0 ? (
           <div className="text-center py-6">
-            <p className="text-xs text-muted-foreground">북마크한 학습 가이드가 없습니다.</p>
+            <p className="text-xs text-muted-foreground">학습 콘텐츠가 준비되면 북마크할 수 있습니다.</p>
             <Link href="/learn"><button className="mt-2 text-xs text-violet-400 hover:underline">학습 센터 보기 →</button></Link>
           </div>
         ) : (
           <div className="space-y-2">
-            {bookmarkedGuideIds.map(id => {
-              const guide = LEARN_GUIDES?.find(g => g.id === id);
-              return (
-                <div key={id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/20">
-                  <GraduationCap size={13} className="text-violet-400 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm truncate">{guide?.title ?? id}</div>
-                  </div>
-                  <button onClick={() => { bookmarkCtx?.removeBookmark("guide", id); toast.info("북마크 해제"); }} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-down flex-shrink-0"><X size={12} /></button>
+            {bookmarkedGuideIds.map(id => (
+              <div key={id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/20">
+                <GraduationCap size={13} className="text-violet-400 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm truncate font-mono text-muted-foreground">{id}</div>
                 </div>
-              );
-            })}
+                <button onClick={() => { bookmarkCtx?.removeBookmark("guide", id); toast.info("북마크 해제"); }} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-down flex-shrink-0"><X size={12} /></button>
+              </div>
+            ))}
           </div>
         )}
       </div>
