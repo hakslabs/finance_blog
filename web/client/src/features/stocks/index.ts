@@ -5,4 +5,5 @@ export {
   useStockConsensus,
   useStockHolders,
   useStockNextEarning,
+  useStockFilings,
 } from "./use-stocks";

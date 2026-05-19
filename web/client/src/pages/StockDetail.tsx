@@ -26,11 +26,12 @@ import type { QuoteRange } from "@/features/quotes";
 import { useNewsList } from "@/features/news";
 import {
   useStockConsensus,
+  useStockFilings,
   useStockHolders,
   useStockNextEarning,
   useStockProfile,
 } from "@/features/stocks";
-import type { StockMetrics } from "@/features/stocks";
+import type { FilingItem, StockMetrics } from "@/features/stocks";
 
 const RANGES: { id: QuoteRange; label: string }[] = [
   { id: "1mo", label: "1M" },
@@ -71,6 +72,7 @@ export default function StockDetail() {
   const { data: consensus } = useStockConsensus(ticker);
   const { data: holders } = useStockHolders(ticker);
   const { data: nextEarning } = useStockNextEarning(ticker);
+  const { data: filings } = useStockFilings(ticker, 8);
   const { data: relatedNews } = useNewsList({ symbol: ticker, limit: 6 });
 
   const chartData = useMemo(
@@ -317,6 +319,41 @@ export default function StockDetail() {
 
         {/* Analyst consensus */}
         <ConsensusCard rows={consensus?.recommendations ?? null} />
+
+        {/* SEC filings */}
+        {filings && filings.items.length > 0 && (
+          <section>
+            <h2 className="text-xs font-mono uppercase tracking-wide text-muted-foreground mb-2">
+              SEC 공시 (최근 {filings.items.length})
+              {filings.cik && (
+                <span className="ml-2 text-muted-foreground/60 normal-case">
+                  CIK {filings.cik}
+                </span>
+              )}
+            </h2>
+            <ul className="rounded-lg border border-border/60 divide-y divide-border/40 overflow-hidden">
+              {filings.items.map((f: FilingItem) => (
+                <li key={f.accession}>
+                  <a
+                    href={f.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="grid grid-cols-[80px_70px_1fr_auto] gap-3 items-center px-3 py-2 text-xs hover:bg-card/60 transition-colors"
+                  >
+                    <span className="font-mono text-muted-foreground">
+                      {f.filed_at}
+                    </span>
+                    <Badge variant="outline" className="font-mono justify-center text-[10px]">
+                      {f.form}
+                    </Badge>
+                    <span className="truncate">{f.description ?? "—"}</span>
+                    <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* Related news */}
         {relatedNews && relatedNews.length > 0 && (

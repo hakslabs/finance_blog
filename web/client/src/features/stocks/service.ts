@@ -1,6 +1,7 @@
 import { apiGet } from "@/lib/http";
 import type {
   ConsensusResponse,
+  FilingsResponse,
   NextEarningResponse,
   ProfileResponse,
   StockHoldersResponse,
@@ -20,5 +21,9 @@ export const stocksService = {
   nextEarning: (symbol: string) =>
     apiGet<NextEarningResponse>(
       `/stocks/${encodeURIComponent(symbol)}/next-earning`,
+    ),
+  filings: (symbol: string, limit = 10) =>
+    apiGet<FilingsResponse>(
+      `/stocks/${encodeURIComponent(symbol)}/filings?limit=${limit}`,
     ),
 };

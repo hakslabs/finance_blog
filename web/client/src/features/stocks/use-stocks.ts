@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { stocksService } from "./service";
 import type {
   ConsensusResponse,
+  FilingsResponse,
   NextEarningResponse,
   ProfileResponse,
   StockHoldersResponse,
@@ -54,4 +55,7 @@ export function useStockHolders(symbol: string | undefined): Loadable<StockHolde
 }
 export function useStockNextEarning(symbol: string | undefined): Loadable<NextEarningResponse> {
   return useEndpoint(() => stocksService.nextEarning(symbol!), symbol);
+}
+export function useStockFilings(symbol: string | undefined, limit = 10): Loadable<FilingsResponse> {
+  return useEndpoint(() => stocksService.filings(symbol!, limit), symbol);
 }

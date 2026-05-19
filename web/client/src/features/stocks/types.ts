@@ -74,3 +74,17 @@ export interface NextEarningResponse {
   symbol: string;
   next: NextEarning | null;
 }
+
+export interface FilingItem {
+  accession: string;
+  form: string;
+  filed_at: string;
+  description: string | null;
+  url: string;
+}
+
+export interface FilingsResponse {
+  symbol: string;
+  cik: string | null;
+  items: FilingItem[];
+}
