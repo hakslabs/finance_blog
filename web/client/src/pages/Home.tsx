@@ -3,6 +3,7 @@ import {
   AlertCircle,
   ArrowUpRight,
   Calendar as CalendarIcon,
+  Gauge,
   Loader2,
   Newspaper,
   TrendingDown,
@@ -16,6 +17,8 @@ import { useMacroIndicators } from "@/features/macros";
 import { useMovers } from "@/features/movers";
 import { useBreadth } from "@/features/market";
 import { useNotices } from "@/features/notices";
+import { useFearGreed } from "@/features/sentiment";
+import type { FearGreedItem } from "@/features/sentiment";
 
 export default function Home() {
   return (
@@ -31,6 +34,8 @@ export default function Home() {
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
         <NoticesStrip />
+
+        <FearGreedRow />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <BreadthCard market="US" />
@@ -304,6 +309,110 @@ function EventsCard() {
         </ul>
       )}
     </CardShell>
+  );
+}
+
+// ── Fear & Greed ────────────────────────────────────────────────────────────
+
+function FearGreedRow() {
+  const { data, loading } = useFearGreed();
+  if (loading) return <SkeletonBlock />;
+  if (!data || data.length === 0) return null;
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {data.map((it) => (
+        <FearGreedCard key={it.market_code} item={it} />
+      ))}
+    </div>
+  );
+}
+
+function FearGreedCard({ item }: { item: FearGreedItem }) {
+  const v = Math.max(0, Math.min(100, item.value));
+  const color =
+    v >= 75
+      ? "var(--up)"
+      : v >= 55
+      ? "oklch(0.72 0.18 110)"
+      : v >= 45
+      ? "var(--muted-foreground)"
+      : v >= 25
+      ? "oklch(0.65 0.18 30)"
+      : "var(--down)";
+  // semicircle: 180° from -90 to 90 around (50, 50) radius 40
+  const angle = (v / 100) * 180 - 90;
+  const rad = (angle * Math.PI) / 180;
+  const x = 50 + 40 * Math.cos(rad);
+  const y = 50 + 40 * Math.sin(rad);
+
+  return (
+    <section className="rounded-xl border border-border/60 bg-card/60 p-4 flex items-center gap-4">
+      <div className="relative w-32 h-20 flex-shrink-0">
+        <svg viewBox="0 0 100 60" className="w-full h-full">
+          <path
+            d="M 10 50 A 40 40 0 0 1 90 50"
+            stroke="var(--border)"
+            strokeWidth="6"
+            fill="none"
+            strokeLinecap="round"
+          />
+          <path
+            d={`M 10 50 A 40 40 0 0 1 ${x} ${y}`}
+            stroke={color}
+            strokeWidth="6"
+            fill="none"
+            strokeLinecap="round"
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-end pb-1">
+          <span className="text-2xl font-mono font-bold leading-none" style={{ color }}>
+            {v.toFixed(0)}
+          </span>
+        </div>
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <Gauge className="w-4 h-4 text-muted-foreground" />
+          <h2 className="text-sm font-semibold">
+            {item.market} Fear & Greed
+          </h2>
+          <Badge
+            variant="outline"
+            className="text-[10px] uppercase font-mono"
+            style={{ color, borderColor: color }}
+          >
+            {item.label}
+          </Badge>
+        </div>
+        <dl className="grid grid-cols-3 gap-x-3 gap-y-1 text-[11px] font-mono">
+          <DeltaRow label="전일" prev={item.previous_close} current={v} />
+          <DeltaRow label="1주" prev={item.previous_1_week} current={v} />
+          <DeltaRow label="1달" prev={item.previous_1_month} current={v} />
+        </dl>
+      </div>
+    </section>
+  );
+}
+
+function DeltaRow({
+  label,
+  prev,
+  current,
+}: {
+  label: string;
+  prev: number | null;
+  current: number;
+}) {
+  const delta = prev != null ? current - prev : null;
+  const up = (delta ?? 0) > 0;
+  return (
+    <>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="text-foreground">{prev != null ? prev.toFixed(1) : "—"}</dd>
+      <dd className={up ? "text-up" : delta && delta < 0 ? "text-down" : ""}>
+        {delta != null ? `${up ? "+" : ""}${delta.toFixed(1)}` : "—"}
+      </dd>
+    </>
   );
 }
 
