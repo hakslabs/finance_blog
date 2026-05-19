@@ -32,38 +32,39 @@ const NAV_ITEMS = [
   { path: "/mypage", icon: User, label: "마이페이지", sublabel: "My Page" },
 ];
 
-const TICKER_DATA = [
-  { symbol: "KOSPI", value: "2,684.32", change: "+0.69%", up: true },
-  { symbol: "S&P 500", value: "5,812.44", change: "+0.38%", up: true },
-  { symbol: "NASDAQ", value: "18,024.1", change: "+0.72%", up: true },
-  { symbol: "USD/KRW", value: "1,387.20", change: "-0.22%", up: false },
-  { symbol: "WTI", value: "$71.84", change: "+0.59%", up: true },
-  { symbol: "GOLD", value: "$2,318.4", change: "+0.41%", up: true },
-  { symbol: "BTC", value: "$61,240", change: "-1.32%", up: false },
-  { symbol: "VIX", value: "14.2", change: "-2.8%", up: false },
-  { symbol: "US 10Y", value: "4.42%", change: "+3bp", up: true },
-  { symbol: "NVDA", value: "912.18", change: "+3.42%", up: true },
-  { symbol: "AAPL", value: "184.32", change: "+1.24%", up: true },
-  { symbol: "TSLA", value: "218.40", change: "-2.10%", up: false },
-  { symbol: "삼성전자", value: "78,400", change: "+0.51%", up: true },
-];
+import { useMovers } from "@/features/movers";
 
 function TickerBar() {
-  const doubled = [...TICKER_DATA, ...TICKER_DATA];
+  const us = useMovers({ market: "US", limit: 10 });
+  const kr = useMovers({ market: "KR", limit: 6 });
+  const items = [...(us.data?.items ?? []), ...(kr.data?.items ?? [])];
+  if (items.length === 0) {
+    return (
+      <div className="h-8 bg-card border-b border-border overflow-hidden flex items-center justify-center text-[10px] text-muted-foreground">
+        시세 불러오는 중…
+      </div>
+    );
+  }
+  const doubled = [...items, ...items];
   return (
     <div className="h-8 bg-card border-b border-border overflow-hidden flex items-center">
       <div className="flex items-center gap-0 ticker-scroll whitespace-nowrap">
-        {doubled.map((item, i) => (
-          <span key={i} className="inline-flex items-center gap-1.5 px-4 text-xs">
-            <span className="text-muted-foreground font-mono">{item.symbol}</span>
-            <span className="font-mono font-medium">{item.value}</span>
-            <span className={cn("font-mono font-medium flex items-center gap-0.5", item.up ? "text-up" : "text-down")}>
-              {item.up ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-              {item.change}
+        {doubled.map((item, i) => {
+          const up = item.change_pct >= 0;
+          return (
+            <span key={`${item.symbol}-${i}`} className="inline-flex items-center gap-1.5 px-4 text-xs">
+              <span className="text-muted-foreground font-mono">{item.symbol}</span>
+              <span className="font-mono font-medium tabular-nums">
+                {item.last >= 1000 ? item.last.toLocaleString(undefined, { maximumFractionDigits: 0 }) : item.last.toFixed(2)}
+              </span>
+              <span className={cn("font-mono font-medium flex items-center gap-0.5 tabular-nums", up ? "text-up" : "text-down")}>
+                {up ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                {up ? "+" : ""}{item.change_pct.toFixed(2)}%
+              </span>
+              <span className="text-border mx-1">|</span>
             </span>
-            <span className="text-border mx-1">|</span>
-          </span>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
