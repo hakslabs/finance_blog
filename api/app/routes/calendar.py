@@ -113,7 +113,13 @@ async def get_calendar(
         raise HTTPException(status_code=400, detail="invalid_range")
 
     type_set = set(_parse_csv(types)) or {"macro", "earnings", "dividend"}
-    symbol_list = _parse_csv(symbols)
+    # Three-state symbol gate:
+    #   symbols is None         → param not supplied at all → no filter
+    #   symbols == ""           → param supplied but empty → match NOTHING
+    #                              (empty-watchlist case: don't dump the
+    #                               full universe of earnings into the cal)
+    #   symbols == "AAPL,..."   → restrict stock events to those tickers
+    symbol_list: Optional[List[str]] = None if symbols is None else _parse_csv(symbols)
     effective_min_importance = max(min_importance, 2) if recommended else min_importance
 
     items: List[CalendarItem] = []
@@ -147,7 +153,11 @@ async def get_calendar(
 
     # ── Stock events (earnings + dividends) ──────────────────
     stock_types = [t for t in ("earnings", "dividend") if t in type_set]
-    if stock_types:
+    # Short-circuit when the caller passed an explicitly empty symbol
+    # list — that means "the user has no watchlist", and we shouldn't
+    # silently fall back to the full universe.
+    skip_stocks = symbol_list is not None and len(symbol_list) == 0
+    if stock_types and not skip_stocks:
         stock_params: Dict[str, str] = {
             "select": "id,symbol,event_type,scheduled_at,importance,eps_estimate,revenue_estimate,cash_amount,currency,fiscal_period",
             "scheduled_at": f"gte.{start_ts}",
@@ -164,7 +174,10 @@ async def get_calendar(
             quoted_syms = ",".join(f'"{s.upper()}"' for s in symbol_list)
             stock_params["symbol"] = f"in.({quoted_syms})"
         stock_rows = await _pg_get(settings, "stock_calendar_events", stock_params)
+    else:
+        stock_rows = []
 
+    if stock_rows:
         # Resolve symbol → name in one fan-out call against the blog
         # universe so the calendar shows "엔비디아 실적" instead of
         # "NVDA 실적". Falls back to the ticker when the symbol isn't

@@ -152,21 +152,35 @@ export default function CalendarPage() {
     filterType === "배당" ? ["dividend"] :
     filterType === "매크로" ? ["macro"] :
     undefined;
+
+  // Stock-event scoping rule: stock events (earnings / dividends) are
+  // ALWAYS gated by the user's watchlist, regardless of which chip is
+  // active. Macro events (CPI / rates / FOMC) always show.
+  //   - "매크로" chip: server ignores symbols anyway, send undefined
+  //   - everything else: send the watchlist (empty array = match nothing,
+  //     handled server-side so the SP500/NDX universe doesn't leak in)
+  const symbolsParam = filterType === "매크로" ? undefined : watchlistSymbols;
+
   const { data: liveItems } = useUnifiedCalendar({
     from: fromIso,
     to: toIso,
     types: typesFilter,
-    symbols: recommended ? watchlistSymbols : undefined,
+    symbols: symbolsParam,
     recommended,
   });
 
   // Live → display shape. If backend returned 0 rows (ingest not run yet)
-  // fall back to mock so the page never looks empty in dev.
+  // fall back to mock so the page never looks empty in dev — UNLESS the
+  // user is in a stock-only filter with an empty watchlist, in which
+  // case we want the empty state to surface rather than the mock list.
   const liveDisplay: DisplayEvent[] = useMemo(
     () => (liveItems ?? []).map(unifiedToDisplay),
     [liveItems],
   );
-  const useLive = liveDisplay.length > 0;
+  const stockOnlyFilter = filterType === "실적" || filterType === "배당";
+  const watchlistEmpty = watchlistSymbols.length === 0;
+  const suppressMockFallback = stockOnlyFilter && watchlistEmpty;
+  const useLive = liveDisplay.length > 0 || suppressMockFallback;
   const dataSource: DisplayEvent[] = useLive ? liveDisplay : (EVENTS_DATA as DisplayEvent[]);
 
   // Events for current month (filter chip already applied server-side for
@@ -254,6 +268,22 @@ export default function CalendarPage() {
           >{t}</button>
         ))}
       </div>
+
+      {/* Empty-watchlist hint — surfaces when the calendar would otherwise
+          have no personal stock events to show. */}
+      {watchlistEmpty && filterType !== "매크로" && (
+        <div className="bg-muted/30 border border-border rounded-lg px-4 py-3 text-xs text-muted-foreground flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <span className="font-semibold text-foreground">관심종목이 비어있어요.</span>{" "}
+            실적·배당 이벤트는 관심종목을 추가해야 나타납니다. (매크로 이벤트는 그대로 보입니다)
+          </div>
+          <Link href="/mypage?tab=watchlist">
+            <button className="text-xs px-2.5 py-1 rounded-md border border-primary/40 text-primary hover:bg-primary/10">
+              관심종목 관리 →
+            </button>
+          </Link>
+        </div>
+      )}
 
       {/* Month nav */}
       <div className="flex items-center justify-between">
