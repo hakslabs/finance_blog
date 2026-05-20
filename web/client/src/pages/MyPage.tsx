@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import { BookmarkContext } from "@/contexts/BookmarkContext";
 import { FollowContext } from "@/contexts/FollowContext";
 import { useWatchlist } from "@/contexts/WatchlistContext";
+import { useAlertsBackendSync } from "@/features/alerts/sync";
 
 // ── Helpers ──────────────────────────────────────────────────
 const ALL_STOCKS = [...US_STOCKS, ...KR_STOCKS];
@@ -805,9 +806,10 @@ function AlertsTab() {
   const [journals] = useLocalState<Journal[]>("financelab_journals", INIT_JOURNALS);
   const [showAddModal, setShowAddModal] = useState(false);
   const [form, setForm] = useState({ symbol: "", name: "", type: "목표가 도달" as AlertItem["type"], condition: "" });
+  const { add: addAlertSynced, remove: removeAlertSynced } = useAlertsBackendSync(alerts, setAlerts);
   const handleAdd = () => {
     if (!form.symbol || !form.condition) { toast.error("종목과 조건을 입력하세요."); return; }
-    setAlerts(prev => [{ id: "a" + Date.now(), symbol: form.symbol, name: form.name || form.symbol, type: form.type, condition: form.condition, status: "활성", created: new Date().toISOString().slice(0, 10) }, ...prev]);
+    addAlertSynced({ id: "a" + Date.now(), symbol: form.symbol, name: form.name || form.symbol, type: form.type, condition: form.condition, status: "활성", created: new Date().toISOString().slice(0, 10) });
     toast.success(`${form.symbol} 알람 등록`);
     setShowAddModal(false);
     setForm({ symbol: "", name: "", type: "목표가 도달", condition: "" });
@@ -835,11 +837,9 @@ function AlertsTab() {
               <div key={j.id} className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">{j.symbol} — 목표 {fmtPrice(j.target, j.symbol)} / 손절 {fmtPrice(j.stopLoss, j.symbol)}</span>
                 <button onClick={() => {
-                  setAlerts(prev => [
-                    { id: "a" + Date.now(), symbol: j.symbol, name: j.name, type: "목표가 도달", condition: `≥ ${fmtPrice(j.target, j.symbol)}`, status: "활성", created: new Date().toISOString().slice(0, 10), journalId: j.id },
-                    { id: "a" + (Date.now() + 1), symbol: j.symbol, name: j.name, type: "손절 라인", condition: `≤ ${fmtPrice(j.stopLoss, j.symbol)}`, status: "활성", created: new Date().toISOString().slice(0, 10), journalId: j.id },
-                    ...prev,
-                  ]);
+                  const now = new Date().toISOString().slice(0, 10);
+                  addAlertSynced({ id: "a" + Date.now(), symbol: j.symbol, name: j.name, type: "목표가 도달", condition: `≥ ${fmtPrice(j.target, j.symbol)}`, status: "활성", created: now, journalId: j.id });
+                  addAlertSynced({ id: "a" + (Date.now() + 1), symbol: j.symbol, name: j.name, type: "손절 라인", condition: `≤ ${fmtPrice(j.stopLoss, j.symbol)}`, status: "활성", created: now, journalId: j.id });
                   toast.success(`${j.symbol} 알람 2개 등록`);
                 }} className="text-xs text-primary hover:underline flex-shrink-0 ml-2">등록</button>
               </div>
@@ -861,7 +861,7 @@ function AlertsTab() {
             </div>
             <div className="flex items-center gap-2">
               <span className={cn("text-[10px] px-1.5 py-0.5 rounded border", alert.status === "활성" ? "border-up/40 text-up bg-up/10" : "border-muted text-muted-foreground bg-muted/20")}>{alert.status}</span>
-              <button onClick={() => { setAlerts(prev => prev.filter(a => a.id !== alert.id)); toast.info("알람 삭제"); }} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-down"><X size={12} /></button>
+              <button onClick={() => { removeAlertSynced(alert.id); toast.info("알람 삭제"); }} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-down"><X size={12} /></button>
             </div>
           </div>
         ))}
