@@ -272,7 +272,12 @@
     }
     to {
       opacity: 1;
-      transform: translateY(0);
+      /* NOTE: do NOT set `transform: translateY(0)` here — combined with
+         animation-fill-mode: both, that leaves a transform applied on the
+         element forever, which makes it the containing block for any
+         descendant `position: fixed` element (CSS spec). That caused modals
+         opened from inside this wrapper to be positioned relative to the
+         wrapper instead of the viewport. */
     }
   }
   .animate-fade-in-up {
