@@ -104,6 +104,89 @@ class WatchlistRepo:
             if response.status_code >= 400:
                 raise HTTPException(status_code=503, detail="upstream_unavailable")
 
+    async def ensure_primary_watchlist(self, user_id: UUID) -> UUID:
+        """Return the user's primary watchlist id, creating one if missing."""
+        params = {
+            "user_id": f"eq.{user_id}",
+            "is_primary": "eq.true",
+            "select": "id",
+            "limit": "1",
+        }
+        url = f"{self._base_url}/rest/v1/watchlists"
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(url, params=params, headers=self._headers)
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=503, detail="upstream_unavailable")
+        rows = resp.json()
+        if rows:
+            return UUID(rows[0]["id"])
+        # Create a primary watchlist for this user.
+        payload = {
+            "user_id": str(user_id),
+            "name": "Primary Watchlist",
+            "is_primary": True,
+        }
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.post(
+                url,
+                json=payload,
+                headers={**self._headers, "Prefer": "return=representation"},
+            )
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=503, detail="upstream_unavailable")
+        return UUID(resp.json()[0]["id"])
+
+    async def resolve_instrument_id(
+        self, symbol: str, exchange: Optional[str] = None
+    ) -> Optional[UUID]:
+        params: Dict[str, str] = {
+            "symbol": f"eq.{symbol}",
+            "select": "id",
+            "limit": "1",
+        }
+        if exchange:
+            params["exchange"] = f"eq.{exchange}"
+        url = f"{self._base_url}/rest/v1/instruments"
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(url, params=params, headers=self._headers)
+        if resp.status_code >= 400:
+            return None
+        rows = resp.json()
+        return UUID(rows[0]["id"]) if rows else None
+
+    async def add_item(
+        self, watchlist_id: UUID, instrument_id: UUID, note: Optional[str] = None
+    ) -> None:
+        url = f"{self._base_url}/rest/v1/watchlist_items"
+        payload: Dict[str, Any] = {
+            "watchlist_id": str(watchlist_id),
+            "instrument_id": str(instrument_id),
+        }
+        if note is not None:
+            payload["note"] = note
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.post(
+                url,
+                json=payload,
+                headers={
+                    **self._headers,
+                    "Prefer": "return=minimal,resolution=merge-duplicates",
+                },
+            )
+        if resp.status_code >= 400 and resp.status_code != 409:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text[:200])
+
+    async def remove_item(self, watchlist_id: UUID, instrument_id: UUID) -> None:
+        url = f"{self._base_url}/rest/v1/watchlist_items"
+        params = {
+            "watchlist_id": f"eq.{watchlist_id}",
+            "instrument_id": f"eq.{instrument_id}",
+        }
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.delete(url, params=params, headers=self._headers)
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text[:200])
+
     async def get_primary_for_user(self, user_id: UUID) -> Optional[Watchlist]:
         params = {
             "user_id": f"eq.{user_id}",
