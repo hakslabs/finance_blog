@@ -20,6 +20,7 @@ import { PriceAlertDialog } from "@/components/PriceAlertDialog";
 import { useBookmark } from "@/contexts/BookmarkContext";
 import { useWatchlist } from "@/contexts/WatchlistContext";
 import { useUnifiedCalendar, type UnifiedCalendarItem } from "@/features/calendar";
+import { ModalPortal } from "@/components/ModalPortal";
 
 // Map backend UnifiedCalendarItem → the shape the rest of this page already
 // consumes. Keeping the on-page type intact means the grid + list rendering
@@ -418,6 +419,7 @@ export default function CalendarPage() {
 
       {/* Event Detail Modal */}
       {selectedEvent && (
+        <ModalPortal>
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedEvent(null)} />
           <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md animate-scale-in">
@@ -491,6 +493,7 @@ export default function CalendarPage() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
       {selectedEvent && (
         <>

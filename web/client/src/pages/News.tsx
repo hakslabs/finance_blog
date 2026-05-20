@@ -16,6 +16,7 @@ import {
   ExternalLink, Clock, Filter, X, ArrowRight, RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
+import { ModalPortal } from "@/components/ModalPortal";
 
 // ── Extended mock news data ───────────────────────────────────
 const ALL_NEWS = [
@@ -294,6 +295,7 @@ export default function News() {
 
       {/* News Detail Modal */}
       {selectedNews && (
+        <ModalPortal>
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedNews(null)} />
           <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto animate-scale-in">
@@ -381,6 +383,7 @@ export default function News() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
     </div>
   );

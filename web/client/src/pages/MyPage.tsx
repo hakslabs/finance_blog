@@ -31,6 +31,7 @@ import { useWatchlist } from "@/contexts/WatchlistContext";
 import { useAlertsBackendSync } from "@/features/alerts/sync";
 import { useTradesBackendSync } from "@/features/portfolio/sync";
 import { useJournalsBackendSync } from "@/features/memos/sync";
+import { ModalPortal } from "@/components/ModalPortal";
 
 // ── Helpers ──────────────────────────────────────────────────
 const ALL_STOCKS = [...US_STOCKS, ...KR_STOCKS];
@@ -139,6 +140,7 @@ function StockDetailModal({ ticker, onClose }: { ticker: string; onClose: () => 
   const pathD = chartPts.map((p, i) => `${i === 0 ? "M" : "L"} ${(p.x / 29) * 280} ${toSvgY(p.y)}`).join(" ");
   const strokeColor = stock.changePct >= 0 ? "#10b981" : "#ef4444";
   return (
+    <ModalPortal>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
@@ -194,6 +196,7 @@ function StockDetailModal({ ticker, onClose }: { ticker: string; onClose: () => 
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
 
@@ -217,6 +220,7 @@ function AddTradeModal({ onClose, onAdd }: { onClose: () => void; onAdd: (t: Tra
     onClose();
   };
   return (
+    <ModalPortal>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl">
@@ -303,6 +307,7 @@ function AddTradeModal({ onClose, onAdd }: { onClose: () => void; onAdd: (t: Tra
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
 
@@ -874,6 +879,7 @@ function AlertsTab() {
         ))}
       </div>
       {showAddModal && (
+        <ModalPortal>
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setShowAddModal(false)} />
           <div className="relative bg-card border border-border rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4">
@@ -903,6 +909,7 @@ function AlertsTab() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
     </div>
   );

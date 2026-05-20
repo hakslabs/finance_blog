@@ -16,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { ModalPortal } from "@/components/ModalPortal";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
@@ -638,6 +639,7 @@ function ContentTab() {
         </table>
       </div>
       {showForm && (
+        <ModalPortal>
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowForm(false)}>
           <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-lg mx-4 shadow-2xl space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
@@ -687,6 +689,7 @@ function ContentTab() {
             </div>
           </div>
         </div>
+        </ModalPortal>
       )}
     </div>
   );
@@ -908,6 +911,7 @@ function CourseEditorModal({
   ];
 
   return (
+    <ModalPortal>
     <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
       <div
         className="bg-card border border-border rounded-2xl shadow-2xl flex flex-col w-full max-w-6xl my-auto max-h-[92vh] overflow-hidden"
@@ -1024,6 +1028,7 @@ function CourseEditorModal({
         </div>
       </div>
     </div>
+    </ModalPortal>
   );
 }
 
