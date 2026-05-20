@@ -169,7 +169,7 @@ export default function MasterDetail() {
                     bookmarkCtx?.removeBookmark("master", master.id);
                     toast.success("북마크 제거");
                   } else {
-                    bookmarkCtx?.addBookmark("master", master.id, { name: master.nameKo, fund: master.fund });
+                    bookmarkCtx?.addBookmark("master", master.id, { title: master.nameKo, subtitle: master.fund, href: `/masters/${master.id}` });
                     toast.success("북마크 추가");
                   }
                 }}

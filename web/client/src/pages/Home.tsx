@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWatchlist } from "@/contexts/WatchlistContext";
+import { useBookmark } from "@/contexts/BookmarkContext";
 
 // ── 시장 감지 ─────────────────────────────────────────────────
 function detectOpenMarket(): "KR" | "US" {
@@ -259,6 +260,8 @@ function FearGreedModal({ market, onClose }: { market: "KR" | "US"; onClose: () 
 
 // ── 뉴스 상세 모달 ─────────────────────────────────────────────
 function NewsModal({ news, onClose }: { news: typeof MARKET_NEWS[0]; onClose: () => void }) {
+  const { isNewsBookmarked, toggleNewsBookmark } = useBookmark();
+  const bookmarked = isNewsBookmarked(news.id);
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-lg mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
@@ -311,10 +314,21 @@ function NewsModal({ news, onClose }: { news: typeof MARKET_NEWS[0]; onClose: ()
         )}
         <div className="flex gap-2">
           <button
-            onClick={() => { toast.success("뉴스를 북마크했습니다"); onClose(); }}
-            className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-sm"
+            onClick={() => {
+              toggleNewsBookmark(news.id, {
+                title: news.title,
+                subtitle: `${news.source} · ${news.category}`,
+                href: `/news`,
+              });
+              toast.success(bookmarked ? "북마크 해제" : "뉴스를 북마크했습니다");
+            }}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 py-2 rounded-lg transition-colors text-sm",
+              bookmarked ? "bg-primary/10 text-primary hover:bg-primary/15" : "bg-muted hover:bg-muted/80",
+            )}
           >
-            <Bookmark size={14} /> 북마크
+            {bookmarked ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
+            {bookmarked ? "북마크됨" : "북마크"}
           </button>
           <Link href="/news" className="flex-1">
             <button className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity text-sm">

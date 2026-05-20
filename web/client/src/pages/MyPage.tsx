@@ -23,9 +23,10 @@ import {
   Plus, X, ArrowUpRight, ArrowDownRight, Wallet, BarChart3, Search,
   TrendingUp, TrendingDown, FileText, GraduationCap, BookmarkCheck,
   Users, ChevronDown, ChevronUp, AlertTriangle, Activity, Layers,
+  Newspaper,
 } from "lucide-react";
 import { toast } from "sonner";
-import { BookmarkContext } from "@/contexts/BookmarkContext";
+import { BookmarkContext, type BookmarkItem, type BookmarkType } from "@/contexts/BookmarkContext";
 import { FollowContext } from "@/contexts/FollowContext";
 import { useWatchlist } from "@/contexts/WatchlistContext";
 import { useAlertsBackendSync } from "@/features/alerts/sync";
@@ -916,112 +917,173 @@ function AlertsTab() {
 }
 
 // ── Bookmarks Tab (팔로우/북마크 통합) ───────────────────────
+// Hydrates a backend-stored bookmark with a title pulled from the mock
+// data arrays, so old bookmarks (saved before the v2 schema stored
+// title/subtitle inline) still render with something meaningful.
+function hydrateBookmark(item: BookmarkItem): { title: string; subtitle?: string; href?: string } {
+  if (item.title) return { title: item.title, subtitle: item.subtitle, href: item.href };
+  if (item.type === "report") {
+    const r = REPORTS.find((x) => x.id === item.id);
+    if (r) return { title: r.title, subtitle: `${r.institution} · ${r.date}`, href: `/reports` };
+  } else if (item.type === "guide") {
+    const g = LEARN_GUIDES?.find((x) => x.id === item.id);
+    if (g) return { title: g.title, href: `/learn/${item.id}` };
+  } else if (item.type === "master") {
+    const m = MASTERS.find((x) => x.id === item.id);
+    if (m) return { title: (m as any).nameKo ?? m.name, subtitle: m.fund, href: `/masters/${item.id}` };
+  } else if (item.type === "stock") {
+    return { title: item.id, href: `/stocks/${item.id}` };
+  } else if (item.type === "news") {
+    return { title: `뉴스 #${item.id}`, href: `/news` };
+  }
+  return { title: item.id };
+}
+
+const BOOKMARK_TYPE_META: Record<BookmarkType, { label: string; icon: React.ReactNode; tint: string }> = {
+  news:   { label: "뉴스",     icon: <Newspaper size={13} />,      tint: "text-sky-400" },
+  report: { label: "리포트",   icon: <FileText size={13} />,        tint: "text-blue-400" },
+  guide:  { label: "학습",     icon: <GraduationCap size={13} />,   tint: "text-violet-400" },
+  master: { label: "거장",     icon: <Users size={13} />,           tint: "text-amber-400" },
+  stock:  { label: "종목",     icon: <BarChart3 size={13} />,       tint: "text-emerald-400" },
+};
+
 function BookmarksTab() {
   const bookmarkCtx = useContext(BookmarkContext);
   const followCtx = useContext(FollowContext);
-  const bookmarkedMasterIds: string[] = Array.from((bookmarkCtx as any)?.state?.masters ?? new Set<string>());
+  const items = bookmarkCtx?.bookmarkedItems ?? [];
+
+  // The "거장" chip layers followed masters on top of bookmarked ones —
+  // those count as the same kind of interest from the user's POV.
   const followedMasterIds: string[] = followCtx?.followedIds ? Array.from(followCtx.followedIds) : [];
-  const bookmarkedReportIds = bookmarkCtx?.bookmarkedReportIds ?? [];
-  const bookmarkedGuideIds = bookmarkCtx?.bookmarkedGuideIds ?? [];
-  const masterIds = Array.from(new Set([...bookmarkedMasterIds, ...followedMasterIds]));
-  const masters = MASTERS.filter(m => masterIds.includes(m.id));
+  const followedExtra: BookmarkItem[] = followedMasterIds
+    .filter((id) => !items.some((it) => it.type === "master" && it.id === id))
+    .map((id) => {
+      const m = MASTERS.find((x) => x.id === id);
+      return {
+        type: "master" as const,
+        id,
+        title: m ? ((m as any).nameKo ?? m.name) : id,
+        subtitle: m ? `${m.fund} · 팔로우` : "팔로우",
+        href: `/masters/${id}`,
+        added_at: 0, // sentinel: follows live at the bottom of the list
+      };
+    });
+  const allItems = [...items, ...followedExtra].sort((a, b) => b.added_at - a.added_at);
+
+  const counts: Record<BookmarkType | "all", number> = {
+    all: allItems.length,
+    news: allItems.filter((i) => i.type === "news").length,
+    report: allItems.filter((i) => i.type === "report").length,
+    guide: allItems.filter((i) => i.type === "guide").length,
+    master: allItems.filter((i) => i.type === "master").length,
+    stock: allItems.filter((i) => i.type === "stock").length,
+  };
+  const [filter, setFilter] = useState<BookmarkType | "all">("all");
+
+  const visible = filter === "all" ? allItems : allItems.filter((i) => i.type === filter);
+
+  const handleRemove = (item: BookmarkItem) => {
+    if (item.type === "master" && followedMasterIds.includes(item.id) && !bookmarkCtx?.isBookmarked("master", item.id)) {
+      // Follow-only entry — drop the follow rather than the bookmark.
+      followCtx?.unfollow?.(item.id);
+      toast.info("팔로우 해제");
+      return;
+    }
+    bookmarkCtx?.removeBookmark(item.type, item.id);
+    if (item.type === "master" && followedMasterIds.includes(item.id)) {
+      followCtx?.unfollow?.(item.id);
+    }
+    toast.info("북마크 해제");
+  };
+
+  const FILTERS: { key: BookmarkType | "all"; label: string }[] = [
+    { key: "all", label: "전체" },
+    { key: "news", label: "뉴스" },
+    { key: "report", label: "리포트" },
+    { key: "guide", label: "학습" },
+    { key: "master", label: "거장" },
+    { key: "stock", label: "종목" },
+  ];
+
   return (
-    <div className="space-y-5">
-      <div className="bg-card border border-border rounded-xl p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Users size={14} className="text-amber-400" />
-          <h3 className="text-sm font-semibold">관심 거장</h3>
-          <span className="text-xs text-muted-foreground ml-auto">{masters.length}명</span>
-          <span className="text-[10px] text-muted-foreground">(팔로우 · 북마크 통합)</span>
-        </div>
-        {masters.length === 0 ? (
-          <div className="text-center py-6">
-            <p className="text-xs text-muted-foreground">팔로우하거나 북마크한 거장이 없습니다.</p>
-            <Link href="/masters"><button className="mt-2 text-xs text-amber-400 hover:underline">거장 탐색하기 →</button></Link>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {masters.map(m => {
-              const isFollowed = followedMasterIds.includes(m.id);
-              const isBookmarked = bookmarkedMasterIds.includes(m.id);
-              return (
-                <div key={m.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors">
-                  <Link href={`/masters/${m.id}`} className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
-                      <span className="text-sm font-bold text-amber-400">{(m as any).nameKo?.charAt(0) ?? m.name.charAt(0)}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium">{(m as any).nameKo ?? m.name}</div>
-                      <div className="text-xs text-muted-foreground">{m.fund}</div>
-                    </div>
-                  </Link>
-                  <div className="flex items-center gap-1.5">
-                    {isFollowed && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">팔로우</span>}
-                    {isBookmarked && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">북마크</span>}
-                    <button onClick={() => { if (isFollowed) followCtx?.unfollow?.(m.id); if (isBookmarked) bookmarkCtx?.removeBookmark("master", m.id); toast.info("관심 해제"); }}
-                      className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-down transition-colors"><X size={12} /></button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+    <div className="space-y-4">
+      {/* Filter chips */}
+      <div className="flex gap-1.5 flex-wrap">
+        {FILTERS.map((f) => {
+          const active = filter === f.key;
+          const c = counts[f.key];
+          return (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={cn(
+                "text-xs px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5",
+                active
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+              )}
+            >
+              {f.label}
+              <span className={cn(
+                "text-[10px] px-1.5 py-0.5 rounded-full font-mono",
+                active ? "bg-primary-foreground/20" : "bg-muted/60"
+              )}>{c}</span>
+            </button>
+          );
+        })}
       </div>
-      <div className="bg-card border border-border rounded-xl p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <FileText size={14} className="text-blue-400" />
-          <h3 className="text-sm font-semibold">북마크 리포트</h3>
-          <span className="text-xs text-muted-foreground ml-auto">{bookmarkedReportIds.length}개</span>
-        </div>
-        {bookmarkedReportIds.length === 0 ? (
-          <div className="text-center py-6">
-            <p className="text-xs text-muted-foreground">북마크한 리포트가 없습니다.</p>
-            <Link href="/reports"><button className="mt-2 text-xs text-blue-400 hover:underline">리포트 보기 →</button></Link>
+
+      {/* Unified scrollable list */}
+      <div className="bg-card border border-border rounded-xl divide-y divide-border">
+        {visible.length === 0 ? (
+          <div className="text-center py-12">
+            <Bookmark size={28} className="mx-auto mb-2 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">
+              {filter === "all" ? "아직 북마크한 항목이 없어요" : `${BOOKMARK_TYPE_META[filter].label} 북마크가 없습니다`}
+            </p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {bookmarkedReportIds.map(id => {
-              const report = REPORTS.find(r => r.id === id);
-              return (
-                <div key={id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors">
-                  <FileText size={13} className="text-blue-400 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm truncate">{report?.title ?? id}</div>
-                    {report && <div className="text-xs text-muted-foreground">{report.institution} · {report.date}</div>}
-                  </div>
-                  <button onClick={() => { bookmarkCtx?.removeBookmark("report", id); toast.info("북마크 해제"); }} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-down flex-shrink-0"><X size={12} /></button>
+          visible.map((item) => {
+            const meta = hydrateBookmark(item);
+            const typeMeta = BOOKMARK_TYPE_META[item.type];
+            const followed = item.type === "master" && followedMasterIds.includes(item.id);
+            const bookmarked = bookmarkCtx?.isBookmarked(item.type, item.id);
+            return (
+              <div key={`${item.type}-${item.id}`} className="flex items-center gap-3 p-3 hover:bg-muted/30 transition-colors">
+                <div className={cn("w-8 h-8 rounded-lg bg-muted/40 flex items-center justify-center flex-shrink-0", typeMeta.tint)}>
+                  {typeMeta.icon}
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-      <div className="bg-card border border-border rounded-xl p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <GraduationCap size={14} className="text-violet-400" />
-          <h3 className="text-sm font-semibold">북마크 학습 가이드</h3>
-          <span className="text-xs text-muted-foreground ml-auto">{bookmarkedGuideIds.length}개</span>
-        </div>
-        {bookmarkedGuideIds.length === 0 ? (
-          <div className="text-center py-6">
-            <p className="text-xs text-muted-foreground">북마크한 학습 가이드가 없습니다.</p>
-            <Link href="/learn"><button className="mt-2 text-xs text-violet-400 hover:underline">학습 센터 보기 →</button></Link>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {bookmarkedGuideIds.map(id => {
-              const guide = LEARN_GUIDES?.find(g => g.id === id);
-              return (
-                <div key={id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/20">
-                  <GraduationCap size={13} className="text-violet-400 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm truncate">{guide?.title ?? id}</div>
-                  </div>
-                  <button onClick={() => { bookmarkCtx?.removeBookmark("guide", id); toast.info("북마크 해제"); }} className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-down flex-shrink-0"><X size={12} /></button>
+                <div className="flex-1 min-w-0">
+                  {meta.href ? (
+                    <Link href={meta.href}>
+                      <div className="text-sm font-medium truncate hover:text-primary cursor-pointer">{meta.title}</div>
+                    </Link>
+                  ) : (
+                    <div className="text-sm font-medium truncate">{meta.title}</div>
+                  )}
+                  {meta.subtitle && <div className="text-xs text-muted-foreground truncate mt-0.5">{meta.subtitle}</div>}
                 </div>
-              );
-            })}
-          </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className={cn("text-[10px] px-1.5 py-0.5 rounded border bg-muted/40", typeMeta.tint)}>
+                    {typeMeta.label}
+                  </span>
+                  {followed && bookmarked && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">팔로우</span>
+                  )}
+                  {followed && !bookmarked && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">팔로우</span>
+                  )}
+                  <button
+                    onClick={() => handleRemove(item)}
+                    className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-down transition-colors"
+                    title="제거"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
     </div>

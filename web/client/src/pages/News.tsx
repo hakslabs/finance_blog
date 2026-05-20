@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ModalPortal } from "@/components/ModalPortal";
+import { useBookmark } from "@/contexts/BookmarkContext";
 
 // ── Extended mock news data ───────────────────────────────────
 const ALL_NEWS = [
@@ -119,7 +120,7 @@ function categoryColor(cat: string) {
 export default function News() {
   const [activeCategory, setActiveCategory] = useState("전체");
   const [searchQuery, setSearchQuery] = useState("");
-  const [bookmarks, setBookmarks] = useState<number[]>([]);
+  const { isNewsBookmarked, toggleNewsBookmark, bookmarkedNewsIds } = useBookmark();
   const [selectedNews, setSelectedNews] = useState<typeof ALL_NEWS[0] | null>(null);
 
   // Personalize each news item's "impact" string from the user's actual
@@ -155,10 +156,14 @@ export default function News() {
   });
 
   const toggleBookmark = (id: number) => {
-    setBookmarks(prev =>
-      prev.includes(id) ? prev.filter(b => b !== id) : [...prev, id]
-    );
-    toast.success(bookmarks.includes(id) ? "북마크 해제" : "뉴스를 북마크했습니다");
+    const was = isNewsBookmarked(id);
+    const article = allNewsPersonalized.find(n => n.id === id);
+    toggleNewsBookmark(id, article ? {
+      title: article.title,
+      subtitle: `${article.source} · ${article.category}`,
+      href: `/news`,
+    } : undefined);
+    toast.success(was ? "북마크 해제" : "뉴스를 북마크했습니다");
   };
 
   return (
@@ -213,9 +218,9 @@ export default function News() {
       {/* Stats bar */}
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span>총 <strong className="text-foreground">{filtered.length}</strong>건</span>
-        {bookmarks.length > 0 && (
+        {bookmarkedNewsIds.length > 0 && (
           <button onClick={() => setActiveCategory("전체")} className="flex items-center gap-1 text-primary hover:underline">
-            <Bookmark size={11} /> 북마크 {bookmarks.length}건
+            <Bookmark size={11} /> 북마크 {bookmarkedNewsIds.length}건
           </button>
         )}
       </div>
@@ -266,7 +271,7 @@ export default function News() {
                   onClick={e => { e.stopPropagation(); toggleBookmark(news.id); }}
                   className="text-muted-foreground hover:text-primary transition-colors"
                 >
-                  {bookmarks.includes(news.id)
+                  {isNewsBookmarked(news.id)
                     ? <BookmarkCheck size={14} className="text-primary" />
                     : <Bookmark size={14} />
                   }
@@ -366,7 +371,7 @@ export default function News() {
                   className="flex-1 gap-1.5 text-xs"
                   onClick={() => toggleBookmark(selectedNews.id)}
                 >
-                  {bookmarks.includes(selectedNews.id)
+                  {isNewsBookmarked(selectedNews.id)
                     ? <><BookmarkCheck size={13} className="text-primary" /> 북마크됨</>
                     : <><Bookmark size={13} /> 북마크</>
                   }
