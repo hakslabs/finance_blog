@@ -57,6 +57,21 @@ def _escape(q: str) -> str:
     return f"*{cleaned}*"
 
 
+async def _load_universe(settings: Settings) -> set[str]:
+    """Return the union of SP500 + NDX + KOSPI200 symbols (uppercased).
+
+    Empty set if the table is empty (= seed script hasn't run yet) — the
+    caller short-circuits the universe filter in that case so search
+    doesn't go dark while we wait for the seeder.
+    """
+    rows = await _pg_get(
+        settings,
+        "index_constituents",
+        {"select": "symbol", "limit": "5000"},
+    )
+    return {(r.get("symbol") or "").upper() for r in rows if r.get("symbol")}
+
+
 async def _pg_get(
     settings: Settings,
     path: str,
@@ -92,8 +107,11 @@ async def search(
 
     needle = _escape(q_trimmed)
 
-    # Instruments: match by symbol or name (case-insensitive).
-    sym_rows = await _pg_get(
+    # Instruments: match by symbol or name (case-insensitive). Gate by
+    # the blog's index universe (SP500 ∪ NDX ∪ KOSPI200) so the
+    # dropdown never returns tickers the blog doesn't cover.
+    universe = await _load_universe(settings)
+    sym_rows_raw = await _pg_get(
         settings,
         "instruments",
         {
@@ -101,9 +119,12 @@ async def search(
             "or": f"(symbol.ilike.{needle},name.ilike.{needle})",
             "is_active": "eq.true",
             "order": "symbol.asc",
-            "limit": str(limit),
+            # Pull a bit extra since some will get filtered out below.
+            "limit": str(limit * 3),
         },
     )
+    sym_rows = [r for r in sym_rows_raw if (r.get("symbol") or "").upper() in universe][:limit] \
+        if universe else sym_rows_raw[:limit]
     masters_rows = await _pg_get(
         settings,
         "masters",

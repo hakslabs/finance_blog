@@ -49,6 +49,10 @@ if ENV_FILE.exists():
         value = value.strip('"').strip("'")
         os.environ.setdefault(key.strip(), value)
 
+sys.path.insert(0, str(ROOT))
+
+from scripts.lib.index_universe import require_universe  # noqa: E402
+
 
 FINNHUB_BASE = "https://finnhub.io/api/v1"
 
@@ -132,15 +136,22 @@ def main() -> int:
     end = today + timedelta(weeks=args.weeks_ahead)
     print(f"Pulling Finnhub earnings {today} → {end}")
 
+    universe = require_universe("us")
+    print(f"  filtering against {len(universe)} US symbols (SP500 ∪ NDX)")
+
     with httpx.Client() as client:
         raw = fetch_earnings(client, api_key, today, end)
         print(f"  fetched {len(raw)} earnings rows")
 
         out: List[Dict[str, Any]] = []
+        skipped = 0
         for r in raw:
             symbol = (r.get("symbol") or "").upper().strip()
             ev_date = r.get("date")
             if not symbol or not ev_date:
+                continue
+            if symbol not in universe:
+                skipped += 1
                 continue
             try:
                 day = date.fromisoformat(ev_date)
@@ -169,7 +180,7 @@ def main() -> int:
             })
 
         written = upsert_rows(client, supabase_url, service_key, out)
-        print(f"Done. Upserted {written} / {len(out)} earnings rows.")
+        print(f"Done. Upserted {written} / {len(out)} earnings rows ({skipped} skipped: out of universe).")
     return 0
 
 

@@ -35,7 +35,7 @@ from typing import Any, Dict, List
 import httpx
 
 
-# ── Repo-root .env loader ─────────────────────────────────────────────
+# ── Repo-root .env loader (must run before lib.index_universe imports) ─
 ROOT = Path(__file__).resolve().parents[1]
 ENV_FILE = ROOT / ".env"
 if ENV_FILE.exists():
@@ -51,6 +51,10 @@ if ENV_FILE.exists():
                 value = value[:hash_idx].rstrip()
         value = value.strip('"').strip("'")
         os.environ.setdefault(key.strip(), value)
+
+sys.path.insert(0, str(ROOT))
+
+from scripts.lib.index_universe import require_universe  # noqa: E402
 
 
 POLYGON_BASE = "https://api.polygon.io"
@@ -139,15 +143,22 @@ def main() -> int:
     end = today + timedelta(weeks=args.weeks_ahead)
     print(f"Pulling Polygon dividends {today} → {end}")
 
+    universe = require_universe("us")
+    print(f"  filtering against {len(universe)} US symbols (SP500 ∪ NDX)")
+
     with httpx.Client() as client:
         raw = fetch_dividends(client, api_key, today, end)
         print(f"  fetched {len(raw)} dividend rows from Polygon")
 
         out: List[Dict[str, Any]] = []
+        skipped = 0
         for r in raw:
             ticker = (r.get("ticker") or "").upper().strip()
             ex_date = r.get("ex_dividend_date")
             if not ticker or not ex_date:
+                continue
+            if ticker not in universe:
+                skipped += 1
                 continue
             # Ex-dividend date is a calendar day; pin to 13:30 UTC like macros
             # so the calendar sorts cleanly alongside FRED rows.
@@ -169,7 +180,7 @@ def main() -> int:
             })
 
         written = upsert_rows(client, supabase_url, service_key, out)
-        print(f"Done. Upserted {written} / {len(out)} dividend rows.")
+        print(f"Done. Upserted {written} / {len(out)} dividend rows ({skipped} skipped: out of universe).")
     return 0
 
 
