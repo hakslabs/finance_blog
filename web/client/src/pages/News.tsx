@@ -5,8 +5,9 @@
  * - 뉴스 클릭 시 상세 모달
  * - 관심 뉴스 북마크
  */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
+import { useHoldings } from "@/features/portfolio";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -120,7 +121,33 @@ export default function News() {
   const [bookmarks, setBookmarks] = useState<number[]>([]);
   const [selectedNews, setSelectedNews] = useState<typeof ALL_NEWS[0] | null>(null);
 
-  const filtered = ALL_NEWS.filter(n => {
+  // Personalize each news item's "impact" string from the user's actual
+  // portfolio holdings. If a news ticker is in the user's holdings, we
+  // surface the holding's weight × |today's change|. Falls back to the
+  // mock impact for tickers the user doesn't hold.
+  const { data: holdings } = useHoldings();
+  const allNewsPersonalized = useMemo(() => {
+    const byTicker = new Map<string, { weight: number; changePct: number }>();
+    for (const h of holdings ?? []) {
+      byTicker.set(h.ticker, { weight: h.weight, changePct: h.gainLossPct });
+    }
+    if (byTicker.size === 0) return ALL_NEWS;
+    return ALL_NEWS.map((n) => {
+      let total = 0;
+      let signed = 0;
+      for (const t of n.tickers) {
+        const h = byTicker.get(t);
+        if (!h) continue;
+        total += h.weight;
+        signed += (h.weight / 100) * h.changePct;
+      }
+      if (total === 0) return n;
+      const sign = signed >= 0 ? "+" : "";
+      return { ...n, impact: `${sign}${signed.toFixed(2)}%`, up: signed >= 0 };
+    });
+  }, [holdings]);
+
+  const filtered = allNewsPersonalized.filter(n => {
     const matchCat = activeCategory === "전체" || n.category === activeCategory;
     const matchSearch = !searchQuery || n.title.includes(searchQuery) || n.tags.some(t => t.includes(searchQuery));
     return matchCat && matchSearch;
