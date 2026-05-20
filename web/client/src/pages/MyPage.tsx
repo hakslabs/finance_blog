@@ -30,6 +30,7 @@ import { FollowContext } from "@/contexts/FollowContext";
 import { useWatchlist } from "@/contexts/WatchlistContext";
 import { useAlertsBackendSync } from "@/features/alerts/sync";
 import { useTradesBackendSync } from "@/features/portfolio/sync";
+import { useJournalsBackendSync } from "@/features/memos/sync";
 
 // ── Helpers ──────────────────────────────────────────────────
 const ALL_STOCKS = [...US_STOCKS, ...KR_STOCKS];
@@ -718,12 +719,16 @@ function TradesTab() {
 function JournalTab() {
   const [journals, setJournals] = useLocalState<Journal[]>("financelab_journals", INIT_JOURNALS);
   const [trades] = useLocalState<Trade[]>("financelab_trades", INIT_TRADES);
+  const { upsert: upsertJournalSynced } = useJournalsBackendSync(journals, setJournals);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [newNote, setNewNote] = useState("");
   const unlinkedTrades = trades.filter(t => !t.journalLinked);
   const addFollowUp = (journalId: string) => {
     if (!newNote.trim()) return;
-    setJournals(prev => prev.map(j => j.id === journalId ? { ...j, followUps: [...j.followUps, { date: new Date().toISOString().slice(0, 10), note: newNote }] } : j));
+    const updated = journals.find(j => j.id === journalId);
+    if (!updated) return;
+    const next: Journal = { ...updated, followUps: [...updated.followUps, { date: new Date().toISOString().slice(0, 10), note: newNote }] };
+    upsertJournalSynced(next);
     setNewNote("");
     toast.success("후속 메모 추가");
   };
