@@ -18,6 +18,9 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useWatchlist } from "@/contexts/WatchlistContext";
+import { PriceAlertDialog } from "@/components/PriceAlertDialog";
+import { toast } from "sonner";
 
 // ── Data generators ────────────────────────────────────────────
 function generatePriceData(days = 90, trend: "up" | "down" | "flat" = "up") {
@@ -186,9 +189,12 @@ export default function StockDetail() {
   const [chartPeriod, setChartPeriod] = useState<"1W" | "1M" | "3M" | "6M" | "1Y">("3M");
   const [activeTab, setActiveTab] = useState(0);
   const [indicators, setIndicators] = useState<IndicatorConfig[]>(DEFAULT_INDICATORS);
+  const [alertOpen, setAlertOpen] = useState(false);
+  const { isWatched, toggleWatchlist } = useWatchlist();
 
   const allStocks = [...US_STOCKS, ...KR_STOCKS];
   const stock = allStocks.find(s => s.ticker === ticker);
+  const watched = isWatched(ticker);
 
   const periodDays: Record<string, number> = { "1W": 7, "1M": 22, "3M": 66, "6M": 130, "1Y": 252 };
   const days = periodDays[chartPeriod] ?? 66;
@@ -234,10 +240,33 @@ export default function StockDetail() {
             <p className="text-muted-foreground text-sm">{stock.name}</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5"><Star size={13} />관심종목</Button>
-            <Button variant="outline" size="sm" className="gap-1.5"><Bell size={13} />알림</Button>
+            <Button
+              variant={watched ? "default" : "outline"}
+              size="sm"
+              className="gap-1.5"
+              onClick={() => {
+                if (!stock) return;
+                const nowAdded = toggleWatchlist({
+                  ticker: stock.ticker, name: stock.name, exchange: stock.exchange,
+                  price: stock.price, changePct: stock.changePct, sector: stock.sector,
+                });
+                toast.success(nowAdded ? "관심종목에 추가되었습니다" : "관심종목에서 제거되었습니다");
+              }}
+            >
+              <Star size={13} className={watched ? "fill-current" : ""} />
+              {watched ? "관심종목 해제" : "관심종목"}
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setAlertOpen(true)}>
+              <Bell size={13} />알림
+            </Button>
             <Button size="sm">매수 분석</Button>
           </div>
+          <PriceAlertDialog
+            open={alertOpen}
+            onOpenChange={setAlertOpen}
+            symbol={ticker}
+            currentPrice={stock?.price}
+          />
         </div>
 
         <div className="flex flex-wrap items-end gap-6 mt-4 pt-4 border-t border-border">
