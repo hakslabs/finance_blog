@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { MASTERS } from "@/services/mockData";
+import { useMaster } from "@/features/masters";
 import { FollowContext } from "@/contexts/FollowContext";
 import { BookmarkContext } from "@/contexts/BookmarkContext";
 import { toast } from "sonner";
@@ -95,7 +96,15 @@ export default function MasterDetail() {
   const bookmarkCtx = useContext(BookmarkContext);
   const [activeTab, setActiveTab] = useState("overview");
 
-  const master = MASTERS.find((m) => m.id === id);
+  // Live master fetch; falls back to MASTERS mock entry on /v1/masters
+  // miss so the page renders during preview.
+  const { data: liveMaster } = useMaster(id);
+  // Keep the mock's type as the inferred shape so the rest of this
+  // file's callback parameters stay typed; the live backend returns
+  // a shape-compatible payload (a superset of these fields).
+  const master: typeof MASTERS[0] | undefined =
+    (liveMaster as unknown as typeof MASTERS[0] | undefined)
+    ?? MASTERS.find((m) => m.id === id);
 
   if (!master) {
     return (

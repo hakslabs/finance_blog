@@ -7,6 +7,7 @@ import { useState, useMemo } from "react";
 import { Link, useParams } from "wouter";
 import { cn } from "@/lib/utils";
 import { US_STOCKS, KR_STOCKS } from "@/lib/data";
+import { useStocks, useStock } from "@/features/stocks";
 import {
   ComposedChart, AreaChart, Area, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
@@ -192,7 +193,16 @@ export default function StockDetail() {
   const [alertOpen, setAlertOpen] = useState(false);
   const { isWatched, toggleWatchlist } = useWatchlist();
 
-  const allStocks = [...US_STOCKS, ...KR_STOCKS];
+  // Live stock universe (US + KR movers) overlayed onto the mock
+  // list. The Stock shape from /v1/movers matches the mock row shape
+  // (ticker / name / price / changePct / sector / exchange) so we
+  // can concat freely. Mock stays as backstop if /v1/movers is empty.
+  const { data: liveUS } = useStocks("US");
+  const { data: liveKR } = useStocks("KR");
+  const allStocks = useMemo(
+    () => [...(liveUS ?? []), ...(liveKR ?? []), ...US_STOCKS, ...KR_STOCKS],
+    [liveUS, liveKR],
+  );
   const stock = allStocks.find(s => s.ticker === ticker);
   const watched = isWatched(ticker);
 
@@ -575,7 +585,7 @@ export default function StockDetail() {
                   { label: "순이익 (B$)", values: ["100", "97", "101", "104"] },
                   { label: "EPS ($)", values: ["6.11", "6.13", "6.43", "6.58"] },
                   { label: "영업이익률", values: ["30.3%", "29.8%", "31.5%", "32.1%"] },
-                  { label: "ROE", values: [`${stock.roe}%`, `${(stock.roe * 0.92).toFixed(1)}%`, `${(stock.roe * 0.98).toFixed(1)}%`, `${stock.roe}%`] },
+                  { label: "ROE", values: (() => { const roe = stock.roe ?? 20; return [`${roe}%`, `${(roe * 0.92).toFixed(1)}%`, `${(roe * 0.98).toFixed(1)}%`, `${roe}%`]; })() },
                 ].map(row => (
                   <tr key={row.label} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                     <td className="py-2.5 px-3 text-xs text-muted-foreground">{row.label}</td>
@@ -594,12 +604,14 @@ export default function StockDetail() {
       {activeTab === 2 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[
-            { label: "P/E (현재)", value: `${stock.pe}x`, peer: "섹터 평균 32x", status: stock.pe < 32 ? "저평가" : "고평가" },
-            { label: "P/B", value: `${(stock.pe / 8).toFixed(1)}x`, peer: "섹터 평균 4.2x", status: "적정" },
-            { label: "EV/EBITDA", value: `${(stock.pe * 0.8).toFixed(1)}x`, peer: "섹터 평균 18x", status: "적정" },
-            { label: "PEG Ratio", value: `${(stock.pe / 20).toFixed(2)}`, peer: "1.0 이하 저평가", status: stock.pe / 20 < 1 ? "저평가" : "고평가" },
-            { label: "배당수익률", value: "0.52%", peer: "섹터 평균 1.2%", status: "낮음" },
-            { label: "ROE", value: `${stock.roe}%`, peer: "섹터 평균 18%", status: stock.roe > 18 ? "우수" : "보통" },
+            ...(() => { const pe = stock.pe ?? 25; const roe = stock.roe ?? 20; return [
+              { label: "P/E (현재)", value: `${pe}x`, peer: "섹터 평균 32x", status: pe < 32 ? "저평가" : "고평가" },
+              { label: "P/B", value: `${(pe / 8).toFixed(1)}x`, peer: "섹터 평균 4.2x", status: "적정" },
+              { label: "EV/EBITDA", value: `${(pe * 0.8).toFixed(1)}x`, peer: "섹터 평균 18x", status: "적정" },
+              { label: "PEG Ratio", value: `${(pe / 20).toFixed(2)}`, peer: "1.0 이하 저평가", status: pe / 20 < 1 ? "저평가" : "고평가" },
+              { label: "배당수익률", value: "0.52%", peer: "섹터 평균 1.2%", status: "낮음" },
+              { label: "ROE", value: `${roe}%`, peer: "섹터 평균 18%", status: roe > 18 ? "우수" : "보통" },
+            ]; })()
           ].map(item => (
             <div key={item.label} className="bg-card border border-border rounded-xl p-4">
               <div className="text-xs text-muted-foreground mb-1">{item.label}</div>
