@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "@/lib/http";
+import { apiGet, apiPatch } from "@/lib/http";
 import { useAsync } from "@/features/_shared/useAsync";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -13,7 +13,7 @@ export interface Notification {
 
 export const notificationsService = {
   list: (limit = 30) => apiGet<{ items: Notification[] }>(`/me/notifications?limit=${limit}`),
-  markRead: (id: string) => apiPost<void>(`/me/notifications/${id}/read`),
+  markRead: (id: string) => apiPatch<void>(`/me/notifications/${id}/read`),
 };
 
 export function useNotifications(limit = 30) {

@@ -1,6 +1,7 @@
 /**
  * Portfolio.tsx — Portfolio Tracker Page
  */
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { PORTFOLIO_HOLDINGS, PORTFOLIO_ALLOCATION, generatePortfolioChart } from "@/lib/data";
 import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
@@ -9,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { toast } from "sonner";
+import { AddTransactionDialog } from "@/components/AddTransactionDialog";
+import { useHoldings } from "@/features/portfolio";
 
 const COLORS = ["#38BDF8", "#A78BFA", "#FBBF24", "#34D399", "#94A3B8"];
 
@@ -31,20 +34,33 @@ const PERF_METRICS = [
 
 export default function Portfolio() {
   const chartData = generatePortfolioChart(30);
+  const [addOpen, setAddOpen] = useState(false);
+  const { refetch: refetchHoldings, loading: holdingsLoading } = useHoldings();
 
   return (
     <div className="space-y-6 animate-fade-in-up">
+      <AddTransactionDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onCreated={() => refetchHoldings()}
+      />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold font-['Outfit']">내 포트폴리오</h1>
           <p className="text-sm text-muted-foreground mt-0.5">보유 종목 · 수익률 · 자산 배분 현황</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="gap-1" onClick={() => toast.info("종목 추가 기능 준비 중입니다.")}>
+          <Button variant="outline" size="sm" className="gap-1" onClick={() => setAddOpen(true)}>
             <PlusCircle size={14} />종목 추가
           </Button>
-          <Button variant="outline" size="sm" className="gap-1" onClick={() => toast.info("동기화 기능 준비 중입니다.")}>
-            <RefreshCw size={14} />동기화
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1"
+            onClick={() => { refetchHoldings(); toast.success("최신 가격으로 동기화 중…"); }}
+            disabled={holdingsLoading}
+          >
+            <RefreshCw size={14} className={holdingsLoading ? "animate-spin" : undefined} />동기화
           </Button>
         </div>
       </div>
