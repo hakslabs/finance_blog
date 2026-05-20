@@ -5,7 +5,7 @@
  * - 이벤트 클릭 시 상세 모달
  * - 이벤트 추가 (메모)
  */
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,9 +15,6 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
-import { useEconomicEvents } from "@/features/events";
-
-const KO_WEEKDAYS_FULL = ["일", "월", "화", "수", "목", "금", "토"];
 
 // ── Extended calendar events ──────────────────────────────────
 const EVENTS_DATA = [
@@ -61,41 +58,11 @@ export default function CalendarPage() {
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth() + 1); // 1-based
   const [filterType, setFilterType] = useState("전체");
-  type EventRow = (typeof EVENTS_DATA)[0];
-  const [selectedEvent, setSelectedEvent] = useState<EventRow | null>(null);
-
-  // Overlay backend economic events for the current month window.
-  const monthStart = `${viewYear}-${String(viewMonth).padStart(2, "0")}-01`;
-  const monthEnd = (() => {
-    const d = new Date(viewYear, viewMonth, 0);
-    return d.toISOString().slice(0, 10);
-  })();
-  const { data: liveEvents } = useEconomicEvents({ from: monthStart, to: monthEnd });
-  const allEvents: EventRow[] = useMemo(() => {
-    if (!liveEvents || liveEvents.length === 0) return EVENTS_DATA;
-    return liveEvents.map((e, i) => {
-      const d = new Date(e.time);
-      const impact = e.impact === "high" ? "상" : e.impact === "medium" ? "중" : "하";
-      return {
-        id: 10000 + i,
-        date: d.getDate(),
-        day: KO_WEEKDAYS_FULL[d.getDay()],
-        month: d.getMonth() + 1,
-        year: d.getFullYear(),
-        title: e.event,
-        type: "매크로",
-        holding: null,
-        memo: 0,
-        tickers: [],
-        importance: impact,
-        detail: `${e.country} · 예상 ${e.estimate ?? "-"} · 이전 ${e.prev ?? "-"}${e.unit ? ` ${e.unit}` : ""}`,
-      } as EventRow;
-    });
-  }, [liveEvents]);
+  const [selectedEvent, setSelectedEvent] = useState<typeof EVENTS_DATA[0] | null>(null);
   const [listView, setListView] = useState(false);
 
   // Events for current month
-  const monthEvents = allEvents.filter(e =>
+  const monthEvents = EVENTS_DATA.filter(e =>
     e.year === viewYear && e.month === viewMonth &&
     (filterType === "전체" || e.type === filterType)
   );
@@ -206,7 +173,7 @@ export default function CalendarPage() {
           <div className="grid grid-cols-7">
             {cells.map((cell, idx) => {
               const cellEvents = cell.isCurrentMonth
-                ? allEvents.filter(e => e.year === viewYear && e.month === viewMonth && e.date === cell.date && (filterType === "전체" || e.type === filterType))
+                ? EVENTS_DATA.filter(e => e.year === viewYear && e.month === viewMonth && e.date === cell.date && (filterType === "전체" || e.type === filterType))
                 : [];
               const isToday = cell.isCurrentMonth && cell.date === today.getDate() && viewYear === today.getFullYear() && viewMonth === today.getMonth() + 1;
               const colIdx = idx % 7;

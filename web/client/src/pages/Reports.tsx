@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { BookmarkContext } from "@/contexts/BookmarkContext";
-import { useReportsList } from "@/features/reports";
 
 type Report = typeof REPORTS[0];
 type SortKey = "date" | "source" | "title";
@@ -200,32 +199,8 @@ export default function Reports() {
     }
   }, [bookmarkCtx]);
 
-  const { data: liveReports } = useReportsList({ limit: 50 });
-  const mergedReports = useMemo<Report[]>(() => {
-    if (!liveReports || liveReports.length === 0) return REPORTS;
-    const live: Report[] = liveReports.map((r) => {
-      const dt = r.published_at ? new Date(r.published_at) : new Date();
-      const dateStr = `${dt.getFullYear()}.${String(dt.getMonth() + 1).padStart(2, "0")}.${String(dt.getDate()).padStart(2, "0")}`;
-      return {
-        id: r.id,
-        title: r.title,
-        summary: "",
-        source: r.source,
-        type: "Daily",
-        pages: 0,
-        lang: r.language?.toUpperCase() ?? "KO",
-        region: "GLOBAL",
-        category: r.category ?? "리서치",
-        tags: [] as string[],
-        date: dateStr,
-        status: "라이브",
-      } as Report;
-    });
-    return [...live, ...REPORTS];
-  }, [liveReports]);
-
   const filtered = useMemo(() => {
-    let list = [...mergedReports];
+    let list = [...REPORTS];
     if (activeTab === 1) {
       list = list.filter(r => r.type === "Daily" || r.type === "종목분석" || r.type === "실적분석");
     } else if (activeTab === 2) {

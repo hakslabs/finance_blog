@@ -24,9 +24,6 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useWatchlist } from "@/contexts/WatchlistContext";
-import { useAuth } from "@/contexts/AuthContext";
-import { screensService, type Screen } from "@/features/screens";
-import { useEffect } from "react";
 import {
   US_STOCKS, KR_STOCKS, US_SECTORS, KR_SECTORS, MACRO_INDICATORS
 } from "@/services/mockData";
@@ -662,54 +659,10 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 function IntegratedScreenerPanel() {
   const { watchlist } = useWatchlist();
-  const { user } = useAuth();
   const [selectedConditions, setSelectedConditions] = useState<string[]>(["low_per", "high_roe"]);
   const [market, setMarket] = useState<"ALL" | "US" | "KR">("ALL");
   const [useWatchlistOnly, setUseWatchlistOnly] = useState(false);
   const [sortField, setSortField] = useState<"score" | "changePct" | "pe" | "roe">("score");
-
-  const [savedScreens, setSavedScreens] = useState<Screen[]>([]);
-  useEffect(() => {
-    if (!user) return;
-    screensService.list().then(setSavedScreens).catch(() => { /* ignore */ });
-  }, [user]);
-
-  const saveCurrent = async () => {
-    if (!user) { toast.info("로그인 후 저장할 수 있습니다"); return; }
-    const name = window.prompt("스크리너 이름");
-    if (!name?.trim()) return;
-    try {
-      const created = await screensService.create(name.trim(), {
-        conditions: selectedConditions,
-        market,
-        sortField,
-        useWatchlistOnly,
-      });
-      setSavedScreens((prev) => [created, ...prev]);
-      toast.success("스크리너가 저장되었습니다");
-    } catch {
-      toast.error("저장 실패");
-    }
-  };
-
-  const loadScreen = (s: Screen) => {
-    const f = s.filters as Record<string, unknown>;
-    if (Array.isArray(f.conditions)) setSelectedConditions(f.conditions as string[]);
-    if (typeof f.market === "string") setMarket(f.market as "ALL" | "US" | "KR");
-    if (typeof f.sortField === "string") setSortField(f.sortField as "score" | "changePct" | "pe" | "roe");
-    if (typeof f.useWatchlistOnly === "boolean") setUseWatchlistOnly(f.useWatchlistOnly);
-    toast.success(`'${s.name}' 불러옴`);
-  };
-
-  const removeScreen = async (s: Screen, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      await screensService.remove(s.id);
-      setSavedScreens((prev) => prev.filter((x) => x.id !== s.id));
-    } catch {
-      toast.error("삭제 실패");
-    }
-  };
 
   const allStocks = useMemo(() => [...US_STOCKS, ...KR_STOCKS], []);
 
@@ -788,27 +741,6 @@ function IntegratedScreenerPanel() {
           <span className="text-xs text-muted-foreground">조건을 선택하면 해당 종목을 자동으로 필터링합니다</span>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          {savedScreens.length > 0 && (
-            <select
-              className="text-xs px-2 py-1.5 rounded-lg border border-border bg-card text-foreground"
-              onChange={(e) => {
-                const s = savedScreens.find((x) => x.id === e.target.value);
-                if (s) loadScreen(s);
-              }}
-              defaultValue=""
-            >
-              <option value="" disabled>저장된 스크리너...</option>
-              {savedScreens.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          )}
-          <button
-            onClick={saveCurrent}
-            className="text-xs px-3 py-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted"
-          >
-            현재 조건 저장
-          </button>
           <div className="flex rounded-lg border border-border overflow-hidden text-xs">
             {(["ALL", "US", "KR"] as const).map(m => (
               <button key={m} onClick={() => setMarket(m)}

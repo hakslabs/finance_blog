@@ -5,7 +5,7 @@
  * - 뉴스 클릭 시 상세 모달
  * - 관심 뉴스 북마크
  */
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -15,17 +15,6 @@ import {
   ExternalLink, Clock, Filter, X, ArrowRight, RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
-import { useNewsList } from "@/features/news";
-
-function timeAgo(iso: string | null): string {
-  if (!iso) return "";
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diffMs / 60000);
-  if (m < 60) return `${Math.max(1, m)}분`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}시간`;
-  return `${Math.floor(h / 24)}일`;
-}
 
 // ── Extended mock news data ───────────────────────────────────
 const ALL_NEWS = [
@@ -129,40 +118,9 @@ export default function News() {
   const [activeCategory, setActiveCategory] = useState("전체");
   const [searchQuery, setSearchQuery] = useState("");
   const [bookmarks, setBookmarks] = useState<number[]>([]);
-  type NewsRow = {
-    id: number;
-    title: string;
-    body: string;
-    source: string;
-    time: string;
-    category: string;
-    tickers: string[];
-    impact: string | null;
-    up: boolean | null;
-    tags: string[];
-    url?: string | null;
-  };
-  const [selectedNews, setSelectedNews] = useState<NewsRow | null>(null);
+  const [selectedNews, setSelectedNews] = useState<typeof ALL_NEWS[0] | null>(null);
 
-  const { data: liveNews } = useNewsList({ limit: 50 });
-  const newsList = useMemo(() => {
-    if (!liveNews || liveNews.length === 0) return ALL_NEWS;
-    return liveNews.map((n, i) => ({
-      id: 1000 + i,
-      title: n.title,
-      body: n.summary ?? "",
-      source: n.source,
-      time: timeAgo(n.published_at),
-      category: n.language === "ko" ? "한국" : "미국",
-      tickers: n.related_symbols ?? [],
-      impact: null as string | null,
-      up: null as boolean | null,
-      tags: [] as string[],
-      url: n.url,
-    }));
-  }, [liveNews]);
-
-  const filtered = newsList.filter(n => {
+  const filtered = ALL_NEWS.filter(n => {
     const matchCat = activeCategory === "전체" || n.category === activeCategory;
     const matchSearch = !searchQuery || n.title.includes(searchQuery) || n.tags.some(t => t.includes(searchQuery));
     return matchCat && matchSearch;

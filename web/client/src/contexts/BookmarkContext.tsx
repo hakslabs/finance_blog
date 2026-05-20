@@ -1,16 +1,9 @@
 /**
- * BookmarkContext — 통합 북마크 상태.
- *
- * 인증된 사용자: 서버(`saved_items` 테이블)에 영속.
- *   mount 시 서버에서 모든 kind를 한 번 fetch 후 합산.
- *   add/remove 는 optimistic update 후 서버 호출, 실패 시 롤백.
- * 비로그인: localStorage 동작 유지.
- *
- * 외부 API 표면(`toggle*`, `addBookmark(type, id)`)은 기존과 호환.
+ * BookmarkContext - 전체 북마크 시스템 (localStorage 기반)
+ * 리포트, 학습 가이드, 뉴스, 종목, 거장 북마크를 통합 관리
+ * 백엔드 연동 시 localStorage → API 호출로 교체
  */
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
-import { bookmarksService, type BookmarkKind } from "@/features/bookmarks";
-import { useAuth } from "@/contexts/AuthContext";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 
 interface BookmarkState {
   reports: Set<string>;
@@ -21,18 +14,25 @@ interface BookmarkState {
 }
 
 interface BookmarkContextType {
+  // 리포트
   isReportBookmarked: (id: string) => boolean;
   toggleReportBookmark: (id: string) => void;
+  // 학습 가이드
   isGuideBookmarked: (id: string) => boolean;
   toggleGuideBookmark: (id: string) => void;
+  // 뉴스
   isNewsBookmarked: (id: number) => boolean;
   toggleNewsBookmark: (id: number) => void;
+  // 종목 (관심종목과 별도 - 단순 북마크)
   isStockBookmarked: (ticker: string) => boolean;
   toggleStockBookmark: (ticker: string) => void;
+  // 거장 북마크 (제네릭 인터페이스)
   isBookmarked: (type: string, id: string) => boolean;
-  addBookmark: (type: string, id: string, meta?: unknown) => void;
+  addBookmark: (type: string, id: string, meta?: any) => void;
   removeBookmark: (type: string, id: string) => void;
+  // 전체 카운트
   totalBookmarks: number;
+  // 목록
   bookmarkedReportIds: string[];
   bookmarkedGuideIds: string[];
 }
@@ -67,172 +67,57 @@ function saveToStorage(state: BookmarkState) {
       stocks: Array.from(state.stocks),
       masters: Array.from(state.masters),
     }));
-  } catch { /* ignore */ }
+  } catch {}
 }
 
-const KIND_TO_KEY: Record<BookmarkKind, keyof BookmarkState> = {
-  report: "reports",
-  guide: "guides",
-  news: "news",
-  stock: "stocks",
-  master: "masters",
-};
-
-const TYPE_TO_KIND: Record<string, BookmarkKind> = {
-  report: "report",
-  guide: "guide",
-  news: "news",
-  stock: "stock",
-  master: "master",
-};
-
 export function BookmarkProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
   const [state, setState] = useState<BookmarkState>(loadFromStorage);
 
   useEffect(() => { saveToStorage(state); }, [state]);
 
-  // 로그인 시 서버에서 hydrate.
-  const hydratedRef = useRef(false);
-  useEffect(() => {
-    if (!user) { hydratedRef.current = false; return; }
-    if (hydratedRef.current) return;
-    hydratedRef.current = true;
-    (async () => {
-      try {
-        const items = await bookmarksService.list();
-        setState((prev) => {
-          const next: BookmarkState = {
-            reports: new Set(prev.reports),
-            guides: new Set(prev.guides),
-            news: new Set(prev.news),
-            stocks: new Set(prev.stocks),
-            masters: new Set(prev.masters),
-          };
-          for (const it of items) {
-            const key = KIND_TO_KEY[it.kind];
-            if (key === "news") {
-              const n = Number(it.target_id);
-              if (!Number.isNaN(n)) next.news.add(n);
-            } else {
-              (next[key] as Set<string>).add(it.target_id);
-            }
-          }
-          return next;
-        });
-      } catch { /* 로컬 유지 */ }
-    })();
-  }, [user]);
-
-  // 공통 토글 (서버 동기화 포함).
-  const persistAdd = useCallback((kind: BookmarkKind, target_id: string) => {
-    if (!user) return;
-    bookmarksService.add(kind, target_id).catch(() => {
-      // 롤백
-      setState(prev => {
-        const key = KIND_TO_KEY[kind];
-        if (key === "news") {
-          const s = new Set(prev.news); s.delete(Number(target_id));
-          return { ...prev, news: s };
-        }
-        const s = new Set(prev[key] as Set<string>); s.delete(target_id);
-        return { ...prev, [key]: s };
-      });
-    });
-  }, [user]);
-
-  const persistRemove = useCallback((kind: BookmarkKind, target_id: string) => {
-    if (!user) return;
-    bookmarksService.remove(kind, target_id).catch(() => {
-      setState(prev => {
-        const key = KIND_TO_KEY[kind];
-        if (key === "news") {
-          const s = new Set(prev.news); s.add(Number(target_id));
-          return { ...prev, news: s };
-        }
-        const s = new Set(prev[key] as Set<string>); s.add(target_id);
-        return { ...prev, [key]: s };
-      });
-    });
-  }, [user]);
-
-  const toggleByKind = useCallback((kind: BookmarkKind, idStr: string) => {
-    const key = KIND_TO_KEY[kind];
-    let willAdd = false;
+  const toggle = useCallback(<T,>(key: keyof BookmarkState, id: T) => {
     setState(prev => {
-      if (key === "news") {
-        const n = Number(idStr);
-        const s = new Set(prev.news);
-        if (s.has(n)) { s.delete(n); willAdd = false; }
-        else { s.add(n); willAdd = true; }
-        return { ...prev, news: s };
-      }
-      const s = new Set(prev[key] as Set<string>);
-      if (s.has(idStr)) { s.delete(idStr); willAdd = false; }
-      else { s.add(idStr); willAdd = true; }
-      return { ...prev, [key]: s };
+      const set = new Set(prev[key] as Set<T>);
+      if (set.has(id)) set.delete(id); else set.add(id);
+      return { ...prev, [key]: set };
     });
-    if (willAdd) persistAdd(kind, idStr);
-    else persistRemove(kind, idStr);
-  }, [persistAdd, persistRemove]);
+  }, []);
 
   const value: BookmarkContextType = {
     isReportBookmarked: (id) => state.reports.has(id),
-    toggleReportBookmark: (id) => toggleByKind("report", id),
+    toggleReportBookmark: (id) => toggle("reports", id),
     isGuideBookmarked: (id) => state.guides.has(id),
-    toggleGuideBookmark: (id) => toggleByKind("guide", id),
+    toggleGuideBookmark: (id) => toggle("guides", id),
     isNewsBookmarked: (id) => state.news.has(id),
-    toggleNewsBookmark: (id) => toggleByKind("news", String(id)),
+    toggleNewsBookmark: (id) => toggle("news", id),
     isStockBookmarked: (ticker) => state.stocks.has(ticker),
-    toggleStockBookmark: (ticker) => toggleByKind("stock", ticker),
+    toggleStockBookmark: (ticker) => toggle("stocks", ticker),
+    // 제네릭 인터페이스 (거장 등 다양한 타입 지원)
     isBookmarked: (type, id) => {
-      const kind = TYPE_TO_KIND[type];
-      if (!kind) return false;
-      const key = KIND_TO_KEY[kind];
-      if (key === "news") return state.news.has(Number(id));
-      return (state[key] as Set<string>).has(id);
+      if (type === "master") return state.masters.has(id);
+      if (type === "report") return state.reports.has(id);
+      if (type === "guide") return state.guides.has(id);
+      if (type === "stock") return state.stocks.has(id);
+      return false;
     },
-    addBookmark: (type, id) => {
-      const kind = TYPE_TO_KIND[type];
-      if (!kind) return;
-      const key = KIND_TO_KEY[kind];
-      let didAdd = false;
-      setState(prev => {
-        if (key === "news") {
-          const n = Number(id);
-          if (prev.news.has(n)) return prev;
-          const s = new Set(prev.news); s.add(n);
-          didAdd = true;
-          return { ...prev, news: s };
-        }
-        const cur = prev[key] as Set<string>;
-        if (cur.has(id)) return prev;
-        const s = new Set(cur); s.add(id);
-        didAdd = true;
-        return { ...prev, [key]: s };
-      });
-      if (didAdd) persistAdd(kind, id);
+    addBookmark: (type, id, _meta) => {
+      if (type === "master") toggle("masters", id);
+      else if (type === "report") toggle("reports", id);
+      else if (type === "guide") toggle("guides", id);
+      else if (type === "stock") toggle("stocks", id);
     },
     removeBookmark: (type, id) => {
-      const kind = TYPE_TO_KIND[type];
-      if (!kind) return;
-      const key = KIND_TO_KEY[kind];
-      let didRemove = false;
       setState(prev => {
-        if (key === "news") {
-          const n = Number(id);
-          if (!prev.news.has(n)) return prev;
-          const s = new Set(prev.news); s.delete(n);
-          didRemove = true;
-          return { ...prev, news: s };
+        if (type === "master") {
+          const s = new Set(prev.masters); s.delete(id);
+          return { ...prev, masters: s };
         }
-        const cur = prev[key] as Set<string>;
-        if (!cur.has(id)) return prev;
-        const s = new Set(cur); s.delete(id);
-        didRemove = true;
-        return { ...prev, [key]: s };
+        if (type === "report") {
+          const s = new Set(prev.reports); s.delete(id);
+          return { ...prev, reports: s };
+        }
+        return prev;
       });
-      if (didRemove) persistRemove(kind, id);
     },
     totalBookmarks: state.reports.size + state.guides.size + state.news.size + state.stocks.size + state.masters.size,
     bookmarkedReportIds: Array.from(state.reports),

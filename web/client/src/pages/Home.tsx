@@ -29,21 +29,6 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWatchlist } from "@/contexts/WatchlistContext";
-import { useNewsList } from "@/features/news";
-import { useEconomicEvents } from "@/features/events";
-import { useFearGreed } from "@/features/sentiment";
-
-const KO_WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
-
-function timeAgo(iso: string | null): string {
-  if (!iso) return "";
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diffMs / 60000);
-  if (m < 60) return `${Math.max(1, m)}분`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}시간`;
-  return `${Math.floor(h / 24)}일`;
-}
 
 // ── 시장 감지 ─────────────────────────────────────────────────
 function detectOpenMarket(): "KR" | "US" {
@@ -583,51 +568,6 @@ export default function Home() {
 
   const topIndices = MARKET_INDICES.slice(0, 6);
 
-  // Live data overlays — fall back to mocks while loading or on error.
-  const { data: liveNews } = useNewsList({ limit: 5 });
-  const newsItems = useMemo(() => {
-    if (!liveNews || liveNews.length === 0) return MARKET_NEWS.slice(0, 5);
-    return liveNews.slice(0, 5).map((n, i) => ({
-      id: i + 1,
-      title: n.title,
-      source: n.source,
-      time: timeAgo(n.published_at),
-      category: n.language === "ko" ? "한국" : "미국",
-      tickers: n.related_symbols ?? [],
-      impact: null as string | null,
-      summary: n.summary,
-      url: n.url,
-    }));
-  }, [liveNews]);
-
-  const today = new Date();
-  const fromStr = today.toISOString().slice(0, 10);
-  const toDate = new Date(today);
-  toDate.setDate(toDate.getDate() + 21);
-  const toStr = toDate.toISOString().slice(0, 10);
-  const { data: liveEvents } = useEconomicEvents({ from: fromStr, to: toStr });
-  const { data: liveFG } = useFearGreed();
-  const fgUS = liveFG?.find((f) => f.market_code === "US");
-  const fgKR = liveFG?.find((f) => f.market_code === "KR");
-  const fgUSValue = Math.round(fgUS?.value ?? 68);
-  const fgKRValue = Math.round(fgKR?.value ?? 56);
-  const fgUSLabel = fgUS?.label ?? "VIX 14.2 · 안도 과열 구간";
-  const fgKRLabel = fgKR?.label ?? "외인 5거래일 순매수 지속";
-  const calendarEvents = useMemo(() => {
-    if (!liveEvents || liveEvents.length === 0) return CALENDAR_EVENTS;
-    return liveEvents.slice(0, 8).map((e) => {
-      const d = new Date(e.time);
-      return {
-        date: String(d.getDate()).padStart(2, "0"),
-        day: KO_WEEKDAYS[d.getDay()],
-        title: e.event,
-        type: "매크로",
-        holding: null as string | null,
-        memo: 0,
-      };
-    });
-  }, [liveEvents]);
-
   return (
     <div className="space-y-5 animate-fade-in-up">
       {/* ── 모달들 ── */}
@@ -676,9 +616,9 @@ export default function Home() {
         <div className="xl:col-span-2 bg-card border border-border rounded-xl p-5 flex flex-col">
           <SectionHeader title="공포·탐욕 지수" sub="클릭하면 VIX/ADR 히스토리 확인" />
           <div className="flex-1 flex items-center justify-around gap-4">
-            <FearGreedGauge value={fgKRValue} label={fgKRLabel} market="한국" onClick={() => setFearGreedModal("KR")} />
+            <FearGreedGauge value={56} label="외인 5거래일 순매수 지속" market="한국" onClick={() => setFearGreedModal("KR")} />
             <div className="w-px self-stretch bg-border" />
-            <FearGreedGauge value={fgUSValue} label={fgUSLabel} market="미국" onClick={() => setFearGreedModal("US")} />
+            <FearGreedGauge value={68} label="VIX 14.2 · 안도 과열 구간" market="미국" onClick={() => setFearGreedModal("US")} />
           </div>
           <div className="flex items-center justify-center gap-3 mt-2 flex-wrap flex-shrink-0">
             {[
@@ -701,7 +641,7 @@ export default function Home() {
           <SectionHeader title="시장 핵심 뉴스" sub="클릭하면 요약 확인" href="/news" />
           <div className="flex-1 flex flex-col justify-between">
             <div className="space-y-0">
-              {newsItems.map((news) => (
+              {MARKET_NEWS.slice(0, 5).map((news) => (
                 <div
                   key={news.id}
                   className="flex items-start gap-3 py-2.5 px-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group border-b border-border/40 last:border-0"
@@ -738,7 +678,7 @@ export default function Home() {
         <div className="xl:col-span-3 bg-card border border-border rounded-xl p-5 flex flex-col">
           <SectionHeader title="내 캘린더" sub="실적·배당·경제지표 일정" href="/calendar" />
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-0">
-            {calendarEvents.map((ev, i) => (
+            {CALENDAR_EVENTS.map((ev, i) => (
               <div
                 key={i}
                 className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/40 transition-colors cursor-pointer border-b border-border/30 last:border-0 sm:last:border-0"

@@ -9,7 +9,6 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { notificationsService } from "@/features/notifications";
 import {
   Home, BarChart2, Newspaper, Users, FileText, BookOpen,
   User, Sun, Moon, Menu, ChevronLeft, ChevronRight, Calendar, Search,
@@ -289,57 +288,14 @@ const MOCK_NOTIFICATIONS = [
   { id: 4, type: "market", title: "한국장 개장", body: "KOSPI 오전 9시 정규장 개장", time: "오전 9:00", read: true },
 ];
 
-type UINotification = { id: string | number; type: string; title: string; body: string; time: string; read: boolean };
-
-function fmtRelTime(iso: string): string {
-  const t = new Date(iso).getTime();
-  if (!Number.isFinite(t)) return "";
-  const diff = Math.floor((Date.now() - t) / 1000);
-  if (diff < 60) return "방금 전";
-  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-  return `${Math.floor(diff / 86400)}일 전`;
-}
-
 function NotificationButton() {
-  const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState<UINotification[]>(user ? [] : MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  useEffect(() => {
-    if (!user) { setNotifications(MOCK_NOTIFICATIONS); return; }
-    let cancelled = false;
-    (async () => {
-      try {
-        const r = await notificationsService.list(30);
-        if (cancelled) return;
-        setNotifications(r.items.map((n) => ({
-          id: n.id,
-          type: n.kind,
-          title: n.title,
-          body: n.body ?? "",
-          time: fmtRelTime(n.created_at),
-          read: n.read_at != null,
-        })));
-      } catch { /* 빈 상태 유지 */ }
-    })();
-    return () => { cancelled = true; };
-  }, [user, open]);
-
-  const markAllRead = async () => {
+  const markAllRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    if (user) {
-      try { await notificationsService.markAllRead(); } catch { /* ignore */ }
-    }
     toast.success("모든 알림을 읽음 처리했습니다");
-  };
-
-  const markOne = async (id: string | number) => {
-    setNotifications(prev => prev.map(x => x.id === id ? { ...x, read: true } : x));
-    if (user && typeof id === "string") {
-      try { await notificationsService.markRead(id); } catch { /* ignore */ }
-    }
   };
 
   return (
@@ -377,7 +333,7 @@ function NotificationButton() {
                 notifications.map(n => (
                   <div
                     key={n.id}
-                    onClick={() => markOne(n.id)}
+                    onClick={() => setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x))}
                     className={cn(
                       "flex items-start gap-3 px-4 py-3 border-b border-border/50 last:border-0 cursor-pointer transition-colors hover:bg-muted/30",
                       !n.read && "bg-primary/5"

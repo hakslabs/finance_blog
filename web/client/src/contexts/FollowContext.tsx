@@ -1,18 +1,10 @@
 /**
- * FollowContext — 마스터 팔로우 상태.
- *
- * 인증된 사용자: Supabase `followed_masters` 테이블에 영속.
- *   - mount 시 서버에서 followed master_id 목록을 가져온다.
- *   - follow/unfollow 는 optimistic update 후 서버 호출, 실패 시 롤백.
- * 비로그인 사용자(또는 supabase 미설정): localStorage 동작 유지.
- *
- * mock 데이터(`m.id`가 UUID 형식이 아닌 경우)는 서버에 저장하지 않고
- * 로컬에만 둔다 — DB FK 위반을 피하기 위함.
+ * FollowContext - 고수 팔로우 시스템 (localStorage 기반)
+ * 팔로우한 거장의 업데이트 소식(13F, 포트폴리오 변화, 인터뷰)을 피드로 제공
+ * 백엔드 연동 시 localStorage → API + WebSocket으로 교체
  */
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import type { MasterUpdate } from "@/types";
-import { followsService } from "@/features/follows";
-import { useAuth } from "@/contexts/AuthContext";
 
 interface FollowContextType {
   followedIds: Set<string>;
@@ -21,6 +13,7 @@ interface FollowContextType {
   follow: (id: string) => void;
   unfollow: (id: string) => void;
   followCount: number;
+  // 팔로우한 거장들의 최신 업데이트 피드
   getFeed: (masters: { id: string; name: string; nameKo: string; updates?: MasterUpdate[] }[]) => FeedItem[];
   unreadCount: number;
   markAllRead: () => void;
@@ -39,12 +32,7 @@ export const FollowContext = createContext<FollowContextType | null>(null);
 const FOLLOW_KEY = "financelab_follows";
 const READ_KEY = "financelab_feed_read";
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const isUuid = (s: string) => UUID_RE.test(s);
-
 export function FollowProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-
   const [followedIds, setFollowedIds] = useState<Set<string>>(() => {
     try {
       const raw = localStorage.getItem(FOLLOW_KEY);
@@ -59,7 +47,6 @@ export function FollowProvider({ children }: { children: React.ReactNode }) {
     } catch { return new Set(); }
   });
 
-  // 항상 localStorage에 미러링 — 비로그인 + 오프라인 fallback.
   useEffect(() => {
     localStorage.setItem(FOLLOW_KEY, JSON.stringify(Array.from(followedIds)));
   }, [followedIds]);
@@ -68,66 +55,29 @@ export function FollowProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(READ_KEY, JSON.stringify(Array.from(readKeys)));
   }, [readKeys]);
 
-  // 로그인 시 서버에서 follows 동기화 (1회).
-  const hydratedRef = useRef(false);
-  useEffect(() => {
-    if (!user) { hydratedRef.current = false; return; }
-    if (hydratedRef.current) return;
-    hydratedRef.current = true;
-    (async () => {
-      try {
-        const items = await followsService.listMasters();
-        setFollowedIds((prev) => {
-          const next = new Set(prev);
-          for (const it of items) next.add(it.master_id);
-          return next;
-        });
-      } catch {
-        // 서버 실패 시 로컬 상태 유지.
-      }
-    })();
-  }, [user]);
+  const toggleFollow = useCallback((id: string, _name: string) => {
+    setFollowedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
 
   const follow = useCallback((id: string) => {
     setFollowedIds(prev => {
-      if (prev.has(id)) return prev;
       const next = new Set(prev);
       next.add(id);
       return next;
     });
-    if (user && isUuid(id)) {
-      followsService.followMaster(id).catch(() => {
-        setFollowedIds(prev => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
-        });
-      });
-    }
-  }, [user]);
+  }, []);
 
   const unfollow = useCallback((id: string) => {
     setFollowedIds(prev => {
-      if (!prev.has(id)) return prev;
       const next = new Set(prev);
       next.delete(id);
       return next;
     });
-    if (user && isUuid(id)) {
-      followsService.unfollowMaster(id).catch(() => {
-        setFollowedIds(prev => {
-          const next = new Set(prev);
-          next.add(id);
-          return next;
-        });
-      });
-    }
-  }, [user]);
-
-  const toggleFollow = useCallback((id: string, _name: string) => {
-    if (followedIds.has(id)) unfollow(id);
-    else follow(id);
-  }, [followedIds, follow, unfollow]);
+  }, []);
 
   const getFeed = useCallback((masters: { id: string; name: string; nameKo: string; updates?: MasterUpdate[] }[]): FeedItem[] => {
     const items: FeedItem[] = [];

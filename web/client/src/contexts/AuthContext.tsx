@@ -1,12 +1,9 @@
 /**
  * AuthContext.tsx — 인증 컨텍스트
- *
- * - VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY 가 설정된 경우 Supabase로 로그인.
- * - 환경변수 미설정 시 localStorage 기반 mock 로그인으로 동작 (UI는 동일).
- * - 로그인 시 access_token을 localStorage["supabase_jwt"]에 저장 → lib/http.ts가 Bearer로 전송.
+ * Google OAuth 연동 준비 구조
+ * 현재: 로컬 mock 로그인 (실제 OAuth 연동 시 handleGoogleLogin 구현)
  */
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { supabase, supabaseEnabled } from "@/lib/supabase";
 
 export type User = {
   id: string;
@@ -20,9 +17,8 @@ export type User = {
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
-  login: (email?: string, password?: string) => Promise<void> | void;
-  loginWithGoogle: () => Promise<void> | void;
-  logout: () => Promise<void> | void;
+  login: (email?: string) => void;
+  logout: () => void;
   updateLastMarket: (market: "US" | "KR") => void;
 };
 
@@ -30,76 +26,48 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: false,
   login: () => {},
-  loginWithGoogle: () => {},
   logout: () => {},
   updateLastMarket: () => {},
 });
 
 const STORAGE_KEY = "financelab_user";
-const JWT_KEY = "supabase_jwt";
 
+// Mock users for demo (Google OAuth 연동 전 테스트용)
 const MOCK_USERS: Record<string, User> = {
-  "user@example.com": { id: "u1", email: "user@example.com", name: "투자자", plan: "free", lastMarket: "US" },
-  "admin@financelab.pro": { id: "admin1", email: "admin@financelab.pro", name: "관리자", plan: "premium", lastMarket: "US" },
-};
-
-function userFromSupabase(sbUser: { id: string; email?: string | null; user_metadata?: Record<string, unknown> }): User {
-  const meta = sbUser.user_metadata ?? {};
-  return {
-    id: sbUser.id,
-    email: sbUser.email ?? "",
-    name: (meta.full_name as string) ?? (meta.name as string) ?? (sbUser.email ?? "사용자").split("@")[0],
-    avatar: (meta.avatar_url as string) ?? undefined,
+  "user@example.com": {
+    id: "u1",
+    email: "user@example.com",
+    name: "투자자",
     plan: "free",
     lastMarket: "US",
-  };
-}
+  },
+  "admin@financelab.pro": {
+    id: "admin1",
+    email: "admin@financelab.pro",
+    name: "관리자",
+    plan: "premium",
+    lastMarket: "US",
+  },
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (supabaseEnabled && supabase) {
-        const { data } = await supabase.auth.getSession();
-        if (!cancelled) {
-          const session = data.session;
-          if (session?.user) {
-            setUser(userFromSupabase(session.user));
-            localStorage.setItem(JWT_KEY, session.access_token);
-          }
-          setIsLoading(false);
-        }
-        const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-          if (session?.user) {
-            setUser(userFromSupabase(session.user));
-            localStorage.setItem(JWT_KEY, session.access_token);
-          } else {
-            setUser(null);
-            localStorage.removeItem(JWT_KEY);
-          }
-        });
-        return () => sub.subscription.unsubscribe();
-      }
-      // Mock path
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        try { setUser(JSON.parse(stored)); } catch { /* ignore */ }
-      }
-      setIsLoading(false);
-    })();
-    return () => { cancelled = true; };
+    // 로컬 스토리지에서 세션 복원
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try {
+        setUser(JSON.parse(stored));
+      } catch {}
+    }
+    setIsLoading(false);
   }, []);
 
-  const login = async (email = "user@example.com", password?: string) => {
-    if (supabaseEnabled && supabase && password) {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      return;
-    }
-    // Mock fallback
+  const login = (email = "user@example.com") => {
+    // Google OAuth 연동 시 이 함수를 Google OAuth 플로우로 교체
+    // 현재는 mock 로그인
     const mockUser = MOCK_USERS[email] ?? {
       id: `u_${Date.now()}`,
       email,
@@ -111,38 +79,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(mockUser));
   };
 
-  const loginWithGoogle = async () => {
-    if (supabaseEnabled && supabase) {
-      await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: window.location.origin },
-      });
-      return;
-    }
-    // Mock fallback: same as login()
-    return login();
-  };
-
-  const logout = async () => {
-    if (supabaseEnabled && supabase) {
-      await supabase.auth.signOut();
-    }
+  const logout = () => {
     setUser(null);
     localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(JWT_KEY);
   };
 
   const updateLastMarket = (market: "US" | "KR") => {
     if (!user) return;
     const updated = { ...user, lastMarket: market };
     setUser(updated);
-    if (!supabaseEnabled) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, loginWithGoogle, logout, updateLastMarket }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout, updateLastMarket }}>
       {children}
     </AuthContext.Provider>
   );

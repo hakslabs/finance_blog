@@ -8,7 +8,6 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { WatchlistProvider } from "./contexts/WatchlistContext";
 import { BookmarkProvider } from "./contexts/BookmarkContext";
 import { FollowProvider } from "./contexts/FollowContext";
-import { LessonProgressProvider } from "./contexts/LessonProgressContext";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import Analysis from "./pages/Analysis";
@@ -62,12 +61,10 @@ export default function App() {
           <WatchlistProvider>
           <BookmarkProvider>
           <FollowProvider>
-          <LessonProgressProvider>
           <TooltipProvider>
             <Toaster />
             <Router />
           </TooltipProvider>
-          </LessonProgressProvider>
           </FollowProvider>
           </BookmarkProvider>
           </WatchlistProvider>

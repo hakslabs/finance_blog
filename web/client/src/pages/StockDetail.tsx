@@ -18,11 +18,6 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useWatchlist } from "@/contexts/WatchlistContext";
-import { toast } from "sonner";
-import { PriceAlertDialog } from "@/components/AlertDialog";
-import { useEffect } from "react";
-import { stocksService, barsToChartData, type ChartPoint } from "@/features/stocks";
 
 // ── Data generators ────────────────────────────────────────────
 function generatePriceData(days = 90, trend: "up" | "down" | "flat" = "up") {
@@ -195,40 +190,10 @@ export default function StockDetail() {
   const allStocks = [...US_STOCKS, ...KR_STOCKS];
   const stock = allStocks.find(s => s.ticker === ticker);
 
-  const [alertDialogOpen, setAlertDialogOpen] = useState(false);
-  const { isWatched, toggleWatchlist } = useWatchlist();
-  const watched = isWatched(ticker);
-  const onToggleWatch = () => {
-    if (!stock) return;
-    const nowAdded = toggleWatchlist({
-      ticker: stock.ticker,
-      name: stock.name,
-      exchange: stock.exchange,
-      price: stock.price,
-      changePct: stock.changePct,
-      sector: stock.sector,
-    });
-    toast.success(nowAdded ? "관심종목에 추가되었습니다" : "관심종목에서 제거되었습니다");
-  };
-
   const periodDays: Record<string, number> = { "1W": 7, "1M": 22, "3M": 66, "6M": 130, "1Y": 252 };
   const days = periodDays[chartPeriod] ?? 66;
   const up = stock ? stock.changePct >= 0 : true;
-  const mockChart = useMemo(() => generatePriceData(days, up ? "up" : "down"), [days, up]);
-  const [liveChart, setLiveChart] = useState<ChartPoint[] | null>(null);
-  useEffect(() => {
-    if (!ticker) return;
-    let cancelled = false;
-    stocksService.bars(ticker, days)
-      .then((r) => {
-        if (cancelled) return;
-        if (r.items.length >= Math.min(20, days)) setLiveChart(barsToChartData(r.items));
-        else setLiveChart(null);
-      })
-      .catch(() => { if (!cancelled) setLiveChart(null); });
-    return () => { cancelled = true; };
-  }, [ticker, days]);
-  const chartData = liveChart ?? mockChart;
+  const chartData = useMemo(() => generatePriceData(days, up ? "up" : "down"), [days, up]);
 
   const toggleIndicator = (id: string) => {
     setIndicators(prev => prev.map(ind => ind.id === id ? { ...ind, enabled: !ind.enabled } : ind));
@@ -269,16 +234,8 @@ export default function StockDetail() {
             <p className="text-muted-foreground text-sm">{stock.name}</p>
           </div>
           <div className="flex gap-2">
-            <Button
-              variant={watched ? "default" : "outline"}
-              size="sm"
-              className="gap-1.5"
-              onClick={onToggleWatch}
-            >
-              <Star size={13} className={watched ? "fill-current" : ""} />
-              {watched ? "관심종목 해제" : "관심종목"}
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setAlertDialogOpen(true)}><Bell size={13} />알림</Button>
+            <Button variant="outline" size="sm" className="gap-1.5"><Star size={13} />관심종목</Button>
+            <Button variant="outline" size="sm" className="gap-1.5"><Bell size={13} />알림</Button>
             <Button size="sm">매수 분석</Button>
           </div>
         </div>
@@ -666,14 +623,6 @@ export default function StockDetail() {
             </div>
           ))}
         </div>
-      )}
-      {stock && (
-        <PriceAlertDialog
-          open={alertDialogOpen}
-          onOpenChange={setAlertDialogOpen}
-          symbol={stock.ticker}
-          lastPrice={stock.price}
-        />
       )}
     </div>
   );

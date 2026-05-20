@@ -5,7 +5,6 @@ import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { US_STOCKS, KR_STOCKS, generateSparkline } from "@/lib/data";
-import { useMovers } from "@/features/movers";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { Search, TrendingUp, TrendingDown, Filter, ArrowUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -50,21 +49,7 @@ export default function Stocks() {
   const [sortBy, setSortBy] = useState<"changePct" | "marketCap" | "pe">("changePct");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  const { data: moversResp } = useMovers({ market, limit: 30 });
-  const liveBySymbol = useMemo(() => {
-    const map = new Map<string, { last: number; change_pct: number }>();
-    for (const m of moversResp?.items ?? []) map.set(m.symbol, { last: m.last, change_pct: m.change_pct });
-    return map;
-  }, [moversResp]);
-  const baseStocks = market === "US" ? US_STOCKS : KR_STOCKS;
-  const allStocks = useMemo(() => {
-    if (liveBySymbol.size === 0) return baseStocks;
-    return baseStocks.map((s) => {
-      const live = liveBySymbol.get(s.ticker);
-      if (!live) return s;
-      return { ...s, price: live.last, changePct: live.change_pct };
-    });
-  }, [baseStocks, liveBySymbol]);
+  const allStocks = market === "US" ? US_STOCKS : KR_STOCKS;
 
   const filtered = useMemo(() => {
     let list = allStocks.filter(s => {

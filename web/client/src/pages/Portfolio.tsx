@@ -9,9 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { toast } from "sonner";
-import { useState } from "react";
-import { AddTransactionDialog } from "@/components/AddTransactionDialog";
-import { useAuth } from "@/contexts/AuthContext";
 
 const COLORS = ["#38BDF8", "#A78BFA", "#FBBF24", "#34D399", "#94A3B8"];
 
@@ -34,8 +31,6 @@ const PERF_METRICS = [
 
 export default function Portfolio() {
   const chartData = generatePortfolioChart(30);
-  const { user } = useAuth();
-  const [addOpen, setAddOpen] = useState(false);
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -45,15 +40,7 @@ export default function Portfolio() {
           <p className="text-sm text-muted-foreground mt-0.5">보유 종목 · 수익률 · 자산 배분 현황</p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1"
-            onClick={() => {
-              if (!user) { toast.info("로그인 후 거래 기록을 추가할 수 있습니다."); return; }
-              setAddOpen(true);
-            }}
-          >
+          <Button variant="outline" size="sm" className="gap-1" onClick={() => toast.info("종목 추가 기능 준비 중입니다.")}>
             <PlusCircle size={14} />종목 추가
           </Button>
           <Button variant="outline" size="sm" className="gap-1" onClick={() => toast.info("동기화 기능 준비 중입니다.")}>
@@ -171,11 +158,6 @@ export default function Portfolio() {
           </table>
         </div>
       </div>
-      <AddTransactionDialog
-        open={addOpen}
-        onOpenChange={setAddOpen}
-        onCreated={() => toast.success("포트폴리오가 갱신될 예정입니다 (새로고침 시 반영).")}
-      />
     </div>
   );
 }
