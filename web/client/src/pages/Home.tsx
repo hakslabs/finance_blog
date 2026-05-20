@@ -32,6 +32,12 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWatchlist } from "@/contexts/WatchlistContext";
 import { useBookmark } from "@/contexts/BookmarkContext";
+import { useIndices } from "@/features/indices";
+import { useNews } from "@/features/news";
+import { useUnifiedCalendar } from "@/features/calendar";
+import { useSectors } from "@/features/sectors";
+import { useFearGreed } from "@/features/fear-greed";
+import { useStocks } from "@/features/stocks";
 
 // ── 시장 감지 ─────────────────────────────────────────────────
 function detectOpenMarket(): "KR" | "US" {
@@ -177,13 +183,34 @@ function FearGreedGauge({ value, label, market, onClick }: {
 
 // ── 공포탐욕 히스토리 모달 ─────────────────────────────────────
 function FearGreedModal({ market, onClose }: { market: "KR" | "US"; onClose: () => void }) {
-  const data = market === "US" ? VIX_HISTORY : ADR_HISTORY;
-  const title = market === "US" ? "VIX 지수 히스토리 (60일)" : "ADR 히스토리 (60일)";
+  // /v1/sentiment/fear-greed returns the index value + 90-day history.
+  // The chart plots the 60 most recent points so it matches the previous
+  // mock's window. Falls back to a flat baseline if the table is empty.
+  const { data: fg } = useFearGreed(market);
+  const history = (fg?.history ?? []).slice(-60).map((p, i) => ({
+    day: i + 1,
+    date: p.date,
+    value: p.value,
+    vix: p.vix,
+    adr: p.adr,
+  }));
+  const data = history.length > 0 ? history :
+    Array.from({ length: 60 }, (_, i) => ({ day: i + 1, date: "", value: 50, vix: null, adr: null }));
+  const title = market === "US" ? "공포·탐욕 지수 히스토리 (US, 60일)" : "공포·탐욕 지수 히스토리 (KR, 60일)";
   const sub = market === "US"
-    ? "VIX < 15: 안도 | 15~25: 경계 | > 25: 공포"
-    : "ADR > 70: 과매수 | 30~70: 중립 | < 30: 과매도";
-  const refLine = market === "US" ? 20 : 50;
+    ? "낮을수록 공포, 높을수록 탐욕 (CNN Fear & Greed)"
+    : "외인 매수세·등락비율 등 한국시장 기반 지수";
+  const refLine = 50;
   const color = market === "US" ? "#38bdf8" : "#a78bfa";
+
+  // Stat cards: pull live current / 30d avg / 60d high from the series.
+  const values = data.map(d => d.value);
+  const currentValue = fg?.value ?? values[values.length - 1] ?? 50;
+  const avg30 = values.length >= 30
+    ? values.slice(-30).reduce((s, v) => s + v, 0) / Math.min(30, values.length)
+    : values.reduce((s, v) => s + v, 0) / Math.max(values.length, 1);
+  const high60 = values.length ? Math.max(...values) : 0;
+  const low60 = values.length ? Math.min(...values) : 0;
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
@@ -218,39 +245,23 @@ function FearGreedModal({ market, onClose }: { market: "KR" | "US"; onClose: () 
           </ResponsiveContainer>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-3">
-          {market === "US" ? (
-            <>
-              <div className="bg-muted/30 rounded-lg p-3 text-center">
-                <div className="text-xs text-muted-foreground">현재 VIX</div>
-                <div className="text-lg font-bold font-mono text-sky-400">14.2</div>
-                <div className="text-[10px] text-up">안도 구간</div>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-3 text-center">
-                <div className="text-xs text-muted-foreground">30일 평균</div>
-                <div className="text-lg font-bold font-mono">17.8</div>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-3 text-center">
-                <div className="text-xs text-muted-foreground">60일 최고</div>
-                <div className="text-lg font-bold font-mono text-down">24.6</div>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="bg-muted/30 rounded-lg p-3 text-center">
-                <div className="text-xs text-muted-foreground">현재 ADR</div>
-                <div className="text-lg font-bold font-mono text-violet-400">56.3</div>
-                <div className="text-[10px] text-muted-foreground">중립 구간</div>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-3 text-center">
-                <div className="text-xs text-muted-foreground">30일 평균</div>
-                <div className="text-lg font-bold font-mono">52.1</div>
-              </div>
-              <div className="bg-muted/30 rounded-lg p-3 text-center">
-                <div className="text-xs text-muted-foreground">외인 순매수</div>
-                <div className="text-lg font-bold font-mono text-up">+5일</div>
-              </div>
-            </>
-          )}
+          <div className="bg-muted/30 rounded-lg p-3 text-center">
+            <div className="text-xs text-muted-foreground">현재 지수</div>
+            <div className="text-lg font-bold font-mono" style={{ color }}>{currentValue}</div>
+            <div className="text-[10px] text-muted-foreground">{fg?.label ?? "—"}</div>
+          </div>
+          <div className="bg-muted/30 rounded-lg p-3 text-center">
+            <div className="text-xs text-muted-foreground">30일 평균</div>
+            <div className="text-lg font-bold font-mono">{avg30.toFixed(1)}</div>
+          </div>
+          <div className="bg-muted/30 rounded-lg p-3 text-center">
+            <div className="text-xs text-muted-foreground">60일 최고 / 최저</div>
+            <div className="text-lg font-bold font-mono">
+              <span className="text-up">{high60}</span>
+              <span className="text-muted-foreground"> / </span>
+              <span className="text-down">{low60}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>,
@@ -587,7 +598,28 @@ function IndexModal({ idx, onClose }: { idx: typeof MARKET_INDICES[0]; onClose: 
 function SectorRotationPanel() {
   const [market, setMarket] = useState<"US" | "KR">("US");
   const [period, setPeriod] = useState<"1d" | "1w" | "1m">("1m");
-  const sectors = market === "US" ? US_SECTORS : KR_SECTORS;
+  // /v1/sectors returns the same shape as the existing mock arrays, so
+  // the renderer below didn't need to change. Falls back to mock if
+  // sector metrics haven't been ingested (preview environment).
+  // Map the backend SectorData shape onto the local rotation card's
+  // shape (return1d/1w/1m + a derived `flow` label). `flow` doesn't
+  // exist on the API yet — we proxy it from the daily rank.
+  const { data: liveSectors } = useSectors(market);
+  const fallback = market === "US" ? US_SECTORS : KR_SECTORS;
+  const sectors = (liveSectors && liveSectors.length > 0)
+    ? liveSectors.map((s, _, all) => ({
+        sector: s.sector,
+        return1d: s.returnDay,
+        return1w: s.returnWeek,
+        return1m: s.returnMonth,
+        // top quartile = 유입, bottom quartile = 유출, else 중립
+        flow: s.rankDay <= Math.ceil(all.length / 4)
+          ? "유입"
+          : s.rankDay > all.length - Math.ceil(all.length / 4)
+            ? "유출"
+            : "중립",
+      }))
+    : fallback;
   const getReturn = (s: typeof US_SECTORS[0]) =>
     period === "1d" ? s.return1d : period === "1w" ? s.return1w : s.return1m;
   const sorted = [...sectors].sort((a, b) => getReturn(b) - getReturn(a));
@@ -660,8 +692,14 @@ function StockListPanel({ isLoggedIn, marketTab, setMarketTab }: {
   setMarketTab: (m: "KR" | "US") => void;
 }) {
   const { watchlist, removeFromWatchlist } = useWatchlist();
-  const allStocks = [...US_STOCKS, ...KR_STOCKS];
-  const topStocks = marketTab === "KR" ? KR_STOCKS.slice(0, 6) : US_STOCKS.slice(0, 6);
+  // /v1/movers is a price_bars_daily-backed top-movers feed (live). The
+  // mock arrays remain as fallback when the DB is empty (dev / preview).
+  const { data: liveMarketStocks } = useStocks(marketTab);
+  const safeLive = liveMarketStocks ?? [];
+  const liveAll = useMemo(() => [...safeLive], [safeLive]);
+  const fallbackAll = [...US_STOCKS, ...KR_STOCKS];
+  const allStocks = liveAll.length > 0 ? liveAll : fallbackAll;
+  const topStocks = (safeLive.length > 0 ? safeLive : (marketTab === "KR" ? KR_STOCKS : US_STOCKS)).slice(0, 6);
 
   // 관심종목 있으면 관심종목, 없으면 상위거래
   const hasWatchlist = watchlist.length > 0;
@@ -739,19 +777,74 @@ function StockListPanel({ isLoggedIn, marketTab, setMarketTab }: {
 // ── Main ─────────────────────────────────────────────────────
 export default function Home() {
   const { user } = useAuth();
+  const { watchlist } = useWatchlist();
   const defaultMarket = useMemo(() => detectOpenMarket(), []);
   const [perfPeriod, setPerfPeriod] = useState<"1D" | "1W" | "1M" | "3M" | "1Y">("1M");
   const [marketTab, setMarketTab] = useState<"KR" | "US">(defaultMarket);
-  const chartData = generatePortfolioChart(30);
   const isLoggedIn = !!user;
 
-  // 모달 상태
-  const [selectedNews, setSelectedNews] = useState<typeof MARKET_NEWS[0] | null>(null);
-  const [selectedEvent, setSelectedEvent] = useState<typeof CALENDAR_EVENTS[0] | null>(null);
-  const [fearGreedModal, setFearGreedModal] = useState<"KR" | "US" | null>(null);
-  const [selectedIndex, setSelectedIndex] = useState<typeof MARKET_INDICES[0] | null>(null);
+  // ── Live data hooks ───────────────────────────────────────────
+  const { data: indices } = useIndices();
+  const { data: newsItems } = useNews({ limit: 5 });
+  const { data: krFG } = useFearGreed("KR");
+  const { data: usFG } = useFearGreed("US");
+  // Home calendar widget: same scoping rule as the full Calendar page —
+  // stock events restricted to the user's watchlist, macro shown
+  // regardless. Window = next 14 days for the dashboard summary.
+  const watchlistSymbols = useMemo(
+    () => (watchlist ?? []).map(w => w.ticker.toUpperCase()),
+    [watchlist],
+  );
+  const today = useMemo(() => new Date(), []);
+  const calFromIso = today.toISOString().slice(0, 10);
+  const calToIso = useMemo(() => {
+    const t = new Date(today); t.setDate(t.getDate() + 14); return t.toISOString().slice(0, 10);
+  }, [today]);
+  const { data: calItems } = useUnifiedCalendar({
+    from: calFromIso, to: calToIso, symbols: watchlistSymbols,
+  });
 
-  const topIndices = MARKET_INDICES.slice(0, 6);
+  // Portfolio chart (Row 4L): for now plot SPY + KOSPI proxy (EWY) only
+  // — the portfolio overlay needs a time-series endpoint we don't have
+  // yet. Falls back to the mock walker if /v1/quotes is unreachable.
+  const [perfData, setPerfData] = useState<{ day: number; sp500: number; kospi: number }[] | null>(null);
+  useEffect(() => {
+    const range = perfPeriod === "1D" || perfPeriod === "1W" ? "1mo"
+      : perfPeriod === "1M" ? "1mo"
+      : perfPeriod === "3M" ? "3mo"
+      : "1y";
+    let cancelled = false;
+    Promise.all([
+      apiGet<{ bars: { t: string; c: number }[] }>(`/quotes/SPY?range=${range}`).catch(() => null),
+      apiGet<{ bars: { t: string; c: number }[] }>(`/quotes/EWY?range=${range}`).catch(() => null),
+    ]).then(([sp, kr]) => {
+      if (cancelled) return;
+      const spBars = sp?.bars ?? [];
+      const krBars = kr?.bars ?? [];
+      if (!spBars.length && !krBars.length) { setPerfData(null); return; }
+      // Normalize both series to base 100 at first day for comparability.
+      const sp0 = spBars[0]?.c ?? 1;
+      const kr0 = krBars[0]?.c ?? 1;
+      const len = Math.max(spBars.length, krBars.length);
+      const merged = Array.from({ length: len }, (_, i) => ({
+        day: i + 1,
+        sp500: spBars[i] ? (spBars[i].c / sp0) * 100 : 100,
+        kospi: krBars[i] ? (krBars[i].c / kr0) * 100 : 100,
+      }));
+      setPerfData(merged);
+    });
+    return () => { cancelled = true; };
+  }, [perfPeriod]);
+  const chartData = perfData ?? generatePortfolioChart(30);
+
+  // 모달 상태
+  const [selectedNews, setSelectedNews] = useState<any | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [fearGreedModal, setFearGreedModal] = useState<"KR" | "US" | null>(null);
+  // Modal accepts both legacy mock rows and live MarketIndex shape.
+  const [selectedIndex, setSelectedIndex] = useState<any | null>(null);
+
+  const topIndices = (indices ?? []).slice(0, 6);
 
   return (
     <div className="space-y-5 animate-fade-in-up">
@@ -806,9 +899,19 @@ export default function Home() {
         <div className="xl:col-span-2 bg-card border border-border rounded-xl p-5 flex flex-col">
           <SectionHeader title="공포·탐욕 지수" sub="클릭하면 VIX/ADR 히스토리 확인" />
           <div className="flex-1 flex items-center justify-around gap-4">
-            <FearGreedGauge value={56} label="외인 5거래일 순매수 지속" market="한국" onClick={() => setFearGreedModal("KR")} />
+            <FearGreedGauge
+              value={krFG?.value ?? 50}
+              label={krFG?.label ?? "—"}
+              market="한국"
+              onClick={() => setFearGreedModal("KR")}
+            />
             <div className="w-px self-stretch bg-border" />
-            <FearGreedGauge value={68} label="VIX 14.2 · 안도 과열 구간" market="미국" onClick={() => setFearGreedModal("US")} />
+            <FearGreedGauge
+              value={usFG?.value ?? 50}
+              label={usFG?.vix != null ? `VIX ${usFG.vix.toFixed(1)} · ${usFG.label}` : (usFG?.label ?? "—")}
+              market="미국"
+              onClick={() => setFearGreedModal("US")}
+            />
           </div>
           <div className="flex items-center justify-center gap-3 mt-2 flex-wrap flex-shrink-0">
             {[
@@ -831,7 +934,7 @@ export default function Home() {
           <SectionHeader title="시장 핵심 뉴스" sub="클릭하면 요약 확인" href="/news" />
           <div className="flex-1 flex flex-col justify-between">
             <div className="space-y-0">
-              {MARKET_NEWS.slice(0, 5).map((news) => (
+              {(newsItems ?? []).slice(0, 5).map((news) => (
                 <div
                   key={news.id}
                   className="flex items-start gap-3 py-2.5 px-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group border-b border-border/40 last:border-0"
@@ -868,11 +971,28 @@ export default function Home() {
         <div className="xl:col-span-3 bg-card border border-border rounded-xl p-5 flex flex-col">
           <SectionHeader title="내 캘린더" sub="실적·배당·경제지표 일정" href="/calendar" />
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-0">
-            {CALENDAR_EVENTS.map((ev, i) => (
+            {(((calItems ?? []).length > 0) ? (calItems ?? []).slice(0, 6) : CALENDAR_EVENTS as any[]).map((raw, i) => {
+              // Live unified item OR legacy mock row — coerce to a common
+              // shape so the existing list cell template doesn't change.
+              const isLive = (raw as { kind?: string }).kind !== undefined;
+              const dt = isLive ? new Date(raw.scheduled_at) : null;
+              const ev = isLive ? {
+                day: ["일","월","화","수","목","금","토"][dt!.getDay()],
+                date: dt!.getDate(),
+                title: raw.title,
+                type: raw.kind === "macro" ? "매크로" : raw.kind === "earnings" ? "실적" : "배당",
+                holding: null as string | null,
+                _live: raw,
+              } : raw;
+              return (
               <div
-                key={i}
+                key={(raw.id ?? i)}
                 className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/40 transition-colors cursor-pointer border-b border-border/30 last:border-0 sm:last:border-0"
-                onClick={() => setSelectedEvent(ev)}
+                onClick={() => setSelectedEvent(isLive ? { /* legacy modal shape */
+                  date: ev.date, day: ev.day,
+                  title: ev.title, type: ev.type, holding: null,
+                  memo: 0, tickers: raw.symbol ? [raw.symbol] : [],
+                } : raw)}
               >
                 <div className="text-center min-w-[36px] bg-muted/30 rounded-lg py-1.5">
                   <div className="text-[9px] text-muted-foreground">{ev.day}</div>
@@ -892,7 +1012,8 @@ export default function Home() {
                 </div>
                 <ChevronRight size={12} className="text-muted-foreground/40 flex-shrink-0 mt-1" />
               </div>
-            ))}
+            );
+            })}
           </div>
         </div>
 
@@ -908,8 +1029,12 @@ export default function Home() {
         <div className="xl:col-span-3 bg-card border border-border rounded-xl p-5 flex flex-col">
           <div className="flex items-center justify-between mb-3 flex-shrink-0">
             <div>
-              <h2 className="text-base font-bold font-['Outfit']">내 수익률 vs 시장</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">시장 대비 <span className="text-up font-medium">+4.2%p</span></p>
+              <h2 className="text-base font-bold font-['Outfit']">{isLoggedIn ? "내 수익률 vs 시장" : "시장 인덱스 추이"}</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {isLoggedIn
+                  ? "포트폴리오 시계열 곧 연결 — 현재는 S&P 500 vs KOSPI (EWY) 비교"
+                  : "S&P 500 (SPY) vs 한국 (EWY) — 시작점 100 기준 정규화"}
+              </p>
             </div>
             <div className="flex gap-1">
               {(["1D", "1W", "1M", "3M", "1Y"] as const).map((p) => (
@@ -927,18 +1052,20 @@ export default function Home() {
                 <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                 <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px", fontSize: 11 }}
                   labelStyle={{ color: "var(--muted-foreground)" }} />
-                <Line type="monotone" dataKey="portfolio" stroke="var(--sky)" strokeWidth={2} dot={false} name="포트폴리오" />
-                <Line type="monotone" dataKey="kospi" stroke="var(--violet)" strokeWidth={1.5} dot={false} strokeDasharray="4 2" name="KOSPI" />
-                <Line type="monotone" dataKey="sp500" stroke="var(--gold)" strokeWidth={1.5} dot={false} strokeDasharray="4 2" name="S&P 500" />
+                <Line type="monotone" dataKey="sp500" stroke="var(--gold)" strokeWidth={2} dot={false} name="S&P 500" />
+                <Line type="monotone" dataKey="kospi" stroke="var(--violet)" strokeWidth={2} dot={false} name="KOSPI (EWY)" />
               </LineChart>
             </ResponsiveContainer>
           </div>
           <div className="flex gap-4 mt-2 flex-shrink-0">
-            {[
-              { label: "포트폴리오", color: "var(--sky)", value: "+12.4%" },
-              { label: "KOSPI", color: "var(--violet)", value: "+4.1%" },
-              { label: "S&P 500", color: "var(--gold)", value: "+8.2%" },
-            ].map((l) => (
+            {(() => {
+              const last = chartData[chartData.length - 1] ?? { kospi: 100, sp500: 100 };
+              const fmt = (v: number) => `${(v - 100).toFixed(1)}%`;
+              return [
+                { label: "S&P 500", color: "var(--gold)", value: fmt((last as any).sp500 ?? 100) },
+                { label: "KOSPI (EWY)", color: "var(--violet)", value: fmt((last as any).kospi ?? 100) },
+              ];
+            })().map((l) => (
               <div key={l.label} className="flex items-center gap-1.5">
                 <div className="w-3 h-0.5 rounded" style={{ background: l.color }} />
                 <span className="text-xs text-muted-foreground">{l.label}</span>

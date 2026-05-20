@@ -6,11 +6,14 @@
 
 // ── 시장 지수 ──────────────────────────────────────────────────
 export interface MarketIndex {
+  symbol: string;
   name: string;
   value: number;
   change: number;
   changePct: number;
-  trend: "up" | "down" | "flat";
+  market: "KR" | "US" | "FX" | "COMM" | "VOL" | "CRYPTO";
+  source?: "live" | "mock";
+  trend?: "up" | "down" | "flat";
 }
 
 // ── 종목 ──────────────────────────────────────────────────────

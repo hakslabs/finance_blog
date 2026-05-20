@@ -3,16 +3,16 @@
 // ============================================================
 
 export const MARKET_INDICES = [
-  { symbol: "KOSPI", name: "코스피", value: 2684.32, change: 18.42, changePct: 0.69, market: "KR" },
-  { symbol: "KOSDAQ", name: "코스닥", value: 872.14, change: 4.21, changePct: 0.49, market: "KR" },
-  { symbol: "S&P 500", name: "미국", value: 5812.44, change: 21.82, changePct: 0.38, market: "US" },
-  { symbol: "NASDAQ", name: "나스닥", value: 18024.1, change: 128.6, changePct: 0.72, market: "US" },
-  { symbol: "DOW", name: "다우", value: 39142.2, change: -84.3, changePct: -0.22, market: "US" },
-  { symbol: "USD/KRW", name: "원/달러", value: 1387.20, change: -3.10, changePct: -0.22, market: "FX" },
-  { symbol: "WTI", name: "국제유가", value: 71.84, change: 0.42, changePct: 0.59, market: "COMM" },
-  { symbol: "GOLD", name: "금", value: 2318.4, change: 9.4, changePct: 0.41, market: "COMM" },
-  { symbol: "BTC", name: "비트코인", value: 61240, change: -820, changePct: -1.32, market: "CRYPTO" },
-  { symbol: "VIX", name: "공포지수", value: 14.2, change: -0.4, changePct: -2.74, market: "VOL" },
+  { symbol: "KOSPI",   name: "코스피",       value: 2684.32, change: 18.42, changePct: 0.69,  market: "KR" as const,     source: "mock" as const },
+  { symbol: "KOSDAQ",  name: "코스닥",       value: 872.14,  change: 4.21,  changePct: 0.49,  market: "KR" as const,     source: "mock" as const },
+  { symbol: "S&P 500", name: "S&P 500",      value: 5812.44, change: 21.82, changePct: 0.38,  market: "US" as const,     source: "mock" as const },
+  { symbol: "NASDAQ",  name: "나스닥",       value: 18024.1, change: 128.6, changePct: 0.72,  market: "US" as const,     source: "mock" as const },
+  { symbol: "DOW",     name: "다우",         value: 39142.2, change: -84.3, changePct: -0.22, market: "US" as const,     source: "mock" as const },
+  { symbol: "USD/KRW", name: "원/달러",       value: 1387.20, change: -3.10, changePct: -0.22, market: "FX" as const,     source: "mock" as const },
+  { symbol: "WTI",     name: "국제유가",     value: 71.84,   change: 0.42,  changePct: 0.59,  market: "COMM" as const,   source: "mock" as const },
+  { symbol: "GOLD",    name: "금",           value: 2318.4,  change: 9.4,   changePct: 0.41,  market: "COMM" as const,   source: "mock" as const },
+  { symbol: "BTC",     name: "비트코인",     value: 61240,   change: -820,  changePct: -1.32, market: "CRYPTO" as const, source: "mock" as const },
+  { symbol: "VIX",     name: "공포지수",     value: 14.2,    change: -0.4,  changePct: -2.74, market: "VOL" as const,    source: "mock" as const },
 ];
 
 export const US_STOCKS = [

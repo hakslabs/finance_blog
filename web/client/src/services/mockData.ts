@@ -24,12 +24,12 @@ import type {
 
 // ── 시장 지수 ──────────────────────────────────────────────────
 export const MARKET_INDICES: MarketIndex[] = [
-  { name: "KOSPI", value: 2684.32, change: 18.42, changePct: 0.69, trend: "up" },
-  { name: "KOSDAQ", value: 872.14, change: 4.28, changePct: 0.49, trend: "up" },
-  { name: "S&P 500", value: 5812.44, change: 21.92, changePct: 0.38, trend: "up" },
-  { name: "NASDAQ", value: 18024.1, change: 128.4, changePct: 0.72, trend: "up" },
-  { name: "DOW", value: 39142.2, change: -88.4, changePct: -0.22, trend: "down" },
-  { name: "USD/KRW", value: 1387.2, change: -3.1, changePct: -0.22, trend: "down" },
+  { symbol: "KOSPI",   name: "코스피",       value: 2684.32, change: 18.42, changePct: 0.69,  market: "KR", source: "mock", trend: "up" },
+  { symbol: "KOSDAQ",  name: "코스닥",       value: 872.14,  change: 4.28,  changePct: 0.49,  market: "KR", source: "mock", trend: "up" },
+  { symbol: "S&P 500", name: "S&P 500",      value: 5812.44, change: 21.92, changePct: 0.38,  market: "US", source: "mock", trend: "up" },
+  { symbol: "NASDAQ",  name: "나스닥",       value: 18024.1, change: 128.4, changePct: 0.72,  market: "US", source: "mock", trend: "up" },
+  { symbol: "DOW",     name: "다우",         value: 39142.2, change: -88.4, changePct: -0.22, market: "US", source: "mock", trend: "down" },
+  { symbol: "USD/KRW", name: "원/달러",      value: 1387.2,  change: -3.1,  changePct: -0.22, market: "FX", source: "mock", trend: "down" },
 ];
 
 // ── 미국 종목 ──────────────────────────────────────────────────

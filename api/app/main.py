@@ -19,6 +19,7 @@ from app.routes.masters import router as masters_router
 from app.routes.events import router as events_router
 from app.routes.follows import router as follows_router
 from app.routes.holders import router as holders_router
+from app.routes.indices import router as indices_router
 from app.routes.lessons import router as lessons_router
 from app.routes.movers import router as movers_router
 from app.routes.news import router as news_router
@@ -77,6 +78,7 @@ app.include_router(movers_router, prefix="/v1")
 app.include_router(events_router, prefix="/v1")
 app.include_router(follows_router, prefix="/v1")
 app.include_router(holders_router, prefix="/v1")
+app.include_router(indices_router, prefix="/v1")
 app.include_router(lessons_router, prefix="/v1")
 app.include_router(news_router, prefix="/v1")
 app.include_router(notices_router, prefix="/v1")
