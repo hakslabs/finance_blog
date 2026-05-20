@@ -18,6 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { MASTERS } from "@/services/mockData";
 import { FollowContext } from "@/contexts/FollowContext";
+import { followsService } from "@/features/follows";
 import { toast } from "sonner";
 
 const STRATEGY_FILTERS = ["전체", "가치투자", "성장투자", "매크로", "역발상"];
@@ -404,7 +405,16 @@ export default function Masters() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <Link href={`/masters/${item.masterId}`}>
+                              <Link
+                                href={`/masters/${item.masterId}`}
+                                onClick={() => {
+                                  // mark this feed entry as read for the current user
+                                  followsService.feedRead(
+                                    item.masterId,
+                                    `${item.date}|${item.type}|${item.title}`,
+                                  ).catch(() => {});
+                                }}
+                              >
                                 <span className="text-sm font-semibold hover:text-emerald-400 transition-colors cursor-pointer">
                                   {item.masterName}
                                 </span>
