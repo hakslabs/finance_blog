@@ -5,7 +5,7 @@
  * - 이벤트 클릭 시 상세 모달
  * - 이벤트 추가 (메모)
  */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,63 @@ import { toast } from "sonner";
 import { EventMemoDialog } from "@/components/EventMemoDialog";
 import { PriceAlertDialog } from "@/components/PriceAlertDialog";
 import { useBookmark } from "@/contexts/BookmarkContext";
+import { useWatchlist } from "@/contexts/WatchlistContext";
+import { useUnifiedCalendar, type UnifiedCalendarItem } from "@/features/calendar";
+
+// Map backend UnifiedCalendarItem → the shape the rest of this page already
+// consumes. Keeping the on-page type intact means the grid + list rendering
+// below didn't need to change.
+type DisplayEvent = {
+  id: number | string;
+  date: number;
+  day: string;
+  month: number;
+  year: number;
+  title: string;
+  type: string; // 실적 | 배당 | 매크로 | 이벤트 | 개인
+  holding: string | null;
+  memo: number;
+  tickers: string[];
+  importance: string; // 상 | 중 | 하
+  detail: string;
+};
+
+const DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
+
+function importanceToKo(n?: number | null): string {
+  if (n == null) return "하";
+  if (n >= 3) return "상";
+  if (n >= 2) return "중";
+  return "하";
+}
+
+function unifiedToDisplay(item: UnifiedCalendarItem): DisplayEvent {
+  const dt = new Date(item.scheduled_at);
+  const type =
+    item.kind === "macro" ? "매크로" :
+    item.kind === "earnings" ? "실적" :
+    "배당";
+  const detailParts: string[] = [];
+  if (item.actual_value) detailParts.push(`실제 ${item.actual_value}`);
+  if (item.forecast_value) detailParts.push(`예상 ${item.forecast_value}`);
+  if (item.previous_value) detailParts.push(`이전 ${item.previous_value}`);
+  if (item.cash_amount != null) detailParts.push(`배당 ${item.cash_amount}`);
+  if (item.eps_estimate != null) detailParts.push(`EPS 예상 ${item.eps_estimate}`);
+  return {
+    id: item.id,
+    date: dt.getDate(),
+    day: DAY_KO[dt.getDay()],
+    month: dt.getMonth() + 1,
+    year: dt.getFullYear(),
+    title: item.title,
+    type,
+    holding: null,
+    memo: 0,
+    tickers: item.symbol ? [item.symbol] : [],
+    importance: importanceToKo(item.importance),
+    detail: detailParts.join(" · "),
+  };
+}
 
 // ── Extended calendar events ──────────────────────────────────
 const EVENTS_DATA = [
@@ -52,7 +109,7 @@ const IMPORTANCE_DOT: Record<string, string> = {
   "하": "bg-up",
 };
 
-const FILTER_TYPES = ["전체", "실적", "배당", "매크로", "이벤트"];
+const FILTER_TYPES = ["추천", "전체", "실적", "배당", "매크로", "이벤트"];
 
 const DAYS_OF_WEEK = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -60,18 +117,61 @@ export default function CalendarPage() {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth() + 1); // 1-based
-  const [filterType, setFilterType] = useState("전체");
-  const [selectedEvent, setSelectedEvent] = useState<typeof EVENTS_DATA[0] | null>(null);
+  const [filterType, setFilterType] = useState("추천");
+  const [selectedEvent, setSelectedEvent] = useState<DisplayEvent | null>(null);
   const [listView, setListView] = useState(false);
   const [memoOpen, setMemoOpen] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
   const { isBookmarked, addBookmark, removeBookmark } = useBookmark();
+  const watchlist = useWatchlist();
 
-  // Events for current month
-  const monthEvents = EVENTS_DATA.filter(e =>
-    e.year === viewYear && e.month === viewMonth &&
-    (filterType === "전체" || e.type === filterType)
+  // ── Live calendar pull ─────────────────────────────────────────
+  // Range = the currently visible month. "추천" mode bumps min_importance
+  // server-side and we pass the user's watchlist symbols so personal
+  // earnings/dividends sneak through alongside high-importance macro.
+  const fromIso = useMemo(
+    () => `${viewYear}-${String(viewMonth).padStart(2, "0")}-01`,
+    [viewYear, viewMonth],
   );
+  const toIso = useMemo(() => {
+    const last = new Date(viewYear, viewMonth, 0).getDate();
+    return `${viewYear}-${String(viewMonth).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
+  }, [viewYear, viewMonth]);
+  const watchlistSymbols = useMemo(
+    () => (watchlist.watchlist ?? []).map((w) => w.ticker.toUpperCase()),
+    [watchlist.watchlist],
+  );
+  const recommended = filterType === "추천";
+  const typesFilter: ("macro" | "earnings" | "dividend")[] | undefined =
+    filterType === "실적" ? ["earnings"] :
+    filterType === "배당" ? ["dividend"] :
+    filterType === "매크로" ? ["macro"] :
+    undefined;
+  const { data: liveItems } = useUnifiedCalendar({
+    from: fromIso,
+    to: toIso,
+    types: typesFilter,
+    symbols: recommended ? watchlistSymbols : undefined,
+    recommended,
+  });
+
+  // Live → display shape. If backend returned 0 rows (ingest not run yet)
+  // fall back to mock so the page never looks empty in dev.
+  const liveDisplay: DisplayEvent[] = useMemo(
+    () => (liveItems ?? []).map(unifiedToDisplay),
+    [liveItems],
+  );
+  const useLive = liveDisplay.length > 0;
+  const dataSource: DisplayEvent[] = useLive ? liveDisplay : (EVENTS_DATA as DisplayEvent[]);
+
+  // Events for current month (filter chip already applied server-side for
+  // the live path; mock path still needs a client filter).
+  const monthEvents = dataSource.filter(e => {
+    if (e.year !== viewYear || e.month !== viewMonth) return false;
+    if (useLive) return true;
+    if (filterType === "전체" || filterType === "추천") return true;
+    return e.type === filterType;
+  });
 
   // Calendar grid
   const firstDay = new Date(viewYear, viewMonth - 1, 1).getDay(); // 0=Sun
@@ -179,7 +279,12 @@ export default function CalendarPage() {
           <div className="grid grid-cols-7">
             {cells.map((cell, idx) => {
               const cellEvents = cell.isCurrentMonth
-                ? EVENTS_DATA.filter(e => e.year === viewYear && e.month === viewMonth && e.date === cell.date && (filterType === "전체" || e.type === filterType))
+                ? dataSource.filter(e =>
+                    e.year === viewYear &&
+                    e.month === viewMonth &&
+                    e.date === cell.date &&
+                    (useLive || filterType === "전체" || filterType === "추천" || e.type === filterType)
+                  )
                 : [];
               const isToday = cell.isCurrentMonth && cell.date === today.getDate() && viewYear === today.getFullYear() && viewMonth === today.getMonth() + 1;
               const colIdx = idx % 7;
