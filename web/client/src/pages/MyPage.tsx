@@ -28,6 +28,9 @@ import { toast } from "sonner";
 import { BookmarkContext } from "@/contexts/BookmarkContext";
 import { FollowContext } from "@/contexts/FollowContext";
 import { useWatchlist } from "@/contexts/WatchlistContext";
+import { useTrades } from "@/features/portfolio-transactions";
+import { useJournals } from "@/features/memos";
+import { useAlertsSync } from "@/features/alerts";
 
 // ── Helpers ──────────────────────────────────────────────────
 const ALL_STOCKS = [...US_STOCKS, ...KR_STOCKS];
@@ -557,7 +560,13 @@ function WatchlistTab() {
 
 // ── Trades Tab ────────────────────────────────────────────────
 function TradesTab() {
-  const [trades, setTrades] = useLocalState<Trade[]>("financelab_trades", INIT_TRADES);
+  const { trades, addTrade } = useTrades(INIT_TRADES);
+  // 기존 setTrades 콜백을 addTrade로 어댑팅 (호출처가 prev=>[t,...prev] 패턴만 씀)
+  const setTrades = (updater: ((prev: Trade[]) => Trade[]) | Trade[]) => {
+    const next = typeof updater === "function" ? (updater as (p: Trade[]) => Trade[])(trades) : updater;
+    const added = next.find((t) => !trades.some((x) => x.id === t.id));
+    if (added) void addTrade(added);
+  };
   const [showAddModal, setShowAddModal] = useState(false);
   const [period, setPeriod] = useState<"일" | "주" | "월" | "년">("월");
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
@@ -713,8 +722,8 @@ function TradesTab() {
 
 // ── Journal Tab ───────────────────────────────────────────────
 function JournalTab() {
-  const [journals, setJournals] = useLocalState<Journal[]>("financelab_journals", INIT_JOURNALS);
-  const [trades] = useLocalState<Trade[]>("financelab_trades", INIT_TRADES);
+  const [journals, setJournals] = useJournals<Journal>("financelab_journals", INIT_JOURNALS);
+  const { trades } = useTrades(INIT_TRADES);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [newNote, setNewNote] = useState("");
   const unlinkedTrades = trades.filter(t => !t.journalLinked);
@@ -802,7 +811,8 @@ function JournalTab() {
 // ── Alerts Tab ────────────────────────────────────────────────
 function AlertsTab() {
   const [alerts, setAlerts] = useLocalState<AlertItem[]>("financelab_alerts", INIT_ALERTS);
-  const [journals] = useLocalState<Journal[]>("financelab_journals", INIT_JOURNALS);
+  useAlertsSync<AlertItem>(setAlerts);
+  const [journals] = useJournals<Journal>("financelab_journals", INIT_JOURNALS);
   const [showAddModal, setShowAddModal] = useState(false);
   const [form, setForm] = useState({ symbol: "", name: "", type: "목표가 도달" as AlertItem["type"], condition: "" });
   const handleAdd = () => {

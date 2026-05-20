@@ -1,7 +1,7 @@
 // Design: Brutalist-Financial Dark Theme
 // Layout: Split - left filter sidebar + right master grid
 // Color: slate-950 bg, emerald accent, mono typography
-import { useContext, useMemo, useState } from "react";
+import { useState, useContext } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -17,18 +17,8 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { MASTERS } from "@/services/mockData";
-import { useMastersList } from "@/features/masters";
 import { FollowContext } from "@/contexts/FollowContext";
 import { toast } from "sonner";
-
-function formatAum(aum: number, currency: string | null): string {
-  const cur = currency ?? "USD";
-  const sym = cur === "USD" ? "$" : cur;
-  if (aum >= 1e12) return `${sym}${(aum / 1e12).toFixed(2)}T`;
-  if (aum >= 1e9) return `${sym}${(aum / 1e9).toFixed(1)}B`;
-  if (aum >= 1e6) return `${sym}${(aum / 1e6).toFixed(0)}M`;
-  return `${sym}${aum.toLocaleString()}`;
-}
 
 const STRATEGY_FILTERS = ["전체", "가치투자", "성장투자", "매크로", "역발상"];
 const SECTOR_FILTERS = ["전체", "테크", "금융", "소비재", "에너지", "바이오", "ETF"];
@@ -55,40 +45,7 @@ export default function Masters() {
   const [showFollowedOnly, setShowFollowedOnly] = useState(false);
   const [activeTab, setActiveTab] = useState<"all" | "feed">("all");
 
-  const { data: backendMasters } = useMastersList();
-  const liveMasters = useMemo(() => {
-    if (!backendMasters || backendMasters.length === 0) return MASTERS;
-    return backendMasters.map((b) => {
-      const mock = MASTERS.find((m) =>
-        m.id.toLowerCase().includes(b.slug.toLowerCase()),
-      );
-      if (mock) {
-        return {
-          ...mock,
-          id: b.slug,
-          name: b.name,
-          fund: b.firm ?? (mock as any).fund,
-          aum: b.aum != null ? formatAum(b.aum, b.aum_currency) : (mock as any).aum,
-        };
-      }
-      return {
-        ...MASTERS[0],
-        id: b.slug,
-        name: b.name,
-        nameKo: b.name,
-        fund: b.firm ?? "",
-        aum: b.aum != null ? formatAum(b.aum, b.aum_currency) : "",
-        strategy: b.style ?? "",
-        philosophy: [],
-        topHoldings: [],
-        updates: [],
-        sectors: [],
-        style: b.style ? [b.style] : [],
-      };
-    });
-  }, [backendMasters]);
-
-  const filteredMasters = liveMasters.filter((m) => {
+  const filteredMasters = MASTERS.filter((m) => {
     if (showFollowedOnly && !followCtx?.isFollowing(m.id)) return false;
     if (strategyFilter !== "전체") {
       const styles = (m as any).style || [];
@@ -107,7 +64,7 @@ export default function Masters() {
     return true;
   });
 
-  const feedItems = liveMasters.filter((m) => followCtx?.isFollowing(m.id))
+  const feedItems = MASTERS.filter((m) => followCtx?.isFollowing(m.id))
     .flatMap((m) =>
       ((m as any).updates || []).map((u: any) => ({
         ...u,
@@ -118,7 +75,7 @@ export default function Masters() {
     )
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const followedCount = liveMasters.filter((m) => followCtx?.isFollowing(m.id)).length;
+  const followedCount = MASTERS.filter((m) => followCtx?.isFollowing(m.id)).length;
 
   return (
     <div className="min-h-screen bg-background text-foreground">

@@ -9,19 +9,18 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { notificationsService } from "@/features/notifications";
 import {
   Home, BarChart2, Newspaper, Users, FileText, BookOpen,
   User, Sun, Moon, Menu, ChevronLeft, ChevronRight, Calendar, Search,
-  TrendingUp, TrendingDown, Activity, Bell,
-  LogOut
+  TrendingUp, TrendingDown, Activity, Bell, Shield,
+  LogOut, Settings
 } from "lucide-react";
-import { useNotices } from "@/features/notices";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-// Admin nav remains conditional on a real Supabase-issued admin claim. Until
-// that's wired we keep the entry hidden — no client-side email allowlist.
+const ADMIN_EMAILS = ["admin@financelab.pro", "superadmin@financelab.pro"];
 
 const NAV_ITEMS = [
   { path: "/", icon: Home, label: "홈", sublabel: "Dashboard" },
@@ -34,39 +33,38 @@ const NAV_ITEMS = [
   { path: "/mypage", icon: User, label: "마이페이지", sublabel: "My Page" },
 ];
 
-import { useMovers } from "@/features/movers";
+const TICKER_DATA = [
+  { symbol: "KOSPI", value: "2,684.32", change: "+0.69%", up: true },
+  { symbol: "S&P 500", value: "5,812.44", change: "+0.38%", up: true },
+  { symbol: "NASDAQ", value: "18,024.1", change: "+0.72%", up: true },
+  { symbol: "USD/KRW", value: "1,387.20", change: "-0.22%", up: false },
+  { symbol: "WTI", value: "$71.84", change: "+0.59%", up: true },
+  { symbol: "GOLD", value: "$2,318.4", change: "+0.41%", up: true },
+  { symbol: "BTC", value: "$61,240", change: "-1.32%", up: false },
+  { symbol: "VIX", value: "14.2", change: "-2.8%", up: false },
+  { symbol: "US 10Y", value: "4.42%", change: "+3bp", up: true },
+  { symbol: "NVDA", value: "912.18", change: "+3.42%", up: true },
+  { symbol: "AAPL", value: "184.32", change: "+1.24%", up: true },
+  { symbol: "TSLA", value: "218.40", change: "-2.10%", up: false },
+  { symbol: "삼성전자", value: "78,400", change: "+0.51%", up: true },
+];
 
 function TickerBar() {
-  const us = useMovers({ market: "US", limit: 10 });
-  const kr = useMovers({ market: "KR", limit: 6 });
-  const items = [...(us.data?.items ?? []), ...(kr.data?.items ?? [])];
-  if (items.length === 0) {
-    return (
-      <div className="h-8 bg-card border-b border-border overflow-hidden flex items-center justify-center text-[10px] text-muted-foreground">
-        시세 불러오는 중…
-      </div>
-    );
-  }
-  const doubled = [...items, ...items];
+  const doubled = [...TICKER_DATA, ...TICKER_DATA];
   return (
     <div className="h-8 bg-card border-b border-border overflow-hidden flex items-center">
       <div className="flex items-center gap-0 ticker-scroll whitespace-nowrap">
-        {doubled.map((item, i) => {
-          const up = item.change_pct >= 0;
-          return (
-            <span key={`${item.symbol}-${i}`} className="inline-flex items-center gap-1.5 px-4 text-xs">
-              <span className="text-muted-foreground font-mono">{item.symbol}</span>
-              <span className="font-mono font-medium tabular-nums">
-                {item.last >= 1000 ? item.last.toLocaleString(undefined, { maximumFractionDigits: 0 }) : item.last.toFixed(2)}
-              </span>
-              <span className={cn("font-mono font-medium flex items-center gap-0.5 tabular-nums", up ? "text-up" : "text-down")}>
-                {up ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                {up ? "+" : ""}{item.change_pct.toFixed(2)}%
-              </span>
-              <span className="text-border mx-1">|</span>
+        {doubled.map((item, i) => (
+          <span key={i} className="inline-flex items-center gap-1.5 px-4 text-xs">
+            <span className="text-muted-foreground font-mono">{item.symbol}</span>
+            <span className="font-mono font-medium">{item.value}</span>
+            <span className={cn("font-mono font-medium flex items-center gap-0.5", item.up ? "text-up" : "text-down")}>
+              {item.up ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+              {item.change}
             </span>
-          );
-        })}
+            <span className="text-border mx-1">|</span>
+          </span>
+        ))}
       </div>
     </div>
   );
@@ -93,23 +91,42 @@ function ThemeToggle() {
 
 // ── User Menu ─────────────────────────────────────────────────
 function UserMenu() {
-  const { user, logout } = useAuth();
+  const { user, login, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const [, navigate] = useLocation();
 
   if (!user) {
     return (
-      <Button
-        size="sm"
-        variant="outline"
-        disabled
-        className="h-8 text-xs font-medium gap-1.5 cursor-not-allowed opacity-70"
-        title="Supabase 인증 연결 예정"
-      >
-        <User size={13} /> 로그인 (준비중)
-      </Button>
+      <div className="relative">
+        <Button
+          size="sm"
+          className="h-8 text-xs font-medium gap-1.5"
+          onClick={() => setOpen(!open)}
+        >
+          <User size={13} /> 로그인
+        </Button>
+        {open && (
+          <div className="absolute right-0 top-10 w-52 bg-card border border-border rounded-xl shadow-xl z-50 p-2">
+            <p className="text-xs text-muted-foreground px-3 py-2">Google 계정으로 로그인</p>
+            <button
+              onClick={() => { login("user@example.com"); setOpen(false); toast.success("로그인 완료"); }}
+              className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-muted transition-colors"
+            >
+              일반 사용자로 로그인 (데모)
+            </button>
+            <button
+              onClick={() => { login("admin@financelab.pro"); setOpen(false); toast.success("관리자 로그인 완료"); }}
+              className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-muted transition-colors text-primary"
+            >
+              어드민으로 로그인 (데모)
+            </button>
+          </div>
+        )}
+      </div>
     );
   }
+
+  const isAdmin = ADMIN_EMAILS.includes(user.email);
 
   return (
     <div className="relative">
@@ -129,6 +146,11 @@ function UserMenu() {
             <div className="px-3 py-2 border-b border-border mb-1">
               <div className="text-sm font-semibold">{user.name}</div>
               <div className="text-xs text-muted-foreground">{user.email}</div>
+              {isAdmin && (
+                <div className="flex items-center gap-1 mt-1 text-[10px] text-primary">
+                  <Shield size={9} /> 관리자
+                </div>
+              )}
             </div>
             <button
               onClick={() => { navigate("/mypage"); setOpen(false); }}
@@ -136,6 +158,14 @@ function UserMenu() {
             >
               <User size={13} className="text-muted-foreground" /> 마이페이지
             </button>
+            {isAdmin && (
+              <button
+                onClick={() => { navigate("/admin"); setOpen(false); }}
+                className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-muted transition-colors flex items-center gap-2 text-primary"
+              >
+                <Shield size={13} /> 어드민
+              </button>
+            )}
             <div className="border-t border-border mt-1 pt-1">
               <button
                 onClick={() => { logout(); setOpen(false); toast.info("로그아웃 완료"); }}
@@ -161,8 +191,13 @@ interface SidebarProps {
 
 function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
   const [location] = useLocation();
-  // Admin nav stays hidden until real auth is wired.
-  const navItems = NAV_ITEMS;
+  const { user } = useAuth();
+  const isAdmin = user && ADMIN_EMAILS.includes(user.email);
+
+  const navItems = [
+    ...NAV_ITEMS,
+    ...(isAdmin ? [{ path: "/admin", icon: Shield, label: "어드민", sublabel: "Admin" }] : []),
+  ];
 
   return (
     <>
@@ -188,8 +223,8 @@ function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProp
                 <Activity size={14} className="text-primary-foreground" />
               </div>
               <div className="min-w-0">
-                <div className="font-bold text-sm leading-tight text-sidebar-foreground font-['Outfit']">Finance Lab</div>
-                <div className="text-[10px] text-muted-foreground leading-tight">Investing Workspace</div>
+                <div className="font-bold text-sm leading-tight text-sidebar-foreground font-['Outfit']">FinanceLab</div>
+                <div className="text-[10px] text-muted-foreground leading-tight">Pro Workspace</div>
               </div>
             </Link>
           )}
@@ -247,11 +282,65 @@ function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProp
 }
 
 // ── Notification Button ──────────────────────────────────────
+const MOCK_NOTIFICATIONS = [
+  { id: 1, type: "alert", title: "NVDA 목표가 도달", body: "NVDA가 설정한 목표가 $950에 도달했습니다.", time: "5분 전", read: false },
+  { id: 2, type: "report", title: "새 리포트 등록", body: "버크셔 Q1 2025 13F 보고서가 등록되었습니다.", time: "1시간 전", read: false },
+  { id: 3, type: "master", title: "워런 버핏 포트폴리오 변화", body: "AAPL 비중 추가 축소 감지 (Q1 2025)", time: "3시간 전", read: true },
+  { id: 4, type: "market", title: "한국장 개장", body: "KOSPI 오전 9시 정규장 개장", time: "오전 9:00", read: true },
+];
+
+type UINotification = { id: string | number; type: string; title: string; body: string; time: string; read: boolean };
+
+function fmtRelTime(iso: string): string {
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return "";
+  const diff = Math.floor((Date.now() - t) / 1000);
+  if (diff < 60) return "방금 전";
+  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+  return `${Math.floor(diff / 86400)}일 전`;
+}
+
 function NotificationButton() {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const { data, loading } = useNotices();
-  const items = data ?? [];
-  const count = items.length;
+  const [notifications, setNotifications] = useState<UINotification[]>(user ? [] : MOCK_NOTIFICATIONS);
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  useEffect(() => {
+    if (!user) { setNotifications(MOCK_NOTIFICATIONS); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await notificationsService.list(30);
+        if (cancelled) return;
+        setNotifications(r.items.map((n) => ({
+          id: n.id,
+          type: n.kind,
+          title: n.title,
+          body: n.body ?? "",
+          time: fmtRelTime(n.created_at),
+          read: n.read_at != null,
+        })));
+      } catch { /* 빈 상태 유지 */ }
+    })();
+    return () => { cancelled = true; };
+  }, [user, open]);
+
+  const markAllRead = async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    if (user) {
+      try { await notificationsService.markAllRead(); } catch { /* ignore */ }
+    }
+    toast.success("모든 알림을 읽음 처리했습니다");
+  };
+
+  const markOne = async (id: string | number) => {
+    setNotifications(prev => prev.map(x => x.id === id ? { ...x, read: true } : x));
+    if (user && typeof id === "string") {
+      try { await notificationsService.markRead(id); } catch { /* ignore */ }
+    }
+  };
 
   return (
     <div className="relative">
@@ -260,12 +349,11 @@ function NotificationButton() {
         size="icon"
         className="h-8 w-8 relative"
         onClick={() => setOpen(!open)}
-        title="공지사항"
       >
         <Bell size={16} />
-        {count > 0 && (
-          <span className="absolute top-1 right-1 w-4 h-4 bg-primary rounded-full text-[9px] text-primary-foreground flex items-center justify-center font-bold">
-            {count}
+        {unreadCount > 0 && (
+          <span className="absolute top-1 right-1 w-4 h-4 bg-destructive rounded-full text-[9px] text-white flex items-center justify-center font-bold">
+            {unreadCount}
           </span>
         )}
       </Button>
@@ -274,59 +362,50 @@ function NotificationButton() {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-10 w-80 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <span className="text-sm font-semibold">공지사항</span>
-              {count > 0 && (
-                <span className="text-[10px] text-muted-foreground font-mono">
-                  {count}건
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold">알림</span>
+                {unreadCount > 0 && (
+                  <span className="text-[10px] bg-destructive text-white rounded-full px-1.5 py-0.5 font-bold">{unreadCount}</span>
+                )}
+              </div>
+              <button onClick={markAllRead} className="text-xs text-primary hover:underline">모두 읽음</button>
             </div>
             <div className="max-h-80 overflow-y-auto">
-              {loading ? (
-                <div className="py-8 text-center text-xs text-muted-foreground">
-                  불러오는 중…
-                </div>
-              ) : items.length === 0 ? (
-                <div className="py-8 text-center text-sm text-muted-foreground">
-                  새 공지가 없습니다
-                </div>
+              {notifications.length === 0 ? (
+                <div className="py-8 text-center text-sm text-muted-foreground">알림이 없습니다</div>
               ) : (
-                items.map((n) => {
-                  const inner = (
-                    <div className="flex items-start gap-3 px-4 py-3 border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
-                      <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0 bg-primary" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className="text-[10px] font-mono uppercase text-muted-foreground">
-                            {n.tag}
-                          </span>
-                          {n.is_pinned && (
-                            <span className="text-[10px] font-mono text-primary">
-                              ★
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-sm font-medium leading-tight">
-                          {n.title}
-                        </div>
-                        {n.description && (
-                          <div className="text-xs text-muted-foreground mt-0.5 leading-snug line-clamp-2">
-                            {n.description}
-                          </div>
-                        )}
-                      </div>
+                notifications.map(n => (
+                  <div
+                    key={n.id}
+                    onClick={() => markOne(n.id)}
+                    className={cn(
+                      "flex items-start gap-3 px-4 py-3 border-b border-border/50 last:border-0 cursor-pointer transition-colors hover:bg-muted/30",
+                      !n.read && "bg-primary/5"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-2 h-2 rounded-full mt-1.5 flex-shrink-0",
+                      n.type === "alert" ? "bg-down" :
+                      n.type === "report" ? "bg-primary" :
+                      n.type === "master" ? "bg-gold" : "bg-up"
+                    )} />
+                    <div className="flex-1 min-w-0">
+                      <div className={cn("text-sm font-medium leading-tight", !n.read && "text-foreground", n.read && "text-muted-foreground")}>{n.title}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5 leading-snug">{n.body}</div>
+                      <div className="text-[10px] text-muted-foreground/60 mt-1">{n.time}</div>
                     </div>
-                  );
-                  if (n.url) {
-                    return (
-                      <a key={n.id} href={n.url} target="_blank" rel="noreferrer">
-                        {inner}
-                      </a>
-                    );
-                  }
-                  return <div key={n.id}>{inner}</div>;
-                })
+                    {!n.read && <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />}
+                  </div>
+                ))
               )}
+            </div>
+            <div className="px-4 py-2.5 border-t border-border">
+              <button
+                onClick={() => { setOpen(false); toast.info("마이페이지 > 알람 탭에서 전체 알림을 관리할 수 있습니다"); }}
+                className="w-full text-xs text-center text-primary hover:underline"
+              >
+                전체 알림 보기 →
+              </button>
             </div>
           </div>
         </>
@@ -338,27 +417,12 @@ function NotificationButton() {
 // ── Header ────────────────────────────────────────────────────
 function Header({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [location, navigate] = useLocation();
+  const [location] = useLocation();
 
-  const currentPage = NAV_ITEMS.find(item =>
+  const allNavItems = [...NAV_ITEMS, { path: "/admin", icon: Shield, label: "어드민", sublabel: "Admin" }];
+  const currentPage = allNavItems.find(item =>
     item.path === location || (item.path !== "/" && location.startsWith(item.path))
   );
-
-  const submitSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const q = searchQuery.trim();
-    if (!q) return;
-    const isLower = /^[a-z]/.test(q);
-    if (isLower) {
-      // looks like a master slug (e.g. "buffett", "klarman")
-      navigate(`/masters/${q}`);
-    } else {
-      // ticker-like — uppercase and route to stock detail
-      const symbol = q.replace(/\s+/g, "").toUpperCase();
-      navigate(`/stocks/${encodeURIComponent(symbol)}`);
-    }
-    setSearchQuery("");
-  };
 
   return (
     <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center px-4 gap-3 sticky top-0 z-30">
@@ -375,12 +439,12 @@ function Header({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
         )}
       </div>
 
-      <form onSubmit={submitSearch} className="flex-1 max-w-md mx-auto">
+      <div className="flex-1 max-w-md mx-auto">
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             type="search"
-            placeholder="종목(AAPL) 또는 거장(buffett) 검색 후 Enter"
+            placeholder="종목 / 리포트 / 고수 검색…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-8 pl-8 pr-3 text-sm bg-muted/50 border border-border rounded-lg
@@ -388,7 +452,7 @@ function Header({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
               placeholder:text-muted-foreground transition-all duration-150"
           />
         </div>
-      </form>
+      </div>
 
       <div className="flex items-center gap-1">
         <ThemeToggle />

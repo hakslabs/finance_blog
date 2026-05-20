@@ -50,29 +50,21 @@ export default function Stocks() {
   const [sortBy, setSortBy] = useState<"changePct" | "marketCap" | "pe">("changePct");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  const { data: moversResp } = useMovers({ market, limit: 80 });
-  const liveStocks = useMemo(() => {
-    if (!moversResp || moversResp.items.length === 0) {
-      return market === "US" ? US_STOCKS : KR_STOCKS;
-    }
-    return moversResp.items.map((m) => ({
-      ticker: m.symbol,
-      name: m.name,
-      price: m.last,
-      changePct: m.change_pct,
-      change: m.change,
-      volume: m.volume ?? 0,
-      marketCap: "",
-      sector: "—",
-      exchange: m.market === "US" ? "NASDAQ" : "KOSPI",
-      country: m.market,
-      pe: 0,
-      pbr: 0,
-      roe: 0,
-      dividendYield: 0,
-    }));
-  }, [moversResp, market]);
-  const allStocks = liveStocks;
+  const { data: moversResp } = useMovers({ market, limit: 30 });
+  const liveBySymbol = useMemo(() => {
+    const map = new Map<string, { last: number; change_pct: number }>();
+    for (const m of moversResp?.items ?? []) map.set(m.symbol, { last: m.last, change_pct: m.change_pct });
+    return map;
+  }, [moversResp]);
+  const baseStocks = market === "US" ? US_STOCKS : KR_STOCKS;
+  const allStocks = useMemo(() => {
+    if (liveBySymbol.size === 0) return baseStocks;
+    return baseStocks.map((s) => {
+      const live = liveBySymbol.get(s.ticker);
+      if (!live) return s;
+      return { ...s, price: live.last, changePct: live.change_pct };
+    });
+  }, [baseStocks, liveBySymbol]);
 
   const filtered = useMemo(() => {
     let list = allStocks.filter(s => {

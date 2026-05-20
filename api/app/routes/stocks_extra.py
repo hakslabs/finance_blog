@@ -25,6 +25,20 @@ import httpx
 router = APIRouter(prefix="/stocks", tags=["stocks"])
 
 
+class Bar(BaseModel):
+    t: str   # ISO date (YYYY-MM-DD)
+    o: float
+    h: float
+    l: float
+    c: float
+    v: Optional[float] = None
+
+
+class BarsResponse(BaseModel):
+    symbol: str
+    items: List[Bar]
+
+
 class NewsItem(BaseModel):
     id: str
     headline: str
@@ -162,6 +176,59 @@ async def _news_from_db(symbol: str, settings: Settings) -> List[NewsItem]:
             )
         )
     return items
+
+
+@router.get("/{symbol}/bars", response_model=BarsResponse)
+async def stock_bars(
+    symbol: str,
+    days: int = Query(90, ge=1, le=1825),
+    settings: Settings = Depends(get_settings),
+) -> BarsResponse:
+    """일봉 OHLC. price_bars_daily 테이블에서 instrument_id 룩업 후 최신 N일.
+
+    데이터가 없으면 빈 배열을 반환 (UI가 mock fallback 가능).
+    """
+    symbol = symbol.upper()
+    if not (settings.supabase_url and settings.supabase_service_role_key):
+        return BarsResponse(symbol=symbol, items=[])
+    base = settings.supabase_url.rstrip("/")
+    headers = {
+        "apikey": settings.supabase_service_role_key,
+        "Authorization": f"Bearer {settings.supabase_service_role_key}",
+        "Accept": "application/json",
+    }
+    async with httpx.AsyncClient(timeout=8.0, headers=headers) as client:
+        inst_resp = await client.get(
+            f"{base}/rest/v1/instruments",
+            params={"symbol": f"eq.{symbol}", "select": "id", "limit": "1"},
+        )
+        if inst_resp.status_code >= 400 or not inst_resp.json():
+            return BarsResponse(symbol=symbol, items=[])
+        inst_id = inst_resp.json()[0]["id"]
+        bars_resp = await client.get(
+            f"{base}/rest/v1/price_bars_daily",
+            params={
+                "instrument_id": f"eq.{inst_id}",
+                "select": "ts,o,h,l,c,v",
+                "order": "ts.desc",
+                "limit": str(days),
+            },
+        )
+        if bars_resp.status_code >= 400:
+            return BarsResponse(symbol=symbol, items=[])
+    rows = list(reversed(bars_resp.json()))  # 시간 오름차순
+    items = [
+        Bar(
+            t=str(r["ts"])[:10],
+            o=float(r["o"]),
+            h=float(r["h"]),
+            l=float(r["l"]),
+            c=float(r["c"]),
+            v=float(r["v"]) if r.get("v") is not None else None,
+        )
+        for r in rows
+    ]
+    return BarsResponse(symbol=symbol, items=items)
 
 
 @router.get("/{symbol}/news", response_model=NewsResponse)
