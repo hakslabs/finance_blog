@@ -115,3 +115,35 @@ async def unfollow_master(
         if resp.status_code >= 400:
             raise HTTPException(status_code=resp.status_code, detail=resp.text[:200])
     return {"unfollowed": master_id}
+
+
+# ── feed reads (per-user, per master_update composite key) ─────────
+class FeedReadCreate(BaseModel):
+    master_id: str = Field(..., min_length=1)
+    update_key: str = Field(..., min_length=1)
+
+
+@router.post("/feed-reads", status_code=204)
+async def mark_feed_read(
+    body: FeedReadCreate,
+    token: str = Depends(_require_bearer),
+    settings: Settings = Depends(get_settings),
+) -> None:
+    """Mark a master-update as read by the current user.
+
+    Idempotent (resolution=merge-duplicates). Backed by master_feed_reads
+    (mig 0024) with composite PK (user_id, master_id, update_key).
+    """
+    base = await _sb_url(settings)
+    headers = {
+        **_user_headers(token, settings),
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=minimal",
+    }
+    async with httpx.AsyncClient(timeout=8.0, headers=headers) as client:
+        resp = await client.post(
+            f"{base}/rest/v1/master_feed_reads",
+            json={"master_id": body.master_id, "update_key": body.update_key},
+        )
+        if resp.status_code >= 400 and resp.status_code != 409:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text[:200])
