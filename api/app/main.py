@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.errors import register_exception_handlers
 from app.models.health import HealthResponse
 from app.routes.activity import router as activity_router
+from app.routes.bookmarks import router as bookmarks_router
 from app.routes.cron import router as cron_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.macros import router as macros_router
@@ -46,6 +47,7 @@ app.add_middleware(
 register_exception_handlers(app)
 
 app.include_router(activity_router, prefix="/v1")
+app.include_router(bookmarks_router, prefix="/v1")
 app.include_router(cron_router, prefix="/v1")
 app.include_router(dashboard_router, prefix="/v1")
 app.include_router(macros_router, prefix="/v1")
