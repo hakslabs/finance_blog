@@ -2,7 +2,8 @@
  * Admin.tsx — 어드민 페이지 (전면 개편)
  * Design: 다크 모노 + 에메랄드 액센트
  */
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { adminService } from "@/features/admin";
 import { cn } from "@/lib/utils";
 import {
   Users, FileText, BarChart3, Settings, Shield, Bell,
@@ -303,6 +304,33 @@ function getUserRisk(userId: string): { hasFail: boolean; hasOverseas: boolean }
 function UsersTab() {
   const [users, setUsers] = useState<User[]>(INIT_USERS);
   const [search, setSearch] = useState("");
+
+  // Overlay real backend users (admin-RLS gated). On error/forbidden we
+  // silently keep the mock list so the admin demo page still works.
+  useEffect(() => {
+    let cancelled = false;
+    adminService.users()
+      .then((res) => {
+        if (cancelled || res.items.length === 0) return;
+        const fromServer: User[] = res.items.map((u) => ({
+          id: u.id,
+          email: u.email ?? "",
+          name: u.display_name || (u.email ?? "사용자").split("@")[0],
+          plan: u.role === "admin" || u.role === "superadmin" ? "어드민" : (u.plan === "premium" ? "프리미엄" : "무료"),
+          joined: (u.created_at ?? "").slice(0, 10),
+          lastSeen: "",
+          status: "활성" as UserStatus,
+          reports: 0, bookmarks: 0, trades: 0, note: "",
+        }));
+        // Server users first, then mock users not already represented (by email).
+        const serverEmails = new Set(fromServer.map((u) => u.email));
+        const mockExtras = INIT_USERS.filter((u) => !serverEmails.has(u.email));
+        setUsers([...fromServer, ...mockExtras]);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   const [filterPlan, setFilterPlan] = useState<"전체" | UserPlan>("전체");
   const [filterStatus, setFilterStatus] = useState<"전체" | UserStatus>("전체");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -331,6 +359,9 @@ function UsersTab() {
   const savePlan = (id: string) => {
     setUsers(prev => prev.map(u => u.id === id ? { ...u, plan: editPlan, note: editNote } : u));
     if (selectedUser?.id === id) setSelectedUser(prev => prev ? { ...prev, plan: editPlan, note: editNote } : null);
+    // Best-effort persist role change to backend. UI succeeds either way.
+    const role = editPlan === "어드민" ? "admin" : "user";
+    adminService.updateUser(id, role).catch(() => {});
     toast.success("사용자 정보 저장 완료");
   };
 
