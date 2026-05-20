@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { lessonsService } from "@/features/lessons";
+import { useAuth } from "@/contexts/AuthContext";
 import { useBookmark } from "@/contexts/BookmarkContext";
 
 // ── All lessons flat list (same data as Learn.tsx) ────────────
@@ -233,10 +235,29 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
 };
 
 // ── Quiz Component ────────────────────────────────────────────
-function QuizSection({ quiz }: { quiz: NonNullable<Lesson["quiz"]> }) {
+function QuizSection({ quiz, lessonId }: { quiz: NonNullable<Lesson["quiz"]>; lessonId: string }) {
+  const { user } = useAuth();
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [submitted, setSubmitted] = useState(false);
   const score = submitted ? quiz.filter((q, i) => answers[i] === q.answer).length : 0;
+
+  const onSubmit = () => {
+    if (Object.keys(answers).length < quiz.length) {
+      toast.error("모든 문제에 답하세요.");
+      return;
+    }
+    setSubmitted(true);
+    const correctCount = quiz.filter((q, i) => answers[i] === q.answer).length;
+    const pct = Math.round((correctCount / quiz.length) * 100);
+    if (user) {
+      lessonsService.submitQuiz(lessonId, {
+        score: pct,
+        total_questions: quiz.length,
+        correct_count: correctCount,
+        answers: quiz.map((_, i) => answers[i] ?? -1),
+      }).catch(() => { /* swallow — UI already shows local score */ });
+    }
+  };
   return (
     <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 space-y-5">
       <div className="flex items-center gap-2">
@@ -273,7 +294,7 @@ function QuizSection({ quiz }: { quiz: NonNullable<Lesson["quiz"]> }) {
         </div>
       ))}
       {!submitted ? (
-        <button onClick={() => { if (Object.keys(answers).length < quiz.length) { toast.error("모든 문제에 답하세요."); return; } setSubmitted(true); }}
+        <button onClick={onSubmit}
           className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
           제출하기
         </button>
@@ -402,7 +423,11 @@ export default function LearnDetail() {
                     className={cn("p-2 rounded-lg border transition-all", isBookmarked ? "border-amber-500/40 bg-amber-500/10 text-amber-400" : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40")}>
                     {isBookmarked ? <BookmarkCheck size={15} /> : <Bookmark size={15} />}
                   </button>
-                  <button onClick={() => { setCompleted(true); toast.success("교재 완독 표시 완료! 🎉"); }}
+                  <button onClick={() => {
+                    setCompleted(true);
+                    toast.success("교재 완독 표시 완료! 🎉");
+                    if (lesson) lessonsService.setCompleted(lesson.id, true).catch(() => {});
+                  }}
                     className={cn("flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all", completed ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" : "bg-primary text-primary-foreground hover:opacity-90")}>
                     {completed ? <><CheckCircle size={13} /> 완독</> : <><Check size={13} /> 완독 표시</>}
                   </button>
@@ -427,7 +452,7 @@ export default function LearnDetail() {
             </div>
           )}
           {activeSection === "quiz" && (
-            lesson.quiz ? <QuizSection quiz={lesson.quiz} /> :
+            lesson.quiz ? <QuizSection quiz={lesson.quiz} lessonId={lesson.id} /> :
             <div className="bg-card border border-border rounded-xl p-8 text-center text-muted-foreground text-sm">이 강의에는 퀴즈가 없습니다.</div>
           )}
           {/* Prev / Next navigation */}
