@@ -11,10 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   ChevronLeft, ChevronRight, Plus, X, Star, Bell,
-  TrendingUp, Calendar as CalIcon, Bookmark
+  TrendingUp, Calendar as CalIcon, Bookmark, StickyNote
 } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
+import { EventMemoDialog } from "@/components/EventMemoDialog";
+import { PriceAlertDialog } from "@/components/PriceAlertDialog";
+import { useBookmark } from "@/contexts/BookmarkContext";
 
 // ── Extended calendar events ──────────────────────────────────
 const EVENTS_DATA = [
@@ -60,6 +63,9 @@ export default function CalendarPage() {
   const [filterType, setFilterType] = useState("전체");
   const [selectedEvent, setSelectedEvent] = useState<typeof EVENTS_DATA[0] | null>(null);
   const [listView, setListView] = useState(false);
+  const [memoOpen, setMemoOpen] = useState(false);
+  const [alertOpen, setAlertOpen] = useState(false);
+  const { isBookmarked, addBookmark, removeBookmark } = useBookmark();
 
   // Events for current month
   const monthEvents = EVENTS_DATA.filter(e =>
@@ -354,19 +360,47 @@ export default function CalendarPage() {
                 ))}
               </div>
 
-              <div className="flex gap-2 pt-3 border-t border-border">
+              <div className="flex gap-2 pt-3 border-t border-border flex-wrap">
                 <Button variant="outline" size="sm" className="flex-1 gap-1.5 text-xs"
-                  onClick={() => { toast.success("알림이 설정되었습니다"); setSelectedEvent(null); }}>
+                  onClick={() => setMemoOpen(true)}>
+                  <StickyNote size={13} /> 메모
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1 gap-1.5 text-xs"
+                  onClick={() => setAlertOpen(true)}>
                   <Bell size={13} /> 알림 설정
                 </Button>
                 <Button variant="outline" size="sm" className="flex-1 gap-1.5 text-xs"
-                  onClick={() => { toast.success("북마크되었습니다"); setSelectedEvent(null); }}>
+                  onClick={() => {
+                    const id = String(selectedEvent.id);
+                    if (isBookmarked("report" /* events reuse same set */, id)) {
+                      removeBookmark("report", id);
+                      toast.info("북마크 해제");
+                    } else {
+                      addBookmark("report", id);
+                      toast.success("북마크되었습니다");
+                    }
+                  }}>
                   <Star size={13} /> 북마크
                 </Button>
               </div>
             </div>
           </div>
         </div>
+      )}
+      {selectedEvent && (
+        <>
+          <EventMemoDialog
+            open={memoOpen}
+            onOpenChange={setMemoOpen}
+            eventId={String(selectedEvent.id)}
+            eventTitle={selectedEvent.title}
+          />
+          <PriceAlertDialog
+            open={alertOpen}
+            onOpenChange={setAlertOpen}
+            symbol={selectedEvent.tickers?.[0]}
+          />
+        </>
       )}
     </div>
   );
