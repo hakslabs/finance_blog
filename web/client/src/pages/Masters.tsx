@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { MASTERS } from "@/services/mockData";
+import { useMasters } from "@/features/masters";
 import { FollowContext } from "@/contexts/FollowContext";
 import { followsService } from "@/features/follows";
 import { toast } from "sonner";
@@ -46,7 +47,12 @@ export default function Masters() {
   const [showFollowedOnly, setShowFollowedOnly] = useState(false);
   const [activeTab, setActiveTab] = useState<"all" | "feed">("all");
 
-  const filteredMasters = MASTERS.filter((m) => {
+  // Live masters list. Falls back to the mock array inside useMasters
+  // when the DB is empty, so the page never blanks on preview envs.
+  const { data: liveMasters } = useMasters();
+  const mastersList: typeof MASTERS = (liveMasters as any) ?? MASTERS;
+
+  const filteredMasters = mastersList.filter((m) => {
     if (showFollowedOnly && !followCtx?.isFollowing(m.id)) return false;
     if (strategyFilter !== "전체") {
       const styles = (m as any).style || [];
@@ -65,7 +71,7 @@ export default function Masters() {
     return true;
   });
 
-  const feedItems = MASTERS.filter((m) => followCtx?.isFollowing(m.id))
+  const feedItems = mastersList.filter((m) => followCtx?.isFollowing(m.id))
     .flatMap((m) =>
       ((m as any).updates || []).map((u: any) => ({
         ...u,
@@ -76,7 +82,7 @@ export default function Masters() {
     )
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const followedCount = MASTERS.filter((m) => followCtx?.isFollowing(m.id)).length;
+  const followedCount = mastersList.filter((m) => followCtx?.isFollowing(m.id)).length;
 
   return (
     <div className="min-h-screen bg-background text-foreground">

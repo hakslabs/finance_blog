@@ -6,6 +6,7 @@
 import { useState, useMemo, useContext, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { REPORTS } from "@/lib/data";
+import { useReports } from "@/features/reports";
 import {
   FileText, Bookmark, BookmarkCheck, X, Download,
   Search, ChevronDown, ChevronUp, Paperclip,
@@ -199,8 +200,11 @@ export default function Reports() {
     }
   }, [bookmarkCtx]);
 
+  // Live reports — falls back to REPORTS mock when DB is empty.
+  const { data: liveReports } = useReports({ limit: 200 });
+
   const filtered = useMemo(() => {
-    let list = [...REPORTS];
+    let list: any[] = [...((liveReports && liveReports.length > 0) ? liveReports : REPORTS)];
     if (activeTab === 1) {
       list = list.filter(r => r.type === "Daily" || r.type === "종목분석" || r.type === "실적분석");
     } else if (activeTab === 2) {
@@ -214,7 +218,7 @@ export default function Reports() {
         r.title.toLowerCase().includes(q) ||
         r.summary.toLowerCase().includes(q) ||
         r.source.toLowerCase().includes(q) ||
-        r.tags.some(t => t.toLowerCase().includes(q))
+        (r.tags ?? []).some((t: string) => t.toLowerCase().includes(q))
       );
     }
     if (dateFrom) list = list.filter(r => r.date.replace(/\./g, "-") >= dateFrom);
@@ -226,7 +230,7 @@ export default function Reports() {
       return va > vb ? -1 : va < vb ? 1 : 0;
     });
     return list;
-  }, [activeTab, category, region, searchQuery, dateFrom, dateTo, sortKey, sortDir]);
+  }, [activeTab, category, region, searchQuery, dateFrom, dateTo, sortKey, sortDir, liveReports]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");
