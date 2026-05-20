@@ -5,8 +5,10 @@
  * - Header with dark/light toggle, login/user button
  * - Responsive: mobile drawer sidebar
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Link, useLocation } from "wouter";
+import { apiGet } from "@/lib/http";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -371,14 +373,97 @@ function NotificationButton() {
 }
 
 // ── Header ────────────────────────────────────────────────────
+type SearchResults = {
+  query: string;
+  symbols: { symbol: string; name: string; exchange?: string | null; country_code?: string | null; asset_type?: string | null }[];
+  masters: { slug: string; name: string; firm?: string | null; country_code?: string | null }[];
+  reports: { id: string; title: string; source: string; category?: string | null; published_at?: string | null }[];
+};
+
 function Header({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [location] = useLocation();
+  const [results, setResults] = useState<SearchResults | null>(null);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  const [location, navigate] = useLocation();
+  const inputBoxRef = useRef<HTMLDivElement | null>(null);
 
   const allNavItems = [...NAV_ITEMS, { path: "/admin", icon: Shield, label: "어드민", sublabel: "Admin" }];
   const currentPage = allNavItems.find(item =>
     item.path === location || (item.path !== "/" && location.startsWith(item.path))
   );
+
+  // Debounced search against /v1/search
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q) {
+      setResults(null);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        const data = await apiGet<SearchResults>(`/search?q=${encodeURIComponent(q)}&limit=6`);
+        setResults(data);
+      } catch {
+        setResults({ query: q, symbols: [], masters: [], reports: [] });
+      } finally {
+        setLoading(false);
+      }
+    }, 220);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  // Close dropdown when route changes (e.g. user clicks a result)
+  useEffect(() => {
+    setOpen(false);
+  }, [location]);
+
+  // Outside-click + Esc close
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!inputBoxRef.current) return;
+      if (!inputBoxRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  // Keep the dropdown anchored to the input even when scrolling/resizing
+  useEffect(() => {
+    if (!open) return;
+    const update = () => {
+      if (inputBoxRef.current) setAnchorRect(inputBoxRef.current.getBoundingClientRect());
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [open]);
+
+  const totalHits =
+    (results?.symbols.length ?? 0) +
+    (results?.masters.length ?? 0) +
+    (results?.reports.length ?? 0);
+
+  const go = (path: string) => {
+    setSearchQuery("");
+    setOpen(false);
+    navigate(path);
+  };
 
   return (
     <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center px-4 gap-3 sticky top-0 z-30">
@@ -396,17 +481,88 @@ function Header({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
       </div>
 
       <div className="flex-1 max-w-md mx-auto">
-        <div className="relative">
+        <div ref={inputBoxRef} className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             type="search"
             placeholder="종목 / 리포트 / 고수 검색…"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => { setSearchQuery(e.target.value); setOpen(true); }}
+            onFocus={() => searchQuery && setOpen(true)}
             className="w-full h-8 pl-8 pr-3 text-sm bg-muted/50 border border-border rounded-lg
               focus:outline-none focus:ring-1 focus:ring-primary focus:bg-background
               placeholder:text-muted-foreground transition-all duration-150"
           />
+          {open && searchQuery.trim() && anchorRect && createPortal(
+            <div
+              className="bg-card border border-border rounded-xl shadow-2xl overflow-hidden"
+              style={{
+                position: "fixed",
+                top: anchorRect.bottom + 6,
+                left: anchorRect.left,
+                width: anchorRect.width,
+                zIndex: 60,
+              }}
+            >
+              {loading && (
+                <div className="px-3 py-2 text-xs text-muted-foreground">검색 중…</div>
+              )}
+              {!loading && results && totalHits === 0 && (
+                <div className="px-3 py-3 text-xs text-muted-foreground">
+                  "{results.query}"에 대한 결과가 없어요
+                </div>
+              )}
+              {!loading && results && (results.symbols.length > 0) && (
+                <div>
+                  <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">종목</div>
+                  {results.symbols.map(s => (
+                    <button
+                      key={s.symbol}
+                      onClick={() => go(`/stocks/${s.symbol}`)}
+                      className="w-full flex items-center justify-between gap-3 px-3 py-1.5 hover:bg-muted text-left"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-mono text-xs font-bold">{s.symbol}</span>
+                        <span className="text-xs text-muted-foreground truncate">{s.name}</span>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground shrink-0">{s.exchange ?? s.country_code ?? ""}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {!loading && results && (results.masters.length > 0) && (
+                <div className="border-t border-border">
+                  <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">고수</div>
+                  {results.masters.map(m => (
+                    <button
+                      key={m.slug}
+                      onClick={() => go(`/masters/${m.slug}`)}
+                      className="w-full flex items-center justify-between gap-3 px-3 py-1.5 hover:bg-muted text-left"
+                    >
+                      <span className="text-xs font-medium truncate">{m.name}</span>
+                      <span className="text-[10px] text-muted-foreground shrink-0 truncate">{m.firm ?? ""}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {!loading && results && (results.reports.length > 0) && (
+                <div className="border-t border-border">
+                  <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">리포트</div>
+                  {results.reports.map(r => (
+                    <button
+                      key={r.id}
+                      onClick={() => go(`/reports`)}
+                      className="w-full flex items-center justify-between gap-3 px-3 py-1.5 hover:bg-muted text-left"
+                    >
+                      <span className="text-xs truncate">{r.title}</span>
+                      <span className="text-[10px] text-muted-foreground shrink-0">{r.source}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>,
+            document.body,
+          )}
         </div>
       </div>
 

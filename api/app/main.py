@@ -32,6 +32,7 @@ from app.routes.portfolio_transactions import router as portfolio_transactions_r
 from app.routes.portfolios import router as portfolios_router
 from app.routes.quotes import router as quotes_router
 from app.routes.reports import router as reports_router
+from app.routes.search import router as search_router
 from app.routes.stocks_extra import router as stocks_extra_router
 from app.routes.todos import router as todos_router
 from app.routes.user_preferences import router as user_preferences_router
@@ -87,6 +88,7 @@ app.include_router(portfolios_router, prefix="/v1")
 app.include_router(portfolio_transactions_router, prefix="/v1")
 app.include_router(quotes_router, prefix="/v1")
 app.include_router(reports_router, prefix="/v1")
+app.include_router(search_router, prefix="/v1")
 app.include_router(stocks_extra_router, prefix="/v1")
 app.include_router(todos_router, prefix="/v1")
 app.include_router(user_preferences_router, prefix="/v1")
