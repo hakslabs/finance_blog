@@ -13,6 +13,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { WatchlistProvider } from "./contexts/WatchlistContext";
 import { BookmarkProvider } from "./contexts/BookmarkContext";
 import { FollowProvider } from "./contexts/FollowContext";
+import { LessonProgressProvider } from "./contexts/LessonProgressContext";
 
 // Route-level code splitting: each page becomes its own JS chunk so the first
 // paint only ships the shell + Home's dependencies.
@@ -81,10 +82,12 @@ export default function App() {
           <WatchlistProvider>
             <BookmarkProvider>
               <FollowProvider>
-                <TooltipProvider>
-                  <Toaster />
-                  <Router />
-                </TooltipProvider>
+                <LessonProgressProvider>
+                  <TooltipProvider>
+                    <Toaster />
+                    <Router />
+                  </TooltipProvider>
+                </LessonProgressProvider>
               </FollowProvider>
             </BookmarkProvider>
           </WatchlistProvider>

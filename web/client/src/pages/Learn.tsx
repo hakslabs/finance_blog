@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { useLessonProgress } from "@/contexts/LessonProgressContext";
 
 type Lesson = {
   id: string;
@@ -164,6 +165,9 @@ const LEVEL_COLORS: Record<string, string> = {
 
 function LessonCard({ lesson }: { lesson: Lesson }) {
   const [, navigate] = useLocation();
+  const { isCompleted } = useLessonProgress();
+  const completed = lesson.completed || isCompleted(lesson.id);
+  lesson = { ...lesson, completed };
   return (
     <div
       onClick={() => {
@@ -215,9 +219,13 @@ function LessonCard({ lesson }: { lesson: Lesson }) {
 export default function Learn() {
   const [activeTab, setActiveTab] = useState(0);
   const chapters = LEARN_CONTENT[activeTab] ?? [];
+  const { isCompleted } = useLessonProgress();
 
   const totalLessons = chapters.reduce((sum, c) => sum + c.lessons.length, 0);
-  const completedLessons = chapters.reduce((sum, c) => sum + c.lessons.filter(l => l.completed).length, 0);
+  const completedLessons = chapters.reduce(
+    (sum, c) => sum + c.lessons.filter(l => l.completed || isCompleted(l.id)).length,
+    0,
+  );
   const progress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
   return (

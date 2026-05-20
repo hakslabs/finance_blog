@@ -21,6 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useBookmark } from "@/contexts/BookmarkContext";
+import { useLessonProgress } from "@/contexts/LessonProgressContext";
 
 // ── All lessons flat list (same data as Learn.tsx) ────────────
 type Lesson = {
@@ -321,7 +322,9 @@ export default function LearnDetail() {
   const params = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { isGuideBookmarked, toggleGuideBookmark } = useBookmark();
-  const [completed, setCompleted] = useState(false);
+  const { isCompleted, setCompleted: setLessonCompleted } = useLessonProgress();
+  const completed = params.id ? isCompleted(params.id) : false;
+  const setCompleted = (v: boolean) => { if (params.id) setLessonCompleted(params.id, v); };
   const [activeSection, setActiveSection] = useState<"content" | "quiz">("content");
   const lesson = ALL_LESSONS.find(l => l.id === params.id);
   const categoryLessons = lesson ? ALL_LESSONS.filter(l => l.category === lesson.category) : [];
@@ -402,7 +405,7 @@ export default function LearnDetail() {
                     className={cn("p-2 rounded-lg border transition-all", isBookmarked ? "border-amber-500/40 bg-amber-500/10 text-amber-400" : "border-border text-muted-foreground hover:text-foreground hover:border-primary/40")}>
                     {isBookmarked ? <BookmarkCheck size={15} /> : <Bookmark size={15} />}
                   </button>
-                  <button onClick={() => { setCompleted(true); toast.success("교재 완독 표시 완료! 🎉"); }}
+                  <button onClick={() => { const next = !completed; setCompleted(next); toast.success(next ? "교재 완독 표시 완료! 🎉" : "완독 표시를 해제했습니다"); }}
                     className={cn("flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all", completed ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" : "bg-primary text-primary-foreground hover:opacity-90")}>
                     {completed ? <><CheckCircle size={13} /> 완독</> : <><Check size={13} /> 완독 표시</>}
                   </button>
