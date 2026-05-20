@@ -39,6 +39,25 @@ import { useSectors } from "@/features/sectors";
 import { useFearGreed } from "@/features/fear-greed";
 import { useStocks } from "@/features/stocks";
 
+// Pretty-print a backend ISO timestamp for the small "업데이트:" hint
+// under each widget. Returns "조금 전" if within 60s, "5분 전" for sub-hour,
+// otherwise "HH:MM" today or "MM/DD HH:MM" for older.
+function fmtUpdatedAt(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "방금";
+  if (diffMin < 60) return `${diffMin}분 전`;
+  const sameDay = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  if (sameDay) return `${hh}:${mm}`;
+  return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
+}
+
 // ── 시장 감지 ─────────────────────────────────────────────────
 function detectOpenMarket(): "KR" | "US" {
   const now = new Date();
@@ -96,18 +115,23 @@ function PctBadge({ value }: { value: number }) {
     </span>
   );
 }
-function SectionHeader({ title, sub, href }: { title: string; sub?: string; href?: string }) {
+function SectionHeader({ title, sub, href, updatedAt }: { title: string; sub?: string; href?: string; updatedAt?: string | null }) {
   return (
     <div className="flex items-center justify-between mb-3">
       <div>
         <h2 className="text-base font-bold text-foreground font-['Outfit']">{title}</h2>
         {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
       </div>
-      {href && (
-        <Link href={href}>
-          <span className="text-xs text-primary flex items-center gap-1 hover:underline">전체 보기 <ArrowRight size={12} /></span>
-        </Link>
-      )}
+      <div className="flex items-center gap-3 flex-shrink-0">
+        {updatedAt && (
+          <span className="text-[10px] text-muted-foreground">업데이트 {fmtUpdatedAt(updatedAt)}</span>
+        )}
+        {href && (
+          <Link href={href}>
+            <span className="text-xs text-primary flex items-center gap-1 hover:underline">전체 보기 <ArrowRight size={12} /></span>
+          </Link>
+        )}
+      </div>
     </div>
   );
 }
@@ -784,8 +808,8 @@ export default function Home() {
   const isLoggedIn = !!user;
 
   // ── Live data hooks ───────────────────────────────────────────
-  const { data: indices } = useIndices();
-  const { data: newsItems } = useNews({ limit: 5 });
+  const { data: indices, updatedAt: indicesUpdatedAt } = useIndices();
+  const { data: newsItems, updatedAt: newsUpdatedAt } = useNews({ limit: 5 });
   const { data: krFG } = useFearGreed("KR");
   const { data: usFG } = useFearGreed("US");
   // Home calendar widget: same scoping rule as the full Calendar page —
@@ -873,6 +897,12 @@ export default function Home() {
       </div>
 
       {/* ── Row 1: 시장 지수 티커 ── */}
+      <div className="flex items-center justify-between -mb-2">
+        <div /> {/* spacer so the timestamp aligns right */}
+        {indicesUpdatedAt && (
+          <span className="text-[10px] text-muted-foreground">업데이트 {fmtUpdatedAt(indicesUpdatedAt)} · 일봉 EOD</span>
+        )}
+      </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
         {topIndices.map((idx) => {
           const up = idx.change >= 0;
@@ -897,7 +927,11 @@ export default function Home() {
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-5 items-stretch">
         {/* Left: Fear & Greed */}
         <div className="xl:col-span-2 bg-card border border-border rounded-xl p-5 flex flex-col">
-          <SectionHeader title="공포·탐욕 지수" sub="클릭하면 VIX/ADR 히스토리 확인" />
+          <SectionHeader
+            title="공포·탐욕 지수"
+            sub="클릭하면 VIX/ADR 히스토리 확인"
+            updatedAt={usFG?.updatedAt ?? krFG?.updatedAt}
+          />
           <div className="flex-1 flex items-center justify-around gap-4">
             <FearGreedGauge
               value={krFG?.value ?? 50}
@@ -931,7 +965,7 @@ export default function Home() {
 
         {/* Right: News */}
         <div className="xl:col-span-3 bg-card border border-border rounded-xl p-5 flex flex-col">
-          <SectionHeader title="시장 핵심 뉴스" sub="클릭하면 요약 확인" href="/news" />
+          <SectionHeader title="시장 핵심 뉴스" sub="클릭하면 요약 확인" href="/news" updatedAt={newsUpdatedAt} />
           <div className="flex-1 flex flex-col justify-between">
             <div className="space-y-0">
               {(newsItems ?? []).slice(0, 5).map((news) => (
@@ -969,9 +1003,9 @@ export default function Home() {
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-5 items-stretch">
         {/* Left: Calendar */}
         <div className="xl:col-span-3 bg-card border border-border rounded-xl p-5 flex flex-col">
-          <SectionHeader title="내 캘린더" sub="실적·배당·경제지표 일정" href="/calendar" />
-          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-0">
-            {(((calItems ?? []).length > 0) ? (calItems ?? []).slice(0, 6) : CALENDAR_EVENTS as any[]).map((raw, i) => {
+          <SectionHeader title="내 캘린더" sub="앞으로 14일 · 실적·배당·매크로" href="/calendar" updatedAt={null} />
+          <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-1">
+            {(((calItems ?? []).length > 0) ? (calItems ?? []).slice(0, 9) : CALENDAR_EVENTS as any[]).map((raw, i) => {
               // Live unified item OR legacy mock row — coerce to a common
               // shape so the existing list cell template doesn't change.
               const isLive = (raw as { kind?: string }).kind !== undefined;
@@ -987,30 +1021,23 @@ export default function Home() {
               return (
               <div
                 key={(raw.id ?? i)}
-                className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/40 transition-colors cursor-pointer border-b border-border/30 last:border-0 sm:last:border-0"
-                onClick={() => setSelectedEvent(isLive ? { /* legacy modal shape */
+                className="flex flex-col gap-1 p-2 rounded-lg bg-muted/15 hover:bg-muted/40 transition-colors cursor-pointer border border-border/40"
+                onClick={() => setSelectedEvent(isLive ? {
                   date: ev.date, day: ev.day,
                   title: ev.title, type: ev.type, holding: null,
                   memo: 0, tickers: raw.symbol ? [raw.symbol] : [],
                 } : raw)}
               >
-                <div className="text-center min-w-[36px] bg-muted/30 rounded-lg py-1.5">
-                  <div className="text-[9px] text-muted-foreground">{ev.day}</div>
-                  <div className="text-sm font-bold font-mono text-foreground">{ev.date}</div>
+                <div className="flex items-center justify-between gap-1.5">
+                  <span className="text-[10px] font-mono font-bold text-foreground">{ev.day} · {ev.date}일</span>
+                  <Badge variant="outline" className={cn(
+                    "text-[9px] px-1 py-0",
+                    ev.type === "실적" ? "border-primary text-primary" :
+                    ev.type === "배당" ? "border-yellow-500 text-yellow-500" :
+                    "border-muted-foreground text-muted-foreground"
+                  )}>{ev.type}</Badge>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-foreground leading-tight line-clamp-1">{ev.title}</div>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <Badge variant="outline" className={cn(
-                      "text-[9px] px-1 py-0",
-                      ev.type === "실적" ? "border-primary text-primary" :
-                      ev.type === "배당" ? "border-yellow-500 text-yellow-500" :
-                      "border-muted-foreground text-muted-foreground"
-                    )}>{ev.type}</Badge>
-                    {ev.holding && <span className="text-[10px] text-muted-foreground font-mono">{ev.holding}</span>}
-                  </div>
-                </div>
-                <ChevronRight size={12} className="text-muted-foreground/40 flex-shrink-0 mt-1" />
+                <div className="text-xs font-medium text-foreground leading-snug line-clamp-2">{ev.title}</div>
               </div>
             );
             })}

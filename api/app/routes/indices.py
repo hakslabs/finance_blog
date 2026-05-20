@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
 import httpx
@@ -85,6 +86,10 @@ class IndexItem(BaseModel):
 
 class IndicesResponse(BaseModel):
     items: List[IndexItem]
+    # Server-side timestamp when this payload was assembled. Frontend
+    # renders a small "업데이트: HH:MM" hint per widget so users can tell
+    # when data is fresh vs minutes/hours stale.
+    updated_at: str
 
 
 async def _quote_one(
@@ -144,6 +149,9 @@ async def get_indices(
         ]
         items = await asyncio.gather(*tasks)
 
-    response = IndicesResponse(items=list(items))
+    response = IndicesResponse(
+        items=list(items),
+        updated_at=datetime.now(tz=timezone.utc).isoformat(),
+    )
     _cache["all"] = (now, response)
     return response

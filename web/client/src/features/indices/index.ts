@@ -29,16 +29,21 @@ function adapt(b: BackendIndex): MarketIndex {
 }
 
 export const indicesService = {
-  list: async (): Promise<{ items: MarketIndex[] }> => {
-    const r = await apiGet<{ items: BackendIndex[] }>(`/market/indices`);
-    return { items: r.items.map(adapt) };
+  list: async (): Promise<{ items: MarketIndex[]; updatedAt: string | null }> => {
+    const r = await apiGet<{ items: BackendIndex[]; updated_at?: string }>(`/market/indices`);
+    return { items: r.items.map(adapt), updatedAt: r.updated_at ?? null };
   },
 };
 
+// Single fetch returning {items, updatedAt}. Consumers access via
+// `.data` like the other hooks, plus `.updatedAt` for the freshness hint.
 export function useIndices() {
-  return useAsync(
-    () => indicesService.list().then((r) => (r.items.length ? r.items : (MARKET_INDICES as MarketIndex[]))),
+  const r = useAsync(
+    () => indicesService.list(),
     [],
-    MARKET_INDICES as MarketIndex[],
+    { items: MARKET_INDICES as MarketIndex[], updatedAt: null as string | null },
   );
+  const data = r.data?.items ?? (MARKET_INDICES as MarketIndex[]);
+  const updatedAt = r.data?.updatedAt ?? null;
+  return { ...r, data, updatedAt };
 }

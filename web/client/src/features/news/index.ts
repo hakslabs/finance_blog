@@ -46,15 +46,18 @@ export const newsService = {
     const q = new URLSearchParams();
     if (params?.ticker) q.set("symbol", params.ticker);
     q.set("limit", String(params?.limit ?? 50));
-    const r = await apiGet<{ items: BackendNews[] }>(`/news?${q}`);
-    return { items: r.items.map(backendToNewsItem) };
+    const r = await apiGet<{ items: BackendNews[]; updated_at?: string }>(`/news?${q}`);
+    return { items: r.items.map(backendToNewsItem), updatedAt: r.updated_at ?? null };
   },
 };
 
 export function useNews(params?: { category?: string; ticker?: string; limit?: number }) {
-  return useAsync(
-    () => newsService.list(params).then((r) => (r.items.length ? r.items : MARKET_NEWS)),
+  const r = useAsync(
+    () => newsService.list(params),
     [params?.category ?? "", params?.ticker ?? "", params?.limit ?? 50],
-    MARKET_NEWS,
+    { items: MARKET_NEWS, updatedAt: null as string | null },
   );
+  const data = (r.data?.items?.length ?? 0) > 0 ? r.data!.items : MARKET_NEWS;
+  const updatedAt = r.data?.updatedAt ?? null;
+  return { ...r, data, updatedAt };
 }

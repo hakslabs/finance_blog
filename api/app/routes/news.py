@@ -32,6 +32,9 @@ class NewsItem(BaseModel):
 
 class NewsResponse(BaseModel):
     items: List[NewsItem]
+    # The most recent ingested article's publication time. Drives the
+    # "업데이트: …" hint on the home news widget.
+    updated_at: Optional[str] = None
 
 
 def _sb_headers(settings: Settings) -> Dict[str, str]:
@@ -85,4 +88,5 @@ async def list_news(
                 related_symbols=syms[:3],
             )
         )
-    return NewsResponse(items=out)
+    latest = out[0].published_at if out else None
+    return NewsResponse(items=out, updated_at=latest)
