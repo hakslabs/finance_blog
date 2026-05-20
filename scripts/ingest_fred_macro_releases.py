@@ -32,15 +32,15 @@ import httpx
 # ── Curated release list ──────────────────────────────────────────────
 # (FRED release_id, calendar_code, human title, importance 1-3)
 RELEASES: List[tuple[int, str, str, int]] = [
-    (10, "US_CPI", "미 CPI", 3),
-    (21, "US_PPI", "미 PPI", 2),
-    (86, "US_NFP", "미 고용 (NFP)", 3),
-    (101, "US_FOMC", "FOMC 회의", 3),
-    (53, "US_GDP", "미 GDP", 2),
-    (54, "US_PCE", "미 PCE", 3),
-    (9, "US_RETAIL", "미 소매판매", 2),
-    (82, "US_HOMES", "미 기존주택판매", 1),
-    (175, "US_JOBLESS", "미 신규실업청구", 1),
+    (10,  "US_CPI",     "미 CPI",          3),
+    (46,  "US_PPI",     "미 PPI",          2),
+    (50,  "US_NFP",     "미 고용 (NFP)",  3),
+    (101, "US_FOMC",    "FOMC 회의",       3),
+    (53,  "US_GDP",     "미 GDP",          2),
+    (54,  "US_PCE",     "미 PCE",          3),
+    (9,   "US_RETAIL",  "미 소매판매",    2),
+    (291, "US_HOMES",   "미 기존주택판매", 1),
+    (180, "US_JOBLESS", "미 신규실업청구", 1),
 ]
 
 
@@ -66,13 +66,16 @@ def fetch_release_dates(
     client: httpx.Client, release_id: int, api_key: str, start: date, end: date
 ) -> List[str]:
     """Return ISO date strings for scheduled releases in [start, end]."""
+    # NOTE: `include_release_dates_with_no_data=true` makes FRED return
+    # one row per calendar day in the realtime window — that's how the
+    # first ingest ended up with daily FOMC entries. We only want days
+    # FRED actually has a release scheduled, so leave that flag OFF.
     resp = client.get(
         "https://api.stlouisfed.org/fred/release/dates",
         params={
             "release_id": str(release_id),
             "api_key": api_key,
             "file_type": "json",
-            "include_release_dates_with_no_data": "true",
             "realtime_start": start.isoformat(),
             "realtime_end": end.isoformat(),
             "sort_order": "asc",

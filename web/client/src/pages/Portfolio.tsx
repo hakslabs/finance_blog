@@ -145,8 +145,8 @@ export default function Portfolio() {
                   <td className="py-3 px-4">
                     <Link href={`/stocks/${h.ticker}`}>
                       <div className="cursor-pointer">
-                        <div className="font-bold text-sm font-mono-num hover:text-primary transition-colors">{h.ticker}</div>
-                        <div className="text-xs text-muted-foreground">{h.name}</div>
+                        <div className="font-semibold text-sm hover:text-primary transition-colors">{h.name}</div>
+                        <div className="text-[10px] text-muted-foreground font-mono-num">{h.ticker}</div>
                       </div>
                     </Link>
                   </td>

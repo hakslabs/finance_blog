@@ -705,8 +705,8 @@ function StockListPanel({ isLoggedIn, marketTab, setMarketTab }: {
               <Link href={`/analysis?ticker=${s.ticker}`} className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">{s.ticker}</div>
-                    <div className="text-[10px] text-muted-foreground truncate">{s.name}</div>
+                    <div className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors truncate">{s.name}</div>
+                    <div className="text-[10px] font-mono text-muted-foreground">{s.ticker}</div>
                   </div>
                   <div className="text-right">
                     <div className="text-xs font-mono font-medium">{s.price.toLocaleString()}</div>

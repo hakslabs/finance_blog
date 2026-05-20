@@ -692,8 +692,8 @@ function PortfolioTab() {
                 <tr key={h.symbol} onClick={() => setSelectedTicker(h.symbol)}
                   className="border-b border-border/50 hover:bg-muted/10 transition-colors cursor-pointer group">
                   <td className="px-4 py-3">
-                    <div className="font-semibold group-hover:text-primary transition-colors">{h.symbol}</div>
-                    <div className="text-xs text-muted-foreground">{h.name}</div>
+                    <div className="font-semibold group-hover:text-primary transition-colors">{h.name}</div>
+                    <div className="text-[10px] text-muted-foreground font-mono">{h.symbol}</div>
                   </td>
                   <td className="px-4 py-3 font-mono">{h.shares.toLocaleString()}</td>
                   <td className="px-4 py-3 font-mono text-muted-foreground">{fmtPrice(h.avgPrice, h.symbol)}</td>
@@ -807,8 +807,8 @@ function WatchlistTab() {
                 <tr key={stock.ticker} onClick={() => setSelectedTicker(stock.ticker)}
                   className="border-b border-border/50 hover:bg-muted/10 transition-colors cursor-pointer group">
                   <td className="px-4 py-3">
-                    <div className="font-semibold group-hover:text-primary transition-colors">{stock.ticker}</div>
-                    <div className="text-xs text-muted-foreground">{stock.name}</div>
+                    <div className="font-semibold group-hover:text-primary transition-colors">{stock.name}</div>
+                    <div className="text-[10px] text-muted-foreground font-mono">{stock.ticker}</div>
                   </td>
                   <td className="px-4 py-3 font-mono font-medium">{fmtPrice(stock.price, stock.ticker)}</td>
                   <td className={cn("px-4 py-3 font-mono text-sm", stock.changePct >= 0 ? "text-up" : "text-down")}>
