@@ -43,6 +43,18 @@ export const KR_STOCKS = [
   { ticker: "068270", name: "셀트리온", exchange: "KRX", price: 168400, changePct: 0.84, marketCap: "₩22조", sector: "바이오", pe: 34.2, roe: 8.4 },
 ];
 
+// Ticker → display name lookup. Tickers should only be visible on the
+// stock detail page itself; everywhere else (calendar, news modal,
+// bookmarks) we display the company name. Falls back to the ticker
+// when the symbol isn't in our mock universe — UI should treat the
+// fallback as "show the ticker" rather than blank.
+export function tickerToName(ticker: string | null | undefined): string {
+  if (!ticker) return "";
+  const t = ticker.toUpperCase();
+  const hit = US_STOCKS.find((s) => s.ticker === t) ?? KR_STOCKS.find((s) => s.ticker === t);
+  return hit?.name ?? ticker;
+}
+
 export const MASTERS = [
   {
     id: "warren-buffett",

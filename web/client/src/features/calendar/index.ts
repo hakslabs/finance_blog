@@ -30,6 +30,7 @@ export type UnifiedCalendarItem = {
   scheduled_at: string;
   country_code?: string | null;
   symbol?: string | null;
+  symbol_name?: string | null;
   importance?: number | null;
   detail?: string | null;
   actual_value?: string | null;

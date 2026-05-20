@@ -39,6 +39,10 @@ class CalendarItem(BaseModel):
     scheduled_at: str
     country_code: Optional[str] = None
     symbol: Optional[str] = None
+    # Company name for stock events, resolved server-side via the
+    # blog_index_universe table. Tickers alone aren't recognizable in
+    # calendar / summary contexts.
+    symbol_name: Optional[str] = None
     importance: Optional[int] = None
     detail: Optional[str] = None
     actual_value: Optional[str] = None
@@ -160,20 +164,43 @@ async def get_calendar(
             quoted_syms = ",".join(f'"{s.upper()}"' for s in symbol_list)
             stock_params["symbol"] = f"in.({quoted_syms})"
         stock_rows = await _pg_get(settings, "stock_calendar_events", stock_params)
+
+        # Resolve symbol → name in one fan-out call against the blog
+        # universe so the calendar shows "엔비디아 실적" instead of
+        # "NVDA 실적". Falls back to the ticker when the symbol isn't
+        # in the universe (shouldn't happen post-ingest filtering, but
+        # be defensive).
+        symbol_to_name: Dict[str, str] = {}
+        unique_symbols = sorted({r["symbol"] for r in stock_rows if r.get("symbol")})
+        if unique_symbols:
+            quoted = ",".join(f'"{s}"' for s in unique_symbols)
+            name_rows = await _pg_get(
+                settings,
+                "blog_index_universe",
+                {"select": "symbol,name", "symbol": f"in.({quoted})", "limit": "5000"},
+            )
+            for nr in name_rows:
+                sym = (nr.get("symbol") or "").upper()
+                if sym and nr.get("name"):
+                    symbol_to_name.setdefault(sym, nr["name"])
+
         for r in stock_rows:
             kind = r["event_type"]
+            symbol = r["symbol"]
+            name = symbol_to_name.get(symbol.upper(), symbol)
             if kind == "earnings":
-                title = f"{r['symbol']} 실적발표"
+                title = f"{name} 실적발표"
                 if r.get("fiscal_period"):
-                    title = f"{r['symbol']} {r['fiscal_period']} 실적"
+                    title = f"{name} {r['fiscal_period']} 실적"
             else:
-                title = f"{r['symbol']} 배당락"
+                title = f"{name} 배당락"
             items.append(CalendarItem(
                 id=r["id"],
                 kind=kind,
                 title=title,
                 scheduled_at=r["scheduled_at"],
-                symbol=r["symbol"],
+                symbol=symbol,
+                symbol_name=name if name != symbol else None,
                 importance=r.get("importance"),
                 eps_estimate=r.get("eps_estimate"),
                 revenue_estimate=r.get("revenue_estimate"),

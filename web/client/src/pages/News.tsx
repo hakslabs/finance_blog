@@ -8,6 +8,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useHoldings } from "@/features/portfolio";
+import { tickerToName } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -255,7 +256,7 @@ export default function News() {
                 <div className="flex gap-1">
                   {news.tickers.slice(0, 3).map(t => (
                     <Link key={t} href={`/analysis?ticker=${t}`} onClick={e => e.stopPropagation()}>
-                      <span className="text-[10px] px-1.5 py-0.5 bg-muted rounded text-muted-foreground hover:text-primary transition-colors">{t}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 bg-muted rounded text-muted-foreground hover:text-primary transition-colors">{tickerToName(t)}</span>
                     </Link>
                   ))}
                 </div>
@@ -348,8 +349,8 @@ export default function News() {
                 <div className="flex gap-2 flex-wrap">
                   {selectedNews.tickers.map(t => (
                     <Link key={t} href={`/analysis?ticker=${t}`} onClick={() => setSelectedNews(null)}>
-                      <span className="text-xs px-2.5 py-1.5 bg-muted rounded-lg text-foreground hover:text-primary hover:bg-muted/80 transition-colors font-mono font-bold flex items-center gap-1">
-                        {t} <ArrowRight size={10} />
+                      <span className="text-xs px-2.5 py-1.5 bg-muted rounded-lg text-foreground hover:text-primary hover:bg-muted/80 transition-colors font-semibold flex items-center gap-1">
+                        {tickerToName(t)} <ArrowRight size={10} />
                       </span>
                     </Link>
                   ))}

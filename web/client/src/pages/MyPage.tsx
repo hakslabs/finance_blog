@@ -1289,7 +1289,10 @@ function hydrateBookmark(item: BookmarkItem): { title: string; subtitle?: string
     const m = MASTERS.find((x) => x.id === item.id);
     if (m) return { title: (m as any).nameKo ?? m.name, subtitle: m.fund, href: `/masters/${item.id}` };
   } else if (item.type === "stock") {
-    return { title: item.id, href: `/stocks/${item.id}` };
+    // Look up the company name; only the stock detail page itself
+    // shows the bare ticker.
+    const stock = ALL_STOCKS.find((s) => s.ticker === item.id);
+    return { title: stock?.name ?? item.id, subtitle: stock ? item.id : undefined, href: `/stocks/${item.id}` };
   } else if (item.type === "news") {
     return { title: `뉴스 #${item.id}`, href: `/news` };
   }

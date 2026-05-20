@@ -15,7 +15,7 @@ import {
   MARKET_INDICES, MARKET_NEWS, CALENDAR_EVENTS,
   PORTFOLIO_HOLDINGS, PORTFOLIO_ALLOCATION,
   SECTOR_ROTATION, generatePortfolioChart,
-  KR_STOCKS, US_STOCKS
+  KR_STOCKS, US_STOCKS, tickerToName,
 } from "@/lib/data";
 import {
   AreaChart, Area, LineChart, Line,
@@ -287,7 +287,7 @@ function NewsModal({ news, onClose }: { news: typeof MARKET_NEWS[0]; onClose: ()
           <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">AI 요약</div>
           <p className="text-sm text-foreground leading-relaxed">
             {news.title}에 관한 최신 동향입니다. 해당 이슈는 시장 전반에 걸쳐 영향을 미칠 수 있으며,
-            특히 {news.tickers?.join(", ")} 관련 종목에 주목할 필요가 있습니다.
+            특히 {(news.tickers ?? []).map(tickerToName).join(", ")} 관련 종목에 주목할 필요가 있습니다.
             전문가들은 단기적으로 변동성이 높아질 수 있다고 분석하고 있으며, 거시경제 지표와 함께 모니터링이 권장됩니다.
           </p>
         </div>
@@ -299,7 +299,7 @@ function NewsModal({ news, onClose }: { news: typeof MARKET_NEWS[0]; onClose: ()
               {news.tickers.map(t => (
                 <Link key={t} href={`/analysis?ticker=${t}`}>
                   <Badge variant="secondary" className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors text-xs">
-                    {t}
+                    {tickerToName(t)}
                   </Badge>
                 </Link>
               ))}

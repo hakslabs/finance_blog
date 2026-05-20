@@ -36,6 +36,9 @@ type DisplayEvent = {
   holding: string | null;
   memo: number;
   tickers: string[];
+  // Parallel-indexed display labels. Defaults to the ticker itself when
+  // no company name is known (so legacy mock rows still render).
+  tickerLabels?: string[];
   importance: string; // 상 | 중 | 하
   detail: string;
 };
@@ -72,6 +75,7 @@ function unifiedToDisplay(item: UnifiedCalendarItem): DisplayEvent {
     holding: null,
     memo: 0,
     tickers: item.symbol ? [item.symbol] : [],
+    tickerLabels: item.symbol ? [item.symbol_name || item.symbol] : [],
     importance: importanceToKo(item.importance),
     detail: detailParts.join(" · "),
   };
@@ -365,9 +369,11 @@ export default function CalendarPage() {
                   <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{ev.title}</h3>
                   <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{ev.detail}</p>
                   <div className="flex items-center gap-2 mt-2">
-                    {ev.tickers.map(t => (
+                    {ev.tickers.map((t, i) => (
                       <Link key={t} href={`/analysis?ticker=${t}`} onClick={e => e.stopPropagation()}>
-                        <span className="text-[10px] px-1.5 py-0.5 bg-muted rounded text-muted-foreground hover:text-primary transition-colors font-mono">{t}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 bg-muted rounded text-muted-foreground hover:text-primary transition-colors">
+                          {ev.tickerLabels?.[i] ?? t}
+                        </span>
                       </Link>
                     ))}
                     {ev.holding && (
@@ -458,10 +464,10 @@ export default function CalendarPage() {
               )}
 
               <div className="flex gap-2 flex-wrap mb-4">
-                {selectedEvent.tickers.map(t => (
+                {selectedEvent.tickers.map((t, i) => (
                   <Link key={t} href={`/analysis?ticker=${t}`} onClick={() => setSelectedEvent(null)}>
-                    <span className="text-xs px-2.5 py-1.5 bg-muted rounded-lg text-foreground hover:text-primary transition-colors font-mono font-bold">
-                      {t} →
+                    <span className="text-xs px-2.5 py-1.5 bg-muted rounded-lg text-foreground hover:text-primary transition-colors font-semibold">
+                      {selectedEvent.tickerLabels?.[i] ?? t} →
                     </span>
                   </Link>
                 ))}
