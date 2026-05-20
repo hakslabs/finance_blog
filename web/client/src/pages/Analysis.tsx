@@ -24,6 +24,8 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useWatchlist } from "@/contexts/WatchlistContext";
+import { useStocks } from "@/features/stocks";
+import { useSectors } from "@/features/sectors";
 import {
   US_STOCKS, KR_STOCKS, US_SECTORS, KR_SECTORS, MACRO_INDICATORS
 } from "@/services/mockData";
@@ -464,7 +466,11 @@ function SectorRotationPanel() {
   const [period, setPeriod] = useState<SectorPeriod>("월간");
   const [sortBy, setSortBy] = useState<"rank" | "return" | "flow">("rank");
 
-  const sectors = market === "US" ? US_SECTORS : KR_SECTORS;
+  // Live sectors overlay — same shape as the mock (sector/returnDay/etc.).
+  const { data: liveSectors } = useSectors(market);
+  const sectors = (liveSectors && liveSectors.length > 0)
+    ? (liveSectors as any)
+    : (market === "US" ? US_SECTORS : KR_SECTORS);
   const PERIODS: SectorPeriod[] = ["당일", "주간", "월간", "분기", "연간"];
 
   const getReturn = (s: typeof sectors[0]) => {
@@ -489,8 +495,8 @@ function SectorRotationPanel() {
   const sorted = [...sectors].sort((a, b) => {
     if (sortBy === "rank") return getRank(a) - getRank(b);
     if (sortBy === "return") return getReturn(b) - getReturn(a);
-    const flowOrder = { inflow: 0, neutral: 1, outflow: 2 };
-    return flowOrder[a.moneyFlow] - flowOrder[b.moneyFlow];
+    const flowOrder: Record<string, number> = { inflow: 0, neutral: 1, outflow: 2 };
+    return (flowOrder[a.moneyFlow] ?? 1) - (flowOrder[b.moneyFlow] ?? 1);
   });
 
   const chartData = sorted.slice(0, 8).map(s => ({
@@ -664,16 +670,23 @@ function IntegratedScreenerPanel() {
   const [useWatchlistOnly, setUseWatchlistOnly] = useState(false);
   const [sortField, setSortField] = useState<"score" | "changePct" | "pe" | "roe">("score");
 
-  const allStocks = useMemo(() => [...US_STOCKS, ...KR_STOCKS], []);
+  // Live stock universe overlay. /v1/movers returns the same Stock
+  // shape (ticker/name/price/changePct/sector) as the mock arrays,
+  // so we can concat. Mock fallback fires when DB is empty (preview).
+  const { data: liveUS } = useStocks("US");
+  const { data: liveKR } = useStocks("KR");
+  const usPool = (liveUS && liveUS.length > 0) ? liveUS : US_STOCKS;
+  const krPool = (liveKR && liveKR.length > 0) ? liveKR : KR_STOCKS;
+  const allStocks = useMemo(() => [...usPool, ...krPool], [usPool, krPool]);
 
   const filteredByMarket = useMemo(() => {
-    let stocks = market === "US" ? US_STOCKS : market === "KR" ? KR_STOCKS : allStocks;
+    let stocks = market === "US" ? usPool : market === "KR" ? krPool : allStocks;
     if (useWatchlistOnly && watchlist.length > 0) {
       const tickers = new Set(watchlist.map(w => w.ticker));
       stocks = stocks.filter(s => tickers.has(s.ticker));
     }
     return stocks;
-  }, [market, useWatchlistOnly, watchlist, allStocks]);
+  }, [market, useWatchlistOnly, watchlist, allStocks, usPool, krPool]);
 
   const scoreStock = useCallback((stock: AllStock) => {
     let score = 0;
