@@ -399,6 +399,44 @@ function CalendarModal({ event, onClose }: { event: typeof CALENDAR_EVENTS[0]; o
   );
 }
 
+// ── 지수 상세 모달 ───────────────────────────────────────────
+function IndexModal({ idx, onClose }: { idx: typeof MARKET_INDICES[0]; onClose: () => void }) {
+  const up = idx.change >= 0;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <div className="text-xs text-muted-foreground">시장 지수</div>
+            <h2 className="text-lg font-bold font-['Outfit']">{idx.name}</h2>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="bg-muted/30 rounded-xl p-4 mb-4">
+          <div className="text-3xl font-bold font-mono">{idx.value.toLocaleString()}</div>
+          <div className={cn("flex items-center gap-1.5 mt-2 text-sm font-mono", up ? "text-up" : "text-down")}>
+            {up ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+            {up ? "+" : ""}{idx.change.toFixed(2)} ({up ? "+" : ""}{idx.changePct.toFixed(2)}%)
+          </div>
+          <div className="text-[10px] text-muted-foreground mt-2">실시간 데이터 · 15분 지연</div>
+        </div>
+        <div className="flex gap-2">
+          <Link href="/analysis" onClick={onClose} className="flex-1">
+            <button className="w-full px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90">
+              상세 분석 →
+            </button>
+          </Link>
+          <button onClick={onClose} className="px-4 py-2.5 rounded-lg border border-border text-sm hover:bg-muted">
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── 섹터 로테이션 패널 ─────────────────────────────────────────
 function SectorRotationPanel() {
   const [market, setMarket] = useState<"US" | "KR">("US");
@@ -565,6 +603,7 @@ export default function Home() {
   const [selectedNews, setSelectedNews] = useState<typeof MARKET_NEWS[0] | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<typeof CALENDAR_EVENTS[0] | null>(null);
   const [fearGreedModal, setFearGreedModal] = useState<"KR" | "US" | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<typeof MARKET_INDICES[0] | null>(null);
 
   const topIndices = MARKET_INDICES.slice(0, 6);
 
@@ -574,6 +613,7 @@ export default function Home() {
       {selectedNews && <NewsModal news={selectedNews} onClose={() => setSelectedNews(null)} />}
       {selectedEvent && <CalendarModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />}
       {fearGreedModal && <FearGreedModal market={fearGreedModal} onClose={() => setFearGreedModal(null)} />}
+      {selectedIndex && <IndexModal idx={selectedIndex} onClose={() => setSelectedIndex(null)} />}
 
       {/* Page header */}
       <div className="flex items-center justify-between">
@@ -598,7 +638,11 @@ export default function Home() {
         {topIndices.map((idx) => {
           const up = idx.change >= 0;
           return (
-            <div key={idx.name} className="bg-card border border-border rounded-xl p-3.5 hover:border-primary/40 transition-colors cursor-pointer group">
+            <div
+              key={idx.name}
+              onClick={() => setSelectedIndex(idx)}
+              className="bg-card border border-border rounded-xl p-3.5 hover:border-primary/40 transition-colors cursor-pointer group"
+            >
               <div className="text-xs text-muted-foreground mb-1 truncate">{idx.name}</div>
               <div className="text-base font-bold font-mono">{idx.value.toLocaleString()}</div>
               <div className={cn("flex items-center gap-1 mt-1 text-xs font-mono", up ? "text-up" : "text-down")}>
