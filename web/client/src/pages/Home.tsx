@@ -6,7 +6,18 @@
  * - 공포탐욕지수 클릭 → VIX/ADR 히스토리 차트 팝업
  * - 섹터 로테이션 → 미국/한국 탭 분리
  */
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
+
+function relativeTime(iso: string | null): string {
+  if (!iso) return "";
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return "";
+  const diff = (Date.now() - t) / 1000;
+  if (diff < 60) return `${Math.floor(diff)}초`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}분`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}시간`;
+  return `${Math.floor(diff / 86400)}일`;
+}
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import {
@@ -29,6 +40,10 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWatchlist } from "@/contexts/WatchlistContext";
+import { useFearGreed } from "@/features/sentiment";
+import { useNewsList } from "@/features/news";
+import { useEconomicEvents } from "@/features/events";
+import { useMovers } from "@/features/movers";
 
 // ── 시장 감지 ─────────────────────────────────────────────────
 function detectOpenMarket(): "KR" | "US" {
@@ -566,6 +581,48 @@ export default function Home() {
   const [selectedEvent, setSelectedEvent] = useState<typeof CALENDAR_EVENTS[0] | null>(null);
   const [fearGreedModal, setFearGreedModal] = useState<"KR" | "US" | null>(null);
 
+  // ── live backend data: fear-greed, news, events, movers ──
+  const { data: fearGreedRows } = useFearGreed();
+  const fgUS = fearGreedRows?.find((it) => it.market_code === "US");
+  const fgKR = fearGreedRows?.find((it) => it.market_code === "KR");
+
+  const { data: liveNewsRaw } = useNewsList({ limit: 12 });
+  const liveNews = useMemo(() => {
+    if (!liveNewsRaw || liveNewsRaw.length === 0) return MARKET_NEWS;
+    return liveNewsRaw.map((n, i) => ({
+      id: i + 1,
+      title: n.title,
+      body: n.summary ?? "",
+      source: n.source,
+      time: relativeTime(n.published_at),
+      category: "미국",
+      tickers: n.related_symbols,
+      impact: null as string | null,
+      up: null as boolean | null,
+      tags: [] as string[],
+    }));
+  }, [liveNewsRaw]);
+
+  const { data: liveEventsRaw } = useEconomicEvents();
+  const liveEvents = useMemo(() => {
+    if (!liveEventsRaw || liveEventsRaw.length === 0) return CALENDAR_EVENTS;
+    const dayLabels = ["일", "월", "화", "수", "목", "금", "토"];
+    return liveEventsRaw.slice(0, 8).map((e) => {
+      const d = new Date(e.time);
+      return {
+        date: String(d.getUTCDate()).padStart(2, "0"),
+        day: dayLabels[d.getUTCDay()],
+        title: e.event,
+        type: e.impact === "high" ? "매크로" : "매크로",
+        holding: null as string | null,
+        memo: 0,
+      };
+    });
+  }, [liveEventsRaw]);
+
+  const { data: krMovers } = useMovers({ market: "KR", limit: 8 });
+  const { data: usMovers } = useMovers({ market: "US", limit: 8 });
+
   const topIndices = MARKET_INDICES.slice(0, 6);
 
   return (
@@ -616,9 +673,19 @@ export default function Home() {
         <div className="xl:col-span-2 bg-card border border-border rounded-xl p-5 flex flex-col">
           <SectionHeader title="공포·탐욕 지수" sub="클릭하면 VIX/ADR 히스토리 확인" />
           <div className="flex-1 flex items-center justify-around gap-4">
-            <FearGreedGauge value={56} label="외인 5거래일 순매수 지속" market="한국" onClick={() => setFearGreedModal("KR")} />
+            <FearGreedGauge
+              value={Math.round(fgKR?.value ?? 56)}
+              label={fgKR ? `${fgKR.label} · ${fgKR.timestamp.slice(0, 10)}` : "외인 5거래일 순매수 지속"}
+              market="한국"
+              onClick={() => setFearGreedModal("KR")}
+            />
             <div className="w-px self-stretch bg-border" />
-            <FearGreedGauge value={68} label="VIX 14.2 · 안도 과열 구간" market="미국" onClick={() => setFearGreedModal("US")} />
+            <FearGreedGauge
+              value={Math.round(fgUS?.value ?? 68)}
+              label={fgUS ? `${fgUS.label} · ${fgUS.timestamp.slice(0, 10)}` : "VIX 14.2 · 안도 과열 구간"}
+              market="미국"
+              onClick={() => setFearGreedModal("US")}
+            />
           </div>
           <div className="flex items-center justify-center gap-3 mt-2 flex-wrap flex-shrink-0">
             {[
@@ -641,7 +708,7 @@ export default function Home() {
           <SectionHeader title="시장 핵심 뉴스" sub="클릭하면 요약 확인" href="/news" />
           <div className="flex-1 flex flex-col justify-between">
             <div className="space-y-0">
-              {MARKET_NEWS.slice(0, 5).map((news) => (
+              {liveNews.slice(0, 5).map((news) => (
                 <div
                   key={news.id}
                   className="flex items-start gap-3 py-2.5 px-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group border-b border-border/40 last:border-0"
@@ -678,7 +745,7 @@ export default function Home() {
         <div className="xl:col-span-3 bg-card border border-border rounded-xl p-5 flex flex-col">
           <SectionHeader title="내 캘린더" sub="실적·배당·경제지표 일정" href="/calendar" />
           <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-0">
-            {CALENDAR_EVENTS.map((ev, i) => (
+            {liveEvents.map((ev, i) => (
               <div
                 key={i}
                 className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/40 transition-colors cursor-pointer border-b border-border/30 last:border-0 sm:last:border-0"
