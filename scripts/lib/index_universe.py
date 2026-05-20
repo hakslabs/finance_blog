@@ -5,8 +5,8 @@ Every stock-event ingest script filters against `load_universe()`
 before upserting so we don't pile thousands of irrelevant rows into
 `stock_calendar_events`.
 
-Reads from Supabase `index_constituents` (mig 0026, seeded by
-`scripts/seed_index_constituents.py`). Returns separate KR / US sets
+Reads from Supabase `blog_index_universe` (mig 0026, seeded by
+`scripts/seed_blog_index_universe.py`). Returns separate KR / US sets
 because the ingest scripts hit either-or providers (DART vs Finnhub /
 Polygon), and falls back to empty sets — callers should refuse to run
 if the universe is empty rather than silently flood the DB.
@@ -41,7 +41,7 @@ def load_universe(
         "Authorization": f"Bearer {service_key}",
         "Accept": "application/json",
     }
-    url = f"{supabase_url.rstrip('/')}/rest/v1/index_constituents"
+    url = f"{supabase_url.rstrip('/')}/rest/v1/blog_index_universe"
     try:
         with httpx.Client(timeout=20.0) as client:
             resp = client.get(
@@ -81,6 +81,6 @@ def require_universe(kind: str = "us") -> Set[str]:
     if not chosen:
         raise SystemExit(
             f"[universe] {kind} universe is empty — run "
-            f"`python scripts/seed_index_constituents.py` first"
+            f"`python scripts/seed_blog_index_universe.py` first"
         )
     return chosen

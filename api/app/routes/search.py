@@ -66,7 +66,7 @@ async def _load_universe(settings: Settings) -> set[str]:
     """
     rows = await _pg_get(
         settings,
-        "index_constituents",
+        "blog_index_universe",
         {"select": "symbol", "limit": "5000"},
     )
     return {(r.get("symbol") or "").upper() for r in rows if r.get("symbol")}

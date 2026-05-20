@@ -1,4 +1,4 @@
-"""Seed `index_constituents` with KOSPI200, NASDAQ100, and S&P500 members.
+"""Seed `blog_index_universe` with KOSPI200, NASDAQ100, and S&P500 members.
 
 Sources:
   - S&P 500    → Wikipedia "List of S&P 500 companies" (Symbol + Security)
@@ -15,7 +15,7 @@ Idempotent via the (index_code, symbol) primary key; upserts go through
 PostgREST with `Prefer: resolution=merge-duplicates`.
 
 Run:
-    PYTHONPATH=api python scripts/seed_index_constituents.py
+    PYTHONPATH=api python scripts/seed_blog_index_universe.py
     # selective: --indexes SP500,NDX (default all three)
 
 Env required (.env at repo root works):
@@ -243,7 +243,7 @@ def upsert(
         "Content-Type": "application/json",
         "Prefer": "resolution=merge-duplicates,return=representation",
     }
-    url = f"{supabase_url.rstrip('/')}/rest/v1/index_constituents"
+    url = f"{supabase_url.rstrip('/')}/rest/v1/blog_index_universe"
     resp = client.post(
         url,
         params={"on_conflict": "index_code,symbol"},
@@ -287,7 +287,7 @@ def main() -> int:
                     for m in members]
             n = upsert(client, supabase_url, service_key, rows)
             total += n
-            print(f"  upserted {n} into index_constituents")
+            print(f"  upserted {n} into blog_index_universe")
 
     print(f"Done. {total} rows written.")
     return 0
