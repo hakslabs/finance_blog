@@ -7,6 +7,7 @@
  * - 섹터 로테이션 → 미국/한국 탭 분리
  */
 import { useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import {
@@ -182,7 +183,7 @@ function FearGreedModal({ market, onClose }: { market: "KR" | "US"; onClose: () 
   const refLine = market === "US" ? 20 : 50;
   const color = market === "US" ? "#38bdf8" : "#a78bfa";
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-2xl mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
@@ -250,13 +251,14 @@ function FearGreedModal({ market, onClose }: { market: "KR" | "US"; onClose: () 
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
 // ── 뉴스 상세 모달 ─────────────────────────────────────────────
 function NewsModal({ news, onClose }: { news: typeof MARKET_NEWS[0]; onClose: () => void }) {
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-lg mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3 mb-4">
@@ -320,7 +322,8 @@ function NewsModal({ news, onClose }: { news: typeof MARKET_NEWS[0]; onClose: ()
           </Link>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -330,7 +333,7 @@ function CalendarModal({ event, onClose }: { event: typeof CALENDAR_EVENTS[0]; o
     event.type === "배당" ? "text-yellow-500 border-yellow-500" :
     "text-muted-foreground border-muted-foreground";
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-start justify-between mb-4">
@@ -395,14 +398,15 @@ function CalendarModal({ event, onClose }: { event: typeof CALENDAR_EVENTS[0]; o
           </Link>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
 // ── 지수 상세 모달 ───────────────────────────────────────────
 function IndexModal({ idx, onClose }: { idx: typeof MARKET_INDICES[0]; onClose: () => void }) {
   const up = idx.change >= 0;
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-start justify-between mb-4">
@@ -433,7 +437,8 @@ function IndexModal({ idx, onClose }: { idx: typeof MARKET_INDICES[0]; onClose: 
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
