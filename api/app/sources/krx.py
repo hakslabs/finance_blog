@@ -18,6 +18,86 @@ from fastapi import HTTPException
 
 
 BASE_URL = "https://data-dbg.krx.co.kr/svc/apis/sto"
+INDEX_BASE_URL = "https://data-dbg.krx.co.kr/svc/apis/idx"
+
+
+class KrxError(Exception):
+    """Network or shape failure. Callers fall back to mock."""
+
+
+def _to_float(s: Optional[str]) -> Optional[float]:
+    if not s:
+        return None
+    try:
+        return float(str(s).replace(",", ""))
+    except ValueError:
+        return None
+
+
+async def fetch_index_daily(
+    market: str, api_key: str, *,
+    lookback_days: int = 7,
+    client: Optional[httpx.AsyncClient] = None,
+) -> Optional[Dict[str, Any]]:
+    """Latest trading-day quote for the KOSPI / KOSDAQ headline index.
+
+    Walks back from today up to `lookback_days` weekdays until KRX
+    returns a non-empty row matching the headline index name. Used by
+    /v1/market/indices to fill the two KR cards on the dashboard with
+    real data instead of mock — KRX has EOD daily aggregates only, so
+    during market hours we're showing the previous session's close.
+
+    Returns {price, change, change_pct, date} or None on failure.
+    """
+    market = market.upper()
+    if market == "KOSPI":
+        path, headline = "/kospi_dd_trd", "코스피"
+    elif market == "KOSDAQ":
+        path, headline = "/kosdaq_dd_trd", "코스닥"
+    else:
+        return None
+
+    own_client = client is None
+    http = client or httpx.AsyncClient(timeout=10.0)
+    try:
+        today = date.today()
+        for offset in range(0, lookback_days * 2):
+            d = today - timedelta(days=offset)
+            if d.weekday() >= 5:
+                continue
+            try:
+                r = await http.get(
+                    f"{INDEX_BASE_URL}{path}",
+                    params={"basDd": d.strftime("%Y%m%d")},
+                    headers={"AUTH_KEY": api_key.strip()},
+                )
+            except httpx.HTTPError:
+                return None
+            if r.status_code >= 400:
+                return None
+            try:
+                body = r.json()
+            except ValueError:
+                return None
+            rows = body.get("OutBlock_1") or []
+            for row in rows:
+                # The headline index has IDX_NM exactly "코스피" / "코스닥"
+                # — other rows are sectoral / foreign-included variants.
+                if (row.get("IDX_NM") or "").strip() != headline:
+                    continue
+                price = _to_float(row.get("CLSPRC_IDX"))
+                if price is None:
+                    continue
+                return {
+                    "price": price,
+                    "change": _to_float(row.get("CMPPREVDD_IDX")) or 0.0,
+                    "change_pct": _to_float(row.get("FLUC_RT")) or 0.0,
+                    "date": row.get("BAS_DD") or d.strftime("%Y%m%d"),
+                }
+        return None
+    finally:
+        if own_client:
+            await http.aclose()
 
 
 def _last_weekday(d: date) -> date:

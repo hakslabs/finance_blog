@@ -828,13 +828,15 @@ export default function Home() {
     from: calFromIso, to: calToIso, symbols: watchlistSymbols,
   });
 
-  // Portfolio chart (Row 4L): for now plot SPY + KOSPI proxy (EWY) only
-  // — the portfolio overlay needs a time-series endpoint we don't have
-  // yet. Falls back to the mock walker if /v1/quotes is unreachable.
-  const [perfData, setPerfData] = useState<{ day: number; sp500: number; kospi: number }[] | null>(null);
+  // Market comparison chart (Row 4L). Plot S&P 500 (SPY) and KOSPI
+  // (EWY) as **cumulative % return** from the first bar of the period,
+  // not absolute prices — base-100 normalization was hard for the user
+  // to read. X axis shows MM/DD; Y axis shows % change.
+  type PerfRow = { date: string; label: string; sp500: number | null; kospi: number | null };
+  const [perfData, setPerfData] = useState<PerfRow[] | null>(null);
   useEffect(() => {
-    const range = perfPeriod === "1D" || perfPeriod === "1W" ? "1mo"
-      : perfPeriod === "1M" ? "1mo"
+    const range = perfPeriod === "1D" || perfPeriod === "1W" || perfPeriod === "1M"
+      ? "1mo"
       : perfPeriod === "3M" ? "3mo"
       : "1y";
     let cancelled = false;
@@ -846,20 +848,39 @@ export default function Home() {
       const spBars = sp?.bars ?? [];
       const krBars = kr?.bars ?? [];
       if (!spBars.length && !krBars.length) { setPerfData(null); return; }
-      // Normalize both series to base 100 at first day for comparability.
       const sp0 = spBars[0]?.c ?? 1;
       const kr0 = krBars[0]?.c ?? 1;
       const len = Math.max(spBars.length, krBars.length);
-      const merged = Array.from({ length: len }, (_, i) => ({
-        day: i + 1,
-        sp500: spBars[i] ? (spBars[i].c / sp0) * 100 : 100,
-        kospi: krBars[i] ? (krBars[i].c / kr0) * 100 : 100,
-      }));
+      // Build a date-keyed merged series. Each bar's t looks like
+      // "2026-04-21T00:00:00Z" → MM/DD label.
+      const merged: PerfRow[] = Array.from({ length: len }, (_, i) => {
+        const spBar = spBars[i];
+        const krBar = krBars[i];
+        const date = (spBar?.t || krBar?.t || "").slice(0, 10);
+        const label = date ? `${date.slice(5, 7)}/${date.slice(8, 10)}` : `${i + 1}`;
+        return {
+          date,
+          label,
+          sp500: spBar ? ((spBar.c - sp0) / sp0) * 100 : null,
+          kospi: krBar ? ((krBar.c - kr0) / kr0) * 100 : null,
+        };
+      });
       setPerfData(merged);
     });
     return () => { cancelled = true; };
   }, [perfPeriod]);
-  const chartData = perfData ?? generatePortfolioChart(30);
+  // Fallback to a synthetic walker only when the fetch fails — same
+  // shape (label / sp500 / kospi) so the chart never breaks.
+  const chartData = perfData ?? generatePortfolioChart(30).map((r, _i, all) => {
+    const sp0 = (all[0] as any).sp500;
+    const kr0 = (all[0] as any).kospi;
+    return {
+      date: "",
+      label: String(r.day),
+      sp500: ((r.sp500 - sp0) / sp0) * 100,
+      kospi: ((r.kospi - kr0) / kr0) * 100,
+    };
+  });
 
   // 모달 상태
   const [selectedNews, setSelectedNews] = useState<any | null>(null);
@@ -1056,11 +1077,9 @@ export default function Home() {
         <div className="xl:col-span-3 bg-card border border-border rounded-xl p-5 flex flex-col">
           <div className="flex items-center justify-between mb-3 flex-shrink-0">
             <div>
-              <h2 className="text-base font-bold font-['Outfit']">{isLoggedIn ? "내 수익률 vs 시장" : "시장 인덱스 추이"}</h2>
+              <h2 className="text-base font-bold font-['Outfit']">시장 누적 수익률</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {isLoggedIn
-                  ? "포트폴리오 시계열 곧 연결 — 현재는 S&P 500 vs KOSPI (EWY) 비교"
-                  : "S&P 500 (SPY) vs 한국 (EWY) — 시작점 100 기준 정규화"}
+                S&P 500 (SPY) vs 한국 (EWY) — 기간 시작일 대비 % 변동
               </p>
             </div>
             <div className="flex gap-1">
@@ -1074,29 +1093,47 @@ export default function Home() {
           </div>
           <div className="flex-1 min-h-[160px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-                <XAxis dataKey="day" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px", fontSize: 11 }}
-                  labelStyle={{ color: "var(--muted-foreground)" }} />
-                <Line type="monotone" dataKey="sp500" stroke="var(--gold)" strokeWidth={2} dot={false} name="S&P 500" />
-                <Line type="monotone" dataKey="kospi" stroke="var(--violet)" strokeWidth={2} dot={false} name="KOSPI (EWY)" />
+              <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -10 }}>
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 10 }}
+                  tickLine={false}
+                  axisLine={false}
+                  interval={Math.max(0, Math.floor(chartData.length / 6) - 1)}
+                />
+                <YAxis
+                  tick={{ fontSize: 10 }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`}
+                />
+                <Tooltip
+                  contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px", fontSize: 11 }}
+                  labelStyle={{ color: "var(--muted-foreground)" }}
+                  formatter={(v: any) => (typeof v === "number" ? `${v >= 0 ? "+" : ""}${v.toFixed(2)}%` : "—")}
+                />
+                <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="2 3" strokeWidth={1} />
+                <Line type="monotone" dataKey="sp500" stroke="var(--gold)" strokeWidth={2} dot={false} name="S&P 500" connectNulls />
+                <Line type="monotone" dataKey="kospi" stroke="var(--violet)" strokeWidth={2} dot={false} name="KOSPI (EWY)" connectNulls />
               </LineChart>
             </ResponsiveContainer>
           </div>
           <div className="flex gap-4 mt-2 flex-shrink-0">
             {(() => {
-              const last = chartData[chartData.length - 1] ?? { kospi: 100, sp500: 100 };
-              const fmt = (v: number) => `${(v - 100).toFixed(1)}%`;
+              const last = chartData[chartData.length - 1];
+              const sp = (last as any)?.sp500 as number | null | undefined;
+              const kr = (last as any)?.kospi as number | null | undefined;
+              const fmt = (v: number | null | undefined) => v == null ? "—"
+                : `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`;
               return [
-                { label: "S&P 500", color: "var(--gold)", value: fmt((last as any).sp500 ?? 100) },
-                { label: "KOSPI (EWY)", color: "var(--violet)", value: fmt((last as any).kospi ?? 100) },
+                { label: "S&P 500", color: "var(--gold)", value: fmt(sp), n: sp ?? 0 },
+                { label: "KOSPI (EWY)", color: "var(--violet)", value: fmt(kr), n: kr ?? 0 },
               ];
             })().map((l) => (
               <div key={l.label} className="flex items-center gap-1.5">
                 <div className="w-3 h-0.5 rounded" style={{ background: l.color }} />
                 <span className="text-xs text-muted-foreground">{l.label}</span>
-                <span className="text-xs font-mono font-bold text-up">{l.value}</span>
+                <span className={cn("text-xs font-mono font-bold", l.n >= 0 ? "text-up" : "text-down")}>{l.value}</span>
               </div>
             ))}
           </div>

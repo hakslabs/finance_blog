@@ -30,7 +30,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.settings import Settings, get_settings
-from app.sources import alphavantage, finnhub, yahoo
+from app.sources import alphavantage, finnhub, krx, yahoo
 
 
 router = APIRouter(prefix="/market", tags=["market"])
@@ -160,12 +160,32 @@ async def _fetch_usdkrw(settings: Settings) -> IndexItem:
 
 
 async def _fetch_yahoo_batch(client: httpx.AsyncClient) -> Dict[str, Dict[str, float]]:
-    """Pull KOSPI + KOSDAQ in one Yahoo call. Returns empty dict on
-    429/network failure — caller falls back to mock for those rows."""
+    """Yahoo v7 batch for KOSPI/KOSDAQ. Returns empty dict on 429/network
+    failure — caller already has a KRX fallback ahead of mock."""
     try:
         return await yahoo.fetch_quotes(list(_YAHOO_SYMBOL.values()), client=client)
     except yahoo.YahooError:
         return {}
+
+
+async def _fetch_kr_index(
+    display: str, name: str, market_group: str, settings: Settings,
+    client: httpx.AsyncClient,
+) -> IndexItem:
+    """KOSPI / KOSDAQ via KRX OpenAPI (EOD). Falls back to mock if the
+    key isn't approved for the index endpoints or the API is down."""
+    if settings.krx_api_key:
+        try:
+            q = await krx.fetch_index_daily(display, settings.krx_api_key, client=client)
+        except Exception:  # noqa: BLE001
+            q = None
+        if q is not None:
+            return IndexItem(
+                symbol=display, name=name,
+                value=q["price"], change=q["change"], change_pct=q["change_pct"],
+                market=market_group, source="live",
+            )
+    return _mock_item(display, name, market_group)
 
 
 @router.get("/indices", response_model=IndicesResponse)
@@ -185,29 +205,42 @@ async def get_indices(
             if display in _FINNHUB_PROXY
         ]
         usdkrw_task = _fetch_usdkrw(settings)
+        # Try KRX first for KOSPI/KOSDAQ (real EOD data with an
+        # approved key); fall back to Yahoo if KRX returns None, then
+        # mock as final fallback. Run both in parallel — whichever
+        # answers first wins.
+        kr_tasks = [
+            _fetch_kr_index(display, next(n for s, n, _m in _DISPLAY if s == display),
+                            next(m for s, _n, m in _DISPLAY if s == display), settings, client)
+            for display in _YAHOO_SYMBOL  # iterates KOSPI, KOSDAQ
+        ]
         yahoo_task = _fetch_yahoo_batch(client)
-        finnhub_items, usdkrw_item, yahoo_quotes = await asyncio.gather(
+        finnhub_items, usdkrw_item, kr_items, yahoo_quotes = await asyncio.gather(
             asyncio.gather(*finnhub_tasks),
             usdkrw_task,
+            asyncio.gather(*kr_tasks),
             yahoo_task,
         )
 
     by_symbol: Dict[str, IndexItem] = {it.symbol: it for it in finnhub_items}
     by_symbol[usdkrw_item.symbol] = usdkrw_item
 
-    # Fill KR rows from the Yahoo batch (or mock if Yahoo returned nothing).
-    for display, yahoo_sym in _YAHOO_SYMBOL.items():
-        name = next(n for s, n, _m in _DISPLAY if s == display)
-        group = next(m for s, _n, m in _DISPLAY if s == display)
-        q = yahoo_quotes.get(yahoo_sym)
+    for it in kr_items:
+        # If KRX returned live data, use it. Otherwise see if Yahoo
+        # came back; otherwise the kr_item is already mock.
+        if it.source == "live":
+            by_symbol[it.symbol] = it
+            continue
+        yahoo_sym = _YAHOO_SYMBOL.get(it.symbol)
+        q = yahoo_quotes.get(yahoo_sym) if yahoo_sym else None
         if q is not None:
-            by_symbol[display] = IndexItem(
-                symbol=display, name=name,
+            by_symbol[it.symbol] = IndexItem(
+                symbol=it.symbol, name=it.name,
                 value=q["price"], change=q["change"], change_pct=q["change_pct"],
-                market=group, source="live",
+                market=it.market, source="live",
             )
         else:
-            by_symbol[display] = _mock_item(display, name, group)
+            by_symbol[it.symbol] = it  # mock
 
     items = [by_symbol[s] for s, _n, _m in _DISPLAY if s in by_symbol]
     response = IndicesResponse(
