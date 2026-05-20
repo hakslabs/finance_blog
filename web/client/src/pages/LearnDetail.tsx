@@ -376,31 +376,37 @@ export default function LearnDetail() {
         <span className="text-muted-foreground/40">/</span>
         <span className="text-sm text-foreground truncate max-w-[200px]">{lesson.title}</span>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
-        {/* Sidebar */}
-        <div className="lg:col-span-1 space-y-4">
-          <div className="bg-card border border-border rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-6 flex items-center justify-center text-primary">{CATEGORY_ICONS[lesson.category]}</div>
-              <h3 className="text-sm font-semibold">{lesson.category}</h3>
-            </div>
-            <div className="space-y-1">
-              {categoryLessons.map((l, i) => (
-                <Link key={l.id} href={`/learn/${l.id}`}>
-                  <div className={cn("flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm cursor-pointer transition-colors",
-                    l.id === lesson.id ? "bg-primary/10 text-primary border border-primary/20" : "hover:bg-muted/30 text-muted-foreground hover:text-foreground"
-                  )}>
-                    <span className="text-[10px] font-mono w-4 text-center opacity-60">{i + 1}</span>
-                    {l.completed ? <CheckCircle size={11} className="text-emerald-400 flex-shrink-0" /> : l.locked ? <Lock size={11} className="flex-shrink-0" /> : <FileText size={11} className="flex-shrink-0 opacity-50" />}
-                    <span className="truncate text-xs">{l.title}</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
+      {/* Collapsible series TOC — sits above the doc so the reading
+          column stays full-width by default. Expanded view is a tight
+          grid so the user can jump between sister lessons without the
+          old sticky-sidebar taking up 25% of the screen. */}
+      <details className="bg-card border border-border rounded-xl group">
+        <summary className="px-4 py-3 cursor-pointer list-none flex items-center gap-2.5 select-none">
+          <div className="w-6 h-6 flex items-center justify-center text-primary">{CATEGORY_ICONS[lesson.category]}</div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-semibold">{lesson.category}</div>
+            <div className="text-[10px] text-muted-foreground">{categoryLessons.length}개 강의 · {currentIdx + 1}번째</div>
           </div>
+          <ChevronRight size={14} className="text-muted-foreground transition-transform group-open:rotate-90" />
+        </summary>
+        <div className="border-t border-border p-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
+          {categoryLessons.map((l, i) => (
+            <Link key={l.id} href={`/learn/${l.id}`}>
+              <div className={cn(
+                "flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm cursor-pointer transition-colors",
+                l.id === lesson.id ? "bg-primary/10 text-primary border border-primary/20" : "hover:bg-muted/30 text-muted-foreground hover:text-foreground"
+              )}>
+                <span className="text-[10px] font-mono w-4 text-center opacity-60">{i + 1}</span>
+                {l.completed ? <CheckCircle size={11} className="text-emerald-400 flex-shrink-0" /> : l.locked ? <Lock size={11} className="flex-shrink-0" /> : <FileText size={11} className="flex-shrink-0 opacity-50" />}
+                <span className="truncate text-xs">{l.title}</span>
+              </div>
+            </Link>
+          ))}
         </div>
-        {/* Main content */}
-        <div className="lg:col-span-3 space-y-4">
+      </details>
+
+      {/* Main content — now full width */}
+      <div className="space-y-4">
           {/* Document-style header */}
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             <div className="px-6 py-5 border-b border-border/50">
@@ -482,6 +488,5 @@ export default function LearnDetail() {
           </div>
         </div>
       </div>
-    </div>
   );
 }
