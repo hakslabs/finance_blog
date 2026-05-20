@@ -24,6 +24,7 @@ from app.routes.screens import router as screens_router
 from app.routes.sentiment import router as sentiment_router
 from app.routes.theses import router as theses_router
 from app.routes.portfolio_snapshot import router as portfolio_snapshot_router
+from app.routes.portfolio_transactions import router as portfolio_transactions_router
 from app.routes.portfolios import router as portfolios_router
 from app.routes.quotes import router as quotes_router
 from app.routes.reports import router as reports_router
@@ -74,6 +75,7 @@ app.include_router(sentiment_router, prefix="/v1")
 app.include_router(theses_router, prefix="/v1")
 app.include_router(portfolio_snapshot_router, prefix="/v1")
 app.include_router(portfolios_router, prefix="/v1")
+app.include_router(portfolio_transactions_router, prefix="/v1")
 app.include_router(quotes_router, prefix="/v1")
 app.include_router(reports_router, prefix="/v1")
 app.include_router(stocks_extra_router, prefix="/v1")
