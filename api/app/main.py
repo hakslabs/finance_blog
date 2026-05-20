@@ -19,6 +19,7 @@ from app.routes.movers import router as movers_router
 from app.routes.news import router as news_router
 from app.routes.notices import router as notices_router
 from app.routes.sentiment import router as sentiment_router
+from app.routes.theses import router as theses_router
 from app.routes.portfolio_snapshot import router as portfolio_snapshot_router
 from app.routes.portfolios import router as portfolios_router
 from app.routes.quotes import router as quotes_router
@@ -64,6 +65,7 @@ app.include_router(lessons_router, prefix="/v1")
 app.include_router(news_router, prefix="/v1")
 app.include_router(notices_router, prefix="/v1")
 app.include_router(sentiment_router, prefix="/v1")
+app.include_router(theses_router, prefix="/v1")
 app.include_router(portfolio_snapshot_router, prefix="/v1")
 app.include_router(portfolios_router, prefix="/v1")
 app.include_router(quotes_router, prefix="/v1")
