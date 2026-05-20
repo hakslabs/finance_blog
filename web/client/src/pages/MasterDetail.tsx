@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { MASTERS } from "@/services/mockData";
+import { useMasterDetail, useMasterHoldings } from "@/features/masters";
 import { FollowContext } from "@/contexts/FollowContext";
 import { BookmarkContext } from "@/contexts/BookmarkContext";
 import { toast } from "sonner";
@@ -95,7 +96,60 @@ export default function MasterDetail() {
   const bookmarkCtx = useContext(BookmarkContext);
   const [activeTab, setActiveTab] = useState("overview");
 
-  const master = MASTERS.find((m) => m.id === id);
+  const { data: backendDetail } = useMasterDetail(id);
+  const { data: backendHoldings } = useMasterHoldings(id, 30);
+
+  // Find by exact id match first, fall back to substring (mock 'warren-buffett' vs backend 'buffett')
+  const baseMock =
+    MASTERS.find((m) => m.id === id) ??
+    MASTERS.find((m) => id && m.id.toLowerCase().includes(id.toLowerCase()));
+
+  const master = (() => {
+    if (!backendDetail && !baseMock) return null;
+    const base = baseMock ?? MASTERS[0];
+    const overlay: any = { ...base, id: id ?? base.id };
+    if (backendDetail) {
+      overlay.name = backendDetail.name;
+      overlay.fund = backendDetail.firm ?? overlay.fund;
+      overlay.firm = backendDetail.firm ?? overlay.firm;
+      overlay.strategy = backendDetail.style ?? overlay.strategy;
+      if (backendDetail.description) overlay.bio = backendDetail.description;
+      if (backendDetail.aum != null) {
+        const cur = backendDetail.aum_currency ?? "USD";
+        const sym = cur === "USD" ? "$" : cur;
+        const aum = backendDetail.aum;
+        overlay.aum =
+          aum >= 1e12
+            ? `${sym}${(aum / 1e12).toFixed(2)}T`
+            : aum >= 1e9
+            ? `${sym}${(aum / 1e9).toFixed(1)}B`
+            : `${sym}${aum.toLocaleString()}`;
+      }
+      if (backendDetail.principles?.length) {
+        overlay.philosophy = backendDetail.principles
+          .map((p) => p.body ?? p.title)
+          .filter(Boolean);
+      }
+    }
+    if (backendHoldings?.holdings?.length) {
+      overlay.topHoldings = backendHoldings.holdings.slice(0, 10).map((h) => ({
+        ticker: h.symbol ?? "—",
+        name: h.name ?? "",
+        weight: h.weight_pct ?? 0,
+        shares: h.shares ? `${(h.shares / 1e6).toFixed(1)}M주` : "",
+        value: h.market_value
+          ? `$${(h.market_value / 1e9).toFixed(1)}B`
+          : "",
+        change: "unchanged" as const,
+      }));
+      if (backendHoldings.filed_at) {
+        overlay.lastFiling = backendHoldings.filed_at;
+        overlay.reportDate = backendHoldings.filed_at;
+      }
+      overlay.holdings = backendHoldings.holdings.length;
+    }
+    return overlay;
+  })();
 
   if (!master) {
     return (
