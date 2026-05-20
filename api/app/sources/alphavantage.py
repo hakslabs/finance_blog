@@ -34,6 +34,45 @@ class AlphaVantageError(Exception):
     """Provider-level failure. Caller surfaces stale cache or 503."""
 
 
+async def fetch_currency_rate(
+    from_currency: str, to_currency: str, api_key: str,
+    *, client: httpx.AsyncClient | None = None,
+) -> Optional[dict]:
+    """`CURRENCY_EXCHANGE_RATE` — near-realtime FX. Returns None on
+    failure / throttling so the caller falls back to mock."""
+    own_client = client is None
+    http = client or httpx.AsyncClient(timeout=10.0)
+    try:
+        try:
+            r = await http.get(BASE_URL, params={
+                "function": "CURRENCY_EXCHANGE_RATE",
+                "from_currency": from_currency,
+                "to_currency": to_currency,
+                "apikey": api_key,
+            })
+        except httpx.HTTPError:
+            return None
+        if r.status_code >= 400:
+            return None
+        try:
+            body = r.json()
+        except ValueError:
+            return None
+    finally:
+        if own_client:
+            await http.aclose()
+    block = body.get("Realtime Currency Exchange Rate") or {}
+    if not block:
+        return None
+    try:
+        rate = float(block.get("5. Exchange Rate") or 0.0)
+        bid = float(block.get("8. Bid Price") or rate)
+        ask = float(block.get("9. Ask Price") or rate)
+    except (TypeError, ValueError):
+        return None
+    return {"rate": rate, "bid": bid, "ask": ask, "ts": block.get("6. Last Refreshed")}
+
+
 async def fetch_daily_quote(
     symbol: str,
     range_: Range,

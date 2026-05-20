@@ -19,6 +19,20 @@ import {
 import { toast } from "sonner";
 import { ModalPortal } from "@/components/ModalPortal";
 import { useBookmark } from "@/contexts/BookmarkContext";
+import { useNews } from "@/features/news";
+
+function fmtRelative(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const now = Date.now();
+  const diffMin = Math.floor((now - d.getTime()) / 60000);
+  if (diffMin < 1) return "방금";
+  if (diffMin < 60) return `${diffMin}분 전`;
+  const hours = Math.floor(diffMin / 60);
+  if (hours < 24) return `${hours}시간 전`;
+  return `${Math.floor(hours / 24)}일 전`;
+}
 
 // ── Extended mock news data ───────────────────────────────────
 const ALL_NEWS = [
@@ -122,7 +136,14 @@ export default function News() {
   const [activeCategory, setActiveCategory] = useState("전체");
   const [searchQuery, setSearchQuery] = useState("");
   const { isNewsBookmarked, toggleNewsBookmark, bookmarkedNewsIds } = useBookmark();
-  const [selectedNews, setSelectedNews] = useState<typeof ALL_NEWS[0] | null>(null);
+  // Live news pull — `data` falls back to ALL_NEWS-shaped mock when the
+  // backend table is empty (dev/preview), `updatedAt` is the publish
+  // time of the latest article and drives the freshness chip.
+  const { data: liveNews, updatedAt: newsUpdatedAt } = useNews({ limit: 60 });
+  const newsSource = (liveNews && liveNews.length > 0)
+    ? liveNews
+    : (ALL_NEWS as any[]);
+  const [selectedNews, setSelectedNews] = useState<any | null>(null);
 
   // Personalize each news item's "impact" string from the user's actual
   // portfolio holdings. If a news ticker is in the user's holdings, we
@@ -134,8 +155,8 @@ export default function News() {
     for (const h of holdings ?? []) {
       byTicker.set(h.ticker, { weight: h.weight, changePct: h.gainLossPct });
     }
-    if (byTicker.size === 0) return ALL_NEWS;
-    return ALL_NEWS.map((n) => {
+    if (byTicker.size === 0) return newsSource;
+    return newsSource.map((n) => {
       let total = 0;
       let signed = 0;
       for (const t of n.tickers) {
@@ -148,11 +169,11 @@ export default function News() {
       const sign = signed >= 0 ? "+" : "";
       return { ...n, impact: `${sign}${signed.toFixed(2)}%`, up: signed >= 0 };
     });
-  }, [holdings]);
+  }, [holdings, newsSource]);
 
-  const filtered = allNewsPersonalized.filter(n => {
+  const filtered = (allNewsPersonalized as any[]).filter((n: any) => {
     const matchCat = activeCategory === "전체" || n.category === activeCategory;
-    const matchSearch = !searchQuery || n.title.includes(searchQuery) || n.tags.some(t => t.includes(searchQuery));
+    const matchSearch = !searchQuery || n.title.includes(searchQuery) || (n.tags ?? []).some((t: string) => t.includes(searchQuery));
     return matchCat && matchSearch;
   });
 
@@ -173,7 +194,12 @@ export default function News() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold font-['Outfit'] text-foreground">시장 뉴스</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">실시간 금융·경제 뉴스 · 15분 지연</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            실시간 금융·경제 뉴스
+            {newsUpdatedAt && (
+              <span className="ml-2 text-[11px]">· 업데이트 {fmtRelative(newsUpdatedAt)}</span>
+            )}
+          </p>
         </div>
         <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => toast.info("뉴스 새로고침 중...")}>
           <RefreshCw size={13} /> 새로고침
@@ -254,7 +280,7 @@ export default function News() {
                   <Clock size={10} /> {news.source} · {news.time} 전
                 </span>
                 <div className="flex gap-1">
-                  {news.tickers.slice(0, 3).map(t => (
+                  {news.tickers.slice(0, 3).map((t: string) => (
                     <Link key={t} href={`/analysis?ticker=${t}`} onClick={e => e.stopPropagation()}>
                       <span className="text-[10px] px-1.5 py-0.5 bg-muted rounded text-muted-foreground hover:text-primary transition-colors">{tickerToName(t)}</span>
                     </Link>
@@ -281,7 +307,7 @@ export default function News() {
             </div>
 
             <div className="flex gap-1 mt-2">
-              {news.tags.map(tag => (
+              {(news.tags ?? []).map((tag: string) => (
                 <span key={tag} className="text-[10px] text-muted-foreground/70 hover:text-muted-foreground transition-colors">{tag}</span>
               ))}
             </div>
@@ -347,7 +373,7 @@ export default function News() {
               <div className="mb-4">
                 <div className="text-xs text-muted-foreground mb-2">관련 종목</div>
                 <div className="flex gap-2 flex-wrap">
-                  {selectedNews.tickers.map(t => (
+                  {selectedNews.tickers.map((t: string) => (
                     <Link key={t} href={`/analysis?ticker=${t}`} onClick={() => setSelectedNews(null)}>
                       <span className="text-xs px-2.5 py-1.5 bg-muted rounded-lg text-foreground hover:text-primary hover:bg-muted/80 transition-colors font-semibold flex items-center gap-1">
                         {tickerToName(t)} <ArrowRight size={10} />
@@ -359,7 +385,7 @@ export default function News() {
 
               {/* Tags */}
               <div className="flex gap-1.5 flex-wrap mb-4">
-                {selectedNews.tags.map(tag => (
+                {(selectedNews.tags ?? []).map((tag: string) => (
                   <span key={tag} className="text-[11px] px-2 py-0.5 bg-muted/50 rounded text-muted-foreground">{tag}</span>
                 ))}
               </div>

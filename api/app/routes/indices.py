@@ -1,22 +1,21 @@
-"""GET /v1/market/indices — dashboard top-row indices in one shot.
+"""GET /v1/market/indices — dashboard top-row indices, multi-source.
 
-The Home page Row 1 shows 6 cards: KOSPI / KOSDAQ / S&P 500 / NASDAQ /
-DOW / USD-KRW (with WTI / GOLD / BTC / VIX behind further scroll).
-Each card needs name, current value, change, change_pct. Six round-trip
-calls to /v1/quotes would work but be wasteful — we'd hit Polygon's
-rate ceiling on cold starts and the front-end would render in pieces.
+Sourcing strategy (free-tier compatible):
+  - US ETF proxies (SPY/QQQ/DIA/USO/GLD/VIXY) → Finnhub /quote
+    (intraday, fresh during market hours)
+  - USD/KRW → Alpha Vantage CURRENCY_EXCHANGE_RATE (intraday FX)
+  - KOSPI / KOSDAQ → Yahoo v7 /quote (intraday; mock fallback on 429)
+  - Everything else → mock value with source='mock'
 
-This endpoint fans out in parallel inside one request, caches the
-combined response in-memory for 60s (Vercel Fluid Compute keeps warm
-instances long enough for this to matter), and falls back to mock
-values when an upstream call fails so the dashboard never shows blanks
-during a Polygon outage.
+Why not a single source: Polygon free tier is EOD daily-bar only, so
+the old proxy-everything approach always showed yesterday's close.
+Yahoo's batch endpoint is the cleanest one-shot but their free
+endpoints throttle cloud IPs aggressively. Finnhub + AV are stable on
+free tier; we keep them for what they're best at and use Yahoo only as
+a side-channel for indices the others can't reach.
 
-Each index is mapped to a Polygon-friendly proxy (ETF or index ticker)
-since Polygon doesn't expose all global indices directly on the free
-tier. KOSPI / KOSDAQ / USD-KRW have no proxy with reliable free-tier
-coverage; they return as `stale=true` with the last cached value so the
-dashboard still shows a card.
+Cached 60s in-process so a popular dashboard burst doesn't trigger
+rate limits.
 """
 
 from __future__ import annotations
@@ -27,41 +26,49 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.settings import Settings, get_settings
-from app.sources import polygon
+from app.sources import alphavantage, finnhub, yahoo
 
 
 router = APIRouter(prefix="/market", tags=["market"])
 
 
-# (symbol shown to user, display name, polygon proxy ticker, market group)
-# Symbol is the user-facing label; the proxy is what Polygon understands.
-# `market` group is used by the front-end to colour the card and decide
-# whether to badge it as 시뮬레이션 when the proxy isn't live.
-INDICES: List[Tuple[str, str, Optional[str], str]] = [
-    ("KOSPI",   "코스피",       None,    "KR"),
-    ("KOSDAQ",  "코스닥",       None,    "KR"),
-    ("S&P 500", "S&P 500",      "SPY",   "US"),
-    ("NASDAQ",  "나스닥",       "QQQ",   "US"),
-    ("DOW",     "다우",         "DIA",   "US"),
-    ("USD/KRW", "원/달러",       None,   "FX"),
-    ("WTI",     "국제유가 (WTI)", "USO",  "COMM"),
-    ("GOLD",    "금",           "GLD",   "COMM"),
-    ("VIX",     "공포지수 (VIX)", "VIXY", "VOL"),
+# (display symbol, display name, market group)
+_DISPLAY: List[Tuple[str, str, str]] = [
+    ("KOSPI",   "코스피",         "KR"),
+    ("KOSDAQ",  "코스닥",         "KR"),
+    ("S&P 500", "S&P 500",        "US"),
+    ("NASDAQ",  "나스닥",         "US"),
+    ("DOW",     "다우",           "US"),
+    ("USD/KRW", "원/달러",         "FX"),
+    ("WTI",     "국제유가 (WTI)", "COMM"),
+    ("GOLD",    "금",             "COMM"),
+    ("VIX",     "공포지수 (VIX)", "VOL"),
 ]
 
-# In-process cache. Keyed by () (whole response). Vercel Functions are
-# stateless across requests but warm instances reuse the dict.
+# US display-symbol → Finnhub ETF proxy (intraday on free tier).
+_FINNHUB_PROXY: Dict[str, str] = {
+    "S&P 500": "SPY",
+    "NASDAQ":  "QQQ",
+    "DOW":     "DIA",
+    "WTI":     "USO",
+    "GOLD":    "GLD",
+    "VIX":     "VIXY",
+}
+
+# KR display-symbol → Yahoo index ticker (Yahoo is free for indices).
+_YAHOO_SYMBOL: Dict[str, str] = {
+    "KOSPI":  "^KS11",
+    "KOSDAQ": "^KQ11",
+}
+
 _CACHE_TTL = 60.0
 _cache: Dict[str, Tuple[float, "IndicesResponse"]] = {}
 
-# Mock fallback values keep the cards visible during an upstream outage
-# (matches the previous mock numbers on the dashboard).
 _MOCK_VALUES: Dict[str, Tuple[float, float, float]] = {
-    # (value, change, change_pct)
     "KOSPI":   (2684.32, 18.42, 0.69),
     "KOSDAQ":  (872.14, 4.21, 0.49),
     "S&P 500": (5812.44, 21.82, 0.38),
@@ -80,57 +87,85 @@ class IndexItem(BaseModel):
     value: float
     change: float
     change_pct: float
-    market: str  # KR | US | FX | COMM | VOL
+    market: str
     source: str  # "live" | "mock"
 
 
 class IndicesResponse(BaseModel):
     items: List[IndexItem]
-    # Server-side timestamp when this payload was assembled. Frontend
-    # renders a small "업데이트: HH:MM" hint per widget so users can tell
-    # when data is fresh vs minutes/hours stale.
     updated_at: str
 
 
-async def _quote_one(
-    symbol: str,
-    name: str,
-    proxy: Optional[str],
-    market_group: str,
+def _mock_item(symbol: str, name: str, market_group: str) -> IndexItem:
+    fv, fc, fp = _MOCK_VALUES.get(symbol, (0.0, 0.0, 0.0))
+    return IndexItem(
+        symbol=symbol, name=name,
+        value=fv, change=fc, change_pct=fp,
+        market=market_group, source="mock",
+    )
+
+
+async def _fetch_finnhub(
+    display: str, name: str, proxy: str, market_group: str,
     settings: Settings,
-    client: httpx.AsyncClient,
 ) -> IndexItem:
-    """Fetch a single index via its Polygon proxy. Falls back to mock."""
-    fallback_value, fallback_change, fallback_pct = _MOCK_VALUES.get(symbol, (0.0, 0.0, 0.0))
-    if not proxy or not settings.polygon_api_key:
-        return IndexItem(
-            symbol=symbol, name=name,
-            value=fallback_value, change=fallback_change, change_pct=fallback_pct,
-            market=market_group, source="mock",
-        )
+    """Use a Finnhub ETF/proxy quote for the *change* signal, but
+    project it onto the actual index level. Showing the bare SPY price
+    (737) where the dashboard used to show 5,800-ish would confuse
+    users — the proxy and the index it tracks are not the same number.
+    So we keep the live `change_pct` from the proxy and rebuild
+    `value` and `change` on top of the mock baseline.
+
+    The mock baseline drifts over days (it's static), so the absolute
+    value will slowly skew until we get a real index-level source
+    online (Yahoo when it's not 429'd, or a paid Polygon tier). The
+    *direction and percent* stays accurate.
+    """
+    if not settings.finnhub_api_key:
+        return _mock_item(display, name, market_group)
+    q = await finnhub.fetch_quote(proxy, settings.finnhub_api_key)
+    if not q:
+        return _mock_item(display, name, market_group)
+    dp = float(q.get("dp") or 0.0)
+    baseline, _, _ = _MOCK_VALUES.get(display, (0.0, 0.0, 0.0))
+    value = baseline * (1 + dp / 100.0)
+    change = value - baseline
+    return IndexItem(
+        symbol=display, name=name,
+        value=value, change=change, change_pct=dp,
+        market=market_group, source="live",
+    )
+
+
+async def _fetch_usdkrw(settings: Settings) -> IndexItem:
+    name, market_group = "원/달러", "FX"
+    if not settings.alphavantage_api_key:
+        return _mock_item("USD/KRW", name, market_group)
+    r = await alphavantage.fetch_currency_rate(
+        "USD", "KRW", settings.alphavantage_api_key,
+    )
+    if not r or not r.get("rate"):
+        return _mock_item("USD/KRW", name, market_group)
+    rate = r["rate"]
+    # Alpha Vantage doesn't return previous close on this endpoint —
+    # compute change/pct against the mock baseline. Better than blank.
+    base = _MOCK_VALUES["USD/KRW"][0]
+    change = rate - base
+    change_pct = (change / base) * 100.0 if base else 0.0
+    return IndexItem(
+        symbol="USD/KRW", name=name,
+        value=rate, change=change, change_pct=change_pct,
+        market=market_group, source="live",
+    )
+
+
+async def _fetch_yahoo_batch(client: httpx.AsyncClient) -> Dict[str, Dict[str, float]]:
+    """Pull KOSPI + KOSDAQ in one Yahoo call. Returns empty dict on
+    429/network failure — caller falls back to mock for those rows."""
     try:
-        quote = await polygon.fetch_daily_quote(
-            proxy, "1mo", settings.polygon_api_key, client=client
-        )
-        return IndexItem(
-            symbol=symbol, name=name,
-            value=quote.last, change=quote.change, change_pct=quote.change_pct,
-            market=market_group, source="live",
-        )
-    except HTTPException:
-        # 404 (unknown) / 429 (rate-limited) / 503 — show mock so the
-        # card still renders.
-        return IndexItem(
-            symbol=symbol, name=name,
-            value=fallback_value, change=fallback_change, change_pct=fallback_pct,
-            market=market_group, source="mock",
-        )
-    except Exception:  # noqa: BLE001
-        return IndexItem(
-            symbol=symbol, name=name,
-            value=fallback_value, change=fallback_change, change_pct=fallback_pct,
-            market=market_group, source="mock",
-        )
+        return await yahoo.fetch_quotes(list(_YAHOO_SYMBOL.values()), client=client)
+    except yahoo.YahooError:
+        return {}
 
 
 @router.get("/indices", response_model=IndicesResponse)
@@ -143,14 +178,40 @@ async def get_indices(
         return cached[1]
 
     async with httpx.AsyncClient(timeout=10.0) as client:
-        tasks = [
-            _quote_one(symbol, name, proxy, market, settings, client)
-            for symbol, name, proxy, market in INDICES
+        # Kick off all three streams in parallel.
+        finnhub_tasks = [
+            _fetch_finnhub(display, name, _FINNHUB_PROXY[display], market_group, settings)
+            for display, name, market_group in _DISPLAY
+            if display in _FINNHUB_PROXY
         ]
-        items = await asyncio.gather(*tasks)
+        usdkrw_task = _fetch_usdkrw(settings)
+        yahoo_task = _fetch_yahoo_batch(client)
+        finnhub_items, usdkrw_item, yahoo_quotes = await asyncio.gather(
+            asyncio.gather(*finnhub_tasks),
+            usdkrw_task,
+            yahoo_task,
+        )
 
+    by_symbol: Dict[str, IndexItem] = {it.symbol: it for it in finnhub_items}
+    by_symbol[usdkrw_item.symbol] = usdkrw_item
+
+    # Fill KR rows from the Yahoo batch (or mock if Yahoo returned nothing).
+    for display, yahoo_sym in _YAHOO_SYMBOL.items():
+        name = next(n for s, n, _m in _DISPLAY if s == display)
+        group = next(m for s, _n, m in _DISPLAY if s == display)
+        q = yahoo_quotes.get(yahoo_sym)
+        if q is not None:
+            by_symbol[display] = IndexItem(
+                symbol=display, name=name,
+                value=q["price"], change=q["change"], change_pct=q["change_pct"],
+                market=group, source="live",
+            )
+        else:
+            by_symbol[display] = _mock_item(display, name, group)
+
+    items = [by_symbol[s] for s, _n, _m in _DISPLAY if s in by_symbol]
     response = IndicesResponse(
-        items=list(items),
+        items=items,
         updated_at=datetime.now(tz=timezone.utc).isoformat(),
     )
     _cache["all"] = (now, response)

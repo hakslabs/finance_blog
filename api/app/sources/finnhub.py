@@ -34,6 +34,18 @@ async def _get(path: str, params: Dict[str, Any], api_key: str) -> Any:
     return resp.json()
 
 
+async def fetch_quote(symbol: str, api_key: str) -> Optional[Dict[str, Any]]:
+    """Intraday-ish quote: {c, d, dp, h, l, o, pc, t}. None on 4xx/5xx
+    so the caller can fall back gracefully without an HTTPException."""
+    try:
+        data = await _get("/quote", {"symbol": symbol}, api_key)
+    except HTTPException:
+        return None
+    if not isinstance(data, dict) or "c" not in data:
+        return None
+    return data
+
+
 async def fetch_company_news(
     symbol: str, api_key: str, days: int = 14
 ) -> List[Dict[str, Any]]:
