@@ -5,7 +5,19 @@
  * - 뉴스 클릭 시 상세 모달
  * - 관심 뉴스 북마크
  */
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useNewsList } from "@/features/news";
+
+function relTime(iso: string | null): string {
+  if (!iso) return "";
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return "";
+  const diff = (Date.now() - t) / 1000;
+  if (diff < 60) return `${Math.floor(diff)}초`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}분`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}시간`;
+  return `${Math.floor(diff / 86400)}일`;
+}
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -120,7 +132,24 @@ export default function News() {
   const [bookmarks, setBookmarks] = useState<number[]>([]);
   const [selectedNews, setSelectedNews] = useState<typeof ALL_NEWS[0] | null>(null);
 
-  const filtered = ALL_NEWS.filter(n => {
+  const { data: liveNewsRaw } = useNewsList({ limit: 80 });
+  const newsList = useMemo<typeof ALL_NEWS>(() => {
+    if (!liveNewsRaw || liveNewsRaw.length === 0) return ALL_NEWS;
+    return liveNewsRaw.map((n, i) => ({
+      id: i + 1,
+      title: n.title,
+      body: n.summary ?? "",
+      source: n.source,
+      time: relTime(n.published_at),
+      category: "미국",
+      tickers: n.related_symbols ?? [],
+      impact: null as string | null,
+      up: null as boolean | null,
+      tags: [] as string[],
+    }));
+  }, [liveNewsRaw]);
+
+  const filtered = newsList.filter(n => {
     const matchCat = activeCategory === "전체" || n.category === activeCategory;
     const matchSearch = !searchQuery || n.title.includes(searchQuery) || n.tags.some(t => t.includes(searchQuery));
     return matchCat && matchSearch;

@@ -5,9 +5,10 @@
  * - 이벤트 클릭 시 상세 모달
  * - 이벤트 추가 (메모)
  */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { useEconomicEvents } from "@/features/events";
 import { Button } from "@/components/ui/button";
 import {
   ChevronLeft, ChevronRight, Plus, X, Star, Bell,
@@ -61,8 +62,36 @@ export default function CalendarPage() {
   const [selectedEvent, setSelectedEvent] = useState<typeof EVENTS_DATA[0] | null>(null);
   const [listView, setListView] = useState(false);
 
+  const { data: liveEventsRaw } = useEconomicEvents();
+  const events = useMemo<typeof EVENTS_DATA>(() => {
+    if (!liveEventsRaw || liveEventsRaw.length === 0) return EVENTS_DATA;
+    const dayLabels = ["일", "월", "화", "수", "목", "금", "토"];
+    const importance: Record<string, "상" | "중" | "하"> = {
+      high: "상",
+      medium: "중",
+      low: "하",
+    };
+    return liveEventsRaw.map((e, i) => {
+      const d = new Date(e.time);
+      return {
+        id: i + 1,
+        date: d.getUTCDate(),
+        day: dayLabels[d.getUTCDay()],
+        month: d.getUTCMonth() + 1,
+        year: d.getUTCFullYear(),
+        title: e.event,
+        type: "매크로",
+        holding: null as string | null,
+        memo: 0,
+        tickers: [] as string[],
+        importance: importance[e.impact] ?? "중",
+        detail: `[${e.country}] 실제: ${e.actual ?? "—"}${e.unit ?? ""} · 예상: ${e.estimate ?? "—"}${e.unit ?? ""} · 이전: ${e.prev ?? "—"}${e.unit ?? ""}`,
+      };
+    });
+  }, [liveEventsRaw]);
+
   // Events for current month
-  const monthEvents = EVENTS_DATA.filter(e =>
+  const monthEvents = events.filter(e =>
     e.year === viewYear && e.month === viewMonth &&
     (filterType === "전체" || e.type === filterType)
   );
@@ -173,7 +202,7 @@ export default function CalendarPage() {
           <div className="grid grid-cols-7">
             {cells.map((cell, idx) => {
               const cellEvents = cell.isCurrentMonth
-                ? EVENTS_DATA.filter(e => e.year === viewYear && e.month === viewMonth && e.date === cell.date && (filterType === "전체" || e.type === filterType))
+                ? events.filter(e => e.year === viewYear && e.month === viewMonth && e.date === cell.date && (filterType === "전체" || e.type === filterType))
                 : [];
               const isToday = cell.isCurrentMonth && cell.date === today.getDate() && viewYear === today.getFullYear() && viewMonth === today.getMonth() + 1;
               const colIdx = idx % 7;
