@@ -201,22 +201,91 @@ function StockDetailModal({ ticker, onClose }: { ticker: string; onClose: () => 
   );
 }
 
+// Sum the net (= 매수 − 매도) shares per symbol from the trades log.
+// Used to gate 매도 entries in AddTradeModal so the user can't sell
+// shares they don't have, and to surface the current position next to
+// the symbol picker as a sanity check.
+function netSharesByTrade(trades: Trade[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const t of trades) {
+    const delta = t.type === "매수" ? t.shares : -t.shares;
+    out[t.symbol] = (out[t.symbol] ?? 0) + delta;
+  }
+  return out;
+}
+
 // ── Add Trade Modal ───────────────────────────────────────────
-function AddTradeModal({ onClose, onAdd }: { onClose: () => void; onAdd: (t: Trade) => void }) {
-  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), symbol: "", type: "매수" as "매수" | "매도", shares: "", price: "", fee: "", note: "", createJournal: true });
+function AddTradeModal({
+  onClose,
+  onAdd,
+  currentHoldings,
+}: {
+  onClose: () => void;
+  onAdd: (t: Trade) => void;
+  currentHoldings: Record<string, number>;
+}) {
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const [form, setForm] = useState({ date: todayIso, symbol: "", type: "매수" as "매수" | "매도", shares: "", price: "", fee: "", note: "", createJournal: true });
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+  const [touched, setTouched] = useState({ symbol: false, shares: false, price: false, date: false, fee: false });
   const searchResults = useMemo(() => {
     if (!search.trim() || form.symbol) return [];
     const q = search.toLowerCase();
     return ALL_STOCKS.filter(s => s.ticker.toLowerCase().includes(q) || s.name.toLowerCase().includes(q)).slice(0, 6);
   }, [search, form.symbol]);
-  const total = (parseFloat(form.shares) || 0) * (parseFloat(form.price) || 0);
-  const fee = parseFloat(form.fee) || total * 0.001;
+
+  // ── Validation ───────────────────────────────────────────────
+  // Field-level rules. `error` is non-null when the field is invalid
+  // (regardless of `touched`); the UI only paints the error red once
+  // the user has either touched the field or tried to submit.
+  const sharesNum = parseFloat(form.shares);
+  const priceNum = parseFloat(form.price);
+  const feeNum = form.fee.trim() === "" ? NaN : parseFloat(form.fee);
+  const heldShares = form.symbol ? (currentHoldings[form.symbol] ?? 0) : 0;
+  const stockIsKR = form.symbol ? isKRTicker(form.symbol) : false;
+  const isInUniverse = !!form.symbol && ALL_STOCKS.some(s => s.ticker === form.symbol);
+
+  const errors: { symbol?: string; shares?: string; price?: string; date?: string; fee?: string } = {};
+  if (!form.symbol) errors.symbol = "검색 결과에서 종목을 선택해주세요";
+  else if (!isInUniverse) errors.symbol = "지원하지 않는 종목입니다";
+
+  if (!form.shares) errors.shares = "수량을 입력해주세요";
+  else if (!isFinite(sharesNum) || sharesNum <= 0) errors.shares = "0보다 큰 수량을 입력해주세요";
+  else if (stockIsKR && !Number.isInteger(sharesNum)) errors.shares = "국내 주식은 1주 단위로 거래합니다";
+  else if (form.type === "매도" && form.symbol && isInUniverse && sharesNum > heldShares) {
+    errors.shares = heldShares > 0
+      ? `보유 ${heldShares}주를 초과합니다`
+      : "보유 중이지 않은 종목입니다";
+  }
+
+  if (!form.price) errors.price = "단가를 입력해주세요";
+  else if (!isFinite(priceNum) || priceNum <= 0) errors.price = "0보다 큰 단가를 입력해주세요";
+
+  if (!form.date) errors.date = "거래 날짜를 선택해주세요";
+  else if (form.date > todayIso) errors.date = "미래 날짜는 등록할 수 없습니다";
+
+  if (form.fee.trim() !== "" && (!isFinite(feeNum) || feeNum < 0)) {
+    errors.fee = "수수료는 0 이상이어야 합니다";
+  }
+
+  const total = (isFinite(sharesNum) ? sharesNum : 0) * (isFinite(priceNum) ? priceNum : 0);
+  const fee = isFinite(feeNum) ? feeNum : total * 0.001;
+  const isValid = Object.keys(errors).length === 0;
+
+  const showError = (field: keyof typeof touched) =>
+    (touched[field] || allTouchedOnSubmit) ? errors[field] : undefined;
+  const [allTouchedOnSubmit, setAllTouchedOnSubmit] = useState(false);
+
   const handleSubmit = () => {
-    if (!form.symbol || !form.shares || !form.price) { toast.error("종목, 수량, 단가를 입력하세요."); return; }
+    if (!isValid) {
+      setAllTouchedOnSubmit(true);
+      const firstErr = Object.values(errors)[0];
+      if (firstErr) toast.error(firstErr);
+      return;
+    }
     const stock = ALL_STOCKS.find(s => s.ticker === form.symbol);
-    onAdd({ id: "t" + Date.now(), date: form.date, symbol: form.symbol, name: stock?.name ?? form.symbol, type: form.type, shares: parseFloat(form.shares), price: parseFloat(form.price), total, fee, note: form.note, journalLinked: form.createJournal });
+    onAdd({ id: "t" + Date.now(), date: form.date, symbol: form.symbol, name: stock?.name ?? form.symbol, type: form.type, shares: sharesNum, price: priceNum, total, fee, note: form.note, journalLinked: form.createJournal });
     toast.success(`${form.symbol} ${form.type} 거래 등록 완료`);
     onClose();
   };
@@ -237,12 +306,15 @@ function AddTradeModal({ onClose, onAdd }: { onClose: () => void; onAdd: (t: Tra
               <input value={form.symbol || search}
                 onChange={e => { if (form.symbol) setForm(f => ({ ...f, symbol: "" })); setSearch(e.target.value); setShowSearch(true); }}
                 onFocus={() => setShowSearch(true)}
+                onBlur={() => setTouched(t => ({ ...t, symbol: true }))}
                 placeholder="티커 또는 종목명 검색..."
-                className="w-full pl-8 pr-3 py-2 text-sm bg-muted/30 border border-border rounded-lg focus:outline-none focus:border-primary" />
+                className={cn("w-full pl-8 pr-3 py-2 text-sm bg-muted/30 border rounded-lg focus:outline-none",
+                  showError("symbol") ? "border-down focus:border-down" : "border-border focus:border-primary"
+                )} />
               {showSearch && searchResults.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-xl z-10 overflow-hidden">
                   {searchResults.map(s => (
-                    <button key={s.ticker} onClick={() => { setForm(f => ({ ...f, symbol: s.ticker, price: String(s.price) })); setSearch(s.ticker + " " + s.name); setShowSearch(false); }}
+                    <button key={s.ticker} onClick={() => { setForm(f => ({ ...f, symbol: s.ticker, price: String(s.price) })); setSearch(s.ticker + " " + s.name); setShowSearch(false); setTouched(t => ({ ...t, symbol: true })); }}
                       className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors text-left border-b border-border/30 last:border-0">
                       <span className="text-xs font-mono bg-muted/50 px-1.5 py-0.5 rounded text-muted-foreground w-16 text-center">{s.ticker}</span>
                       <span className="text-sm flex-1">{s.name}</span>
@@ -252,6 +324,10 @@ function AddTradeModal({ onClose, onAdd }: { onClose: () => void; onAdd: (t: Tra
                 </div>
               )}
             </div>
+            {showError("symbol") && <div className="text-[11px] text-down mt-1">{showError("symbol")}</div>}
+            {form.symbol && form.type === "매도" && (
+              <div className="text-[11px] text-muted-foreground mt-1">현재 보유 {heldShares}주</div>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -265,20 +341,39 @@ function AddTradeModal({ onClose, onAdd }: { onClose: () => void; onAdd: (t: Tra
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">거래 날짜</label>
-              <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                className="w-full px-3 py-2 text-sm bg-muted/30 border border-border rounded-lg focus:outline-none focus:border-primary" />
+              <input type="date" value={form.date} max={todayIso}
+                onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                onBlur={() => setTouched(t => ({ ...t, date: true }))}
+                className={cn("w-full px-3 py-2 text-sm bg-muted/30 border rounded-lg focus:outline-none",
+                  showError("date") ? "border-down focus:border-down" : "border-border focus:border-primary"
+                )} />
+              {showError("date") && <div className="text-[11px] text-down mt-1">{showError("date")}</div>}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">수량</label>
-              <input type="number" value={form.shares} onChange={e => setForm(f => ({ ...f, shares: e.target.value }))} placeholder="0"
-                className="w-full px-3 py-2 text-sm bg-muted/30 border border-border rounded-lg focus:outline-none focus:border-primary font-mono" />
+              <input type="number" value={form.shares}
+                min={0} step={stockIsKR ? 1 : "any"}
+                onChange={e => setForm(f => ({ ...f, shares: e.target.value }))}
+                onBlur={() => setTouched(t => ({ ...t, shares: true }))}
+                placeholder="0"
+                className={cn("w-full px-3 py-2 text-sm bg-muted/30 border rounded-lg focus:outline-none font-mono",
+                  showError("shares") ? "border-down focus:border-down" : "border-border focus:border-primary"
+                )} />
+              {showError("shares") && <div className="text-[11px] text-down mt-1">{showError("shares")}</div>}
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">단가</label>
-              <input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} placeholder="0"
-                className="w-full px-3 py-2 text-sm bg-muted/30 border border-border rounded-lg focus:outline-none focus:border-primary font-mono" />
+              <input type="number" value={form.price}
+                min={0} step="any"
+                onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
+                onBlur={() => setTouched(t => ({ ...t, price: true }))}
+                placeholder="0"
+                className={cn("w-full px-3 py-2 text-sm bg-muted/30 border rounded-lg focus:outline-none font-mono",
+                  showError("price") ? "border-down focus:border-down" : "border-border focus:border-primary"
+                )} />
+              {showError("price") && <div className="text-[11px] text-down mt-1">{showError("price")}</div>}
             </div>
           </div>
           {total > 0 && (
@@ -289,8 +384,16 @@ function AddTradeModal({ onClose, onAdd }: { onClose: () => void; onAdd: (t: Tra
           )}
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">수수료 (기본 0.1%)</label>
-            <input type="number" value={form.fee} onChange={e => setForm(f => ({ ...f, fee: e.target.value }))} placeholder={fee.toFixed(2)}
-              className="w-full px-3 py-2 text-sm bg-muted/30 border border-border rounded-lg focus:outline-none focus:border-primary font-mono" />
+            <input type="number" value={form.fee}
+              min={0} step="any"
+              onChange={e => setForm(f => ({ ...f, fee: e.target.value }))}
+              onBlur={() => setTouched(t => ({ ...t, fee: true }))}
+              placeholder={fee.toFixed(2)}
+              className={cn("w-full px-3 py-2 text-sm bg-muted/30 border rounded-lg focus:outline-none font-mono",
+                showError("fee") ? "border-down focus:border-down" : "border-border focus:border-primary"
+              )} />
+            {showError("fee") && <div className="text-[11px] text-down mt-1">{showError("fee")}</div>}
+            <div className="text-[11px] text-muted-foreground mt-1">비워두면 {fee.toFixed(2)} 자동 적용</div>
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">메모</label>
@@ -304,7 +407,14 @@ function AddTradeModal({ onClose, onAdd }: { onClose: () => void; onAdd: (t: Tra
         </div>
         <div className="px-5 pb-5 flex gap-2">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-lg bg-muted/40 text-muted-foreground text-sm hover:text-foreground">취소</button>
-          <button onClick={handleSubmit} className={cn("flex-1 py-2.5 rounded-lg text-sm font-semibold", form.type === "매수" ? "bg-up text-white hover:bg-up/90" : "bg-down text-white hover:bg-down/90")}>{form.type} 등록</button>
+          <button onClick={handleSubmit} disabled={!isValid}
+            className={cn("flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors",
+              !isValid
+                ? "bg-muted text-muted-foreground cursor-not-allowed"
+                : form.type === "매수"
+                  ? "bg-up text-white hover:bg-up/90"
+                  : "bg-down text-white hover:bg-down/90"
+            )}>{form.type} 등록</button>
         </div>
       </div>
     </div>
@@ -715,7 +825,13 @@ function TradesTab() {
           </table>
         </div>
       </div>
-      {showAddModal && <AddTradeModal onClose={() => setShowAddModal(false)} onAdd={t => addTradeSynced(t)} />}
+      {showAddModal && (
+        <AddTradeModal
+          onClose={() => setShowAddModal(false)}
+          onAdd={t => addTradeSynced(t)}
+          currentHoldings={netSharesByTrade(trades)}
+        />
+      )}
       {selectedTicker && <StockDetailModal ticker={selectedTicker} onClose={() => setSelectedTicker(null)} />}
     </div>
   );
