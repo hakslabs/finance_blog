@@ -214,6 +214,14 @@ def main() -> int:
                     "source": "dart",
                 })
 
+            # Same-day, same-symbol filings happen often in DART (e.g. an
+            # amendment + the original 잠정실적). PostgREST ON CONFLICT
+            # rejects intra-batch dupes — collapse them keeping the last.
+            seen: Dict[tuple, Dict[str, Any]] = {}
+            for row in out:
+                seen[(row["symbol"], row["event_type"], row["scheduled_at"])] = row
+            out = list(seen.values())
+
             written = upsert_rows(client, supabase_url, service_key, out)
             total_upserted += written
             print(f"    upserted {written} / {len(out)} → stock_calendar_events")

@@ -176,57 +176,57 @@ def fetch_nasdaq100(client: httpx.Client) -> List[Dict[str, str]]:
 
 
 def fetch_kospi200(client: httpx.Client) -> List[Dict[str, str]]:
-    """KRX data API: a two-call dance (OTP then payload) without auth."""
-    otp_url = "http://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd"
-    download_url = "http://data.krx.co.kr/comm/fileDn/download_csv/download.cmd"
+    """KOSPI 200 constituents via Naver Finance HTML pagination.
+
+    KRX data.krx.co.kr's OTP endpoint started returning 403 to scripted
+    clients (2026-05). Naver Finance still serves a paginated HTML
+    table at `finance.naver.com/sise/entryJongmok.naver?sosok=KPI200`
+    that we can parse with the same _TableExtractor used for Wikipedia.
+    Roughly 100 rows per page; loop pages 1..N until empty.
+    """
+    base = "https://finance.naver.com/sise/entryJongmok.naver"
     headers = {
         "User-Agent": "Mozilla/5.0 financelab-seeder/1.0",
-        "Referer": "http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd",
+        "Referer": "https://finance.naver.com/",
+        "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.7",
     }
-    # KOSPI200 지수 구성종목 / 코드: 1028
-    otp_params = {
-        "mktId": "STK",
-        "indIdx": "1",
-        "indIdx2": "028",
-        "trdDd": time.strftime("%Y%m%d"),
-        "share": "1",
-        "money": "1",
-        "csvxls_isNo": "false",
-        "name": "fileDown",
-        "url": "dbms/MDC/STAT/standard/MDCSTAT00601",
-    }
-    try:
-        otp = client.post(otp_url, data=otp_params, headers=headers, timeout=20.0)
-        if otp.status_code >= 400:
-            print(f"  ! KRX OTP {otp.status_code}", file=sys.stderr)
-            return []
-        otp_code = otp.text.strip()
-        if not otp_code:
-            return []
-        resp = client.post(download_url, data={"code": otp_code}, headers=headers, timeout=30.0)
-        if resp.status_code >= 400:
-            print(f"  ! KRX download {resp.status_code}", file=sys.stderr)
-            return []
-        # CSV; KRX serves euc-kr
+    seen: Dict[str, str] = {}
+    for page in range(1, 25):  # Naver shows 10 / page → ≈ 20 pages for KOSPI 200
         try:
-            text = resp.content.decode("euc-kr")
+            resp = client.get(
+                base,
+                params={"page": str(page), "sosok": "KPI200"},
+                headers=headers,
+                timeout=20.0,
+            )
+        except httpx.HTTPError as exc:
+            print(f"  ! Naver page {page} request failed: {exc}", file=sys.stderr)
+            break
+        if resp.status_code >= 400:
+            print(f"  ! Naver page {page} {resp.status_code}", file=sys.stderr)
+            break
+        # Naver serves EUC-KR / CP949
+        try:
+            html = resp.content.decode("euc-kr")
         except UnicodeDecodeError:
-            text = resp.text
-    except httpx.HTTPError as exc:
-        print(f"  ! KRX request failed: {exc}", file=sys.stderr)
-        return []
+            html = resp.text
+        # Cheap: regex out /item/main.naver?code=DDDDDD links + the
+        # immediately following anchor text (= company name).
+        page_pairs = re.findall(
+            r'/item/main\.naver\?code=(\d{6})[^>]*>([^<]+)</a>',
+            html,
+        )
+        if not page_pairs:
+            break
+        before = len(seen)
+        for code, name in page_pairs:
+            if code not in seen:
+                seen[code] = name.strip()
+        # Stop early if the page added nothing new (we've wrapped past the end).
+        if len(seen) == before:
+            break
 
-    out: List[Dict[str, str]] = []
-    for line in text.splitlines()[1:]:
-        # Lines look like:  "005930","삼성전자","KOSPI200","..."
-        parts = [c.strip().strip('"') for c in line.split(",")]
-        if len(parts) < 2:
-            continue
-        code = parts[0]
-        name = parts[1]
-        if re.fullmatch(r"\d{6}", code):
-            out.append({"symbol": code, "name": name})
-    return out
+    return [{"symbol": code, "name": name} for code, name in seen.items()]
 
 
 def upsert(

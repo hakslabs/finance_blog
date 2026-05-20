@@ -179,6 +179,15 @@ def main() -> int:
                 "source": "polygon",
             })
 
+        # Dedupe on the unique-constraint key. Polygon can return the same
+        # (symbol, ex_date) more than once (revisions, split-adjusted rows);
+        # PostgREST ON CONFLICT chokes if a batch carries dupes.
+        seen: Dict[tuple, Dict[str, Any]] = {}
+        for row in out:
+            key = (row["symbol"], row["event_type"], row["scheduled_at"])
+            seen[key] = row  # last write wins
+        out = list(seen.values())
+
         written = upsert_rows(client, supabase_url, service_key, out)
         print(f"Done. Upserted {written} / {len(out)} dividend rows ({skipped} skipped: out of universe).")
     return 0
