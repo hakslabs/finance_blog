@@ -6,8 +6,9 @@
  * - 공포탐욕지수 클릭 → VIX/ADR 히스토리 차트 팝업
  * - 섹터 로테이션 → 미국/한국 탭 분리
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { apiGet } from "@/lib/http";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import {
@@ -404,11 +405,85 @@ function CalendarModal({ event, onClose }: { event: typeof CALENDAR_EVENTS[0]; o
 }
 
 // ── 지수 상세 모달 ───────────────────────────────────────────
+// Maps the dashboard's index labels onto a Polygon-friendly ticker so
+// we can pull real history from /v1/quotes. For things Polygon doesn't
+// cover at this tier (KOSPI/KOSDAQ/USDKRW/BTC) we leave `null` and the
+// modal generates a deterministic mock walk seeded from the index's
+// current value — keeps the chart visually consistent across opens.
+const INDEX_PROXY: Record<string, string | null> = {
+  "S&P 500": "SPY",
+  "NASDAQ": "QQQ",
+  "DOW": "DIA",
+  "VIX": "VIXY",
+  "GOLD": "GLD",
+  "WTI": "USO",
+  "KOSPI": null,
+  "KOSDAQ": null,
+  "USD/KRW": null,
+  "BTC": null,
+};
+
+function generateMockWalk(seedValue: number, days: number): { t: string; c: number }[] {
+  // Deterministic pseudo-random walk so the chart doesn't reshuffle on
+  // every render. Uses a tiny LCG keyed by the integer value.
+  let seed = Math.max(1, Math.floor(seedValue * 100));
+  const rand = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return (seed % 10000) / 10000;
+  };
+  const out: { t: string; c: number }[] = [];
+  let v = seedValue;
+  const today = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    // ±0.7% daily drift, lightly trending toward the current value at the end
+    v = v * (1 + (rand() - 0.5) * 0.014);
+    out.push({ t: d.toISOString().slice(0, 10), c: v });
+  }
+  // Pin the last bar to the current value so summary maths line up.
+  out[out.length - 1].c = seedValue;
+  return out;
+}
+
+type IndexBar = { t: string; c: number };
+type IndexHistory = { bars: IndexBar[]; source: "live" | "mock" };
+
+function useIndexHistory(idx: typeof MARKET_INDICES[0]): IndexHistory {
+  const proxy = INDEX_PROXY[idx.symbol];
+  const [bars, setBars] = useState<IndexBar[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!proxy) { setBars(null); return; }
+    apiGet<{ bars: { t: string; c: number }[] }>(`/quotes/${proxy}?range=1mo`)
+      .then((d) => {
+        if (cancelled) return;
+        const trimmed = (d.bars ?? []).slice(-30).map((b) => ({ t: b.t.slice(0, 10), c: b.c }));
+        setBars(trimmed.length ? trimmed : null);
+      })
+      .catch(() => { if (!cancelled) setBars(null); });
+    return () => { cancelled = true; };
+  }, [proxy]);
+  if (bars && bars.length >= 5) return { bars, source: "live" };
+  return { bars: generateMockWalk(idx.value, 30), source: "mock" };
+}
+
 function IndexModal({ idx, onClose }: { idx: typeof MARKET_INDICES[0]; onClose: () => void }) {
   const up = idx.change >= 0;
+  const color = up ? "var(--up)" : "var(--down)";
+  const { bars, source } = useIndexHistory(idx);
+
+  // Summary stats over the rendered window
+  const high = bars.reduce((m, b) => Math.max(m, b.c), -Infinity);
+  const low = bars.reduce((m, b) => Math.min(m, b.c), Infinity);
+  const first = bars[0]?.c ?? idx.value;
+  const last = bars[bars.length - 1]?.c ?? idx.value;
+  const periodReturn = ((last - first) / first) * 100;
+  const periodUp = periodReturn >= 0;
+
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-lg mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-start justify-between mb-4">
           <div>
             <div className="text-xs text-muted-foreground">시장 지수</div>
@@ -418,14 +493,66 @@ function IndexModal({ idx, onClose }: { idx: typeof MARKET_INDICES[0]; onClose: 
             <X size={16} />
           </button>
         </div>
-        <div className="bg-muted/30 rounded-xl p-4 mb-4">
+
+        {/* Current value */}
+        <div className="bg-muted/30 rounded-xl p-4 mb-3">
           <div className="text-3xl font-bold font-mono">{idx.value.toLocaleString()}</div>
-          <div className={cn("flex items-center gap-1.5 mt-2 text-sm font-mono", up ? "text-up" : "text-down")}>
+          <div className={cn("flex items-center gap-1.5 mt-1.5 text-sm font-mono", up ? "text-up" : "text-down")}>
             {up ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
             {up ? "+" : ""}{idx.change.toFixed(2)} ({up ? "+" : ""}{idx.changePct.toFixed(2)}%)
           </div>
-          <div className="text-[10px] text-muted-foreground mt-2">실시간 데이터 · 15분 지연</div>
         </div>
+
+        {/* 30d chart */}
+        <div className="bg-muted/20 rounded-xl p-3 mb-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">최근 30일 추이</span>
+            <span className={cn("text-[10px] px-1.5 py-0.5 rounded", source === "live" ? "bg-up/10 text-up" : "bg-muted text-muted-foreground")}>
+              {source === "live" ? "실데이터" : "시뮬레이션"}
+            </span>
+          </div>
+          <div className="h-32">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={bars} margin={{ top: 2, right: 4, bottom: 0, left: -10 }}>
+                <defs>
+                  <linearGradient id={`idxGrad-${idx.symbol}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={color} stopOpacity={0.3} />
+                    <stop offset="95%" stopColor={color} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="t" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} interval={5}
+                       tickFormatter={(v: string) => v.slice(5)} />
+                <YAxis domain={["auto", "auto"]} tick={{ fontSize: 9 }} tickLine={false} axisLine={false}
+                       tickFormatter={(v: number) => v >= 1000 ? v.toLocaleString() : v.toFixed(1)} />
+                <Tooltip
+                  contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px", fontSize: 11 }}
+                  labelStyle={{ color: "var(--muted-foreground)" }}
+                  formatter={(v: number) => [v.toLocaleString(undefined, { maximumFractionDigits: 2 }), "종가"]}
+                />
+                <Area type="monotone" dataKey="c" stroke={color} strokeWidth={2} fill={`url(#idxGrad-${idx.symbol})`} dot={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Summary stats */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="bg-muted/30 rounded-lg p-2.5 text-center">
+            <div className="text-[10px] text-muted-foreground">30일 누적</div>
+            <div className={cn("text-sm font-bold font-mono", periodUp ? "text-up" : "text-down")}>
+              {periodUp ? "+" : ""}{periodReturn.toFixed(2)}%
+            </div>
+          </div>
+          <div className="bg-muted/30 rounded-lg p-2.5 text-center">
+            <div className="text-[10px] text-muted-foreground">30일 최고</div>
+            <div className="text-sm font-bold font-mono">{high.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+          </div>
+          <div className="bg-muted/30 rounded-lg p-2.5 text-center">
+            <div className="text-[10px] text-muted-foreground">30일 최저</div>
+            <div className="text-sm font-bold font-mono">{low.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+          </div>
+        </div>
+
         <div className="flex gap-2">
           <Link href="/analysis" onClick={onClose} className="flex-1">
             <button className="w-full px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90">
