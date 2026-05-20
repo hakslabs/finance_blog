@@ -824,8 +824,11 @@ export default function Home() {
   const calToIso = useMemo(() => {
     const t = new Date(today); t.setDate(t.getDate() + 14); return t.toISOString().slice(0, 10);
   }, [today]);
+  // Dashboard calendar shows only **high-importance** events. User asked
+  // for "회의" / 발표 같은 잔잔한 매크로 말고 CPI / FOMC / NFP 같은 핵심
+  // 발표만. minImportance=3 = importance "상" on the existing scale.
   const { data: calItems } = useUnifiedCalendar({
-    from: calFromIso, to: calToIso, symbols: watchlistSymbols,
+    from: calFromIso, to: calToIso, symbols: watchlistSymbols, minImportance: 3,
   });
 
   // Market comparison chart (Row 4L). Plot S&P 500 (SPY) and KOSPI
@@ -835,28 +838,34 @@ export default function Home() {
   type PerfRow = { date: string; label: string; sp500: number | null; kospi: number | null };
   const [perfData, setPerfData] = useState<PerfRow[] | null>(null);
   useEffect(() => {
-    const range = perfPeriod === "1D" || perfPeriod === "1W" || perfPeriod === "1M"
-      ? "1mo"
-      : perfPeriod === "3M" ? "3mo"
-      : "1y";
+    // /v1/quotes only supports {1mo, 3mo, 6mo, 1y, 5y}. We always
+    // fetch the smallest range that contains the requested window
+    // and slice it client-side. 1D / 1W are subsets of 1mo.
+    const fetchRange = perfPeriod === "1Y" ? "1y" :
+      perfPeriod === "3M" ? "3mo" : "1mo";
+    // Tail length to keep after fetch. Trading-day approximations.
+    const tail = perfPeriod === "1D" ? 2 :
+      perfPeriod === "1W" ? 5 :
+      perfPeriod === "1M" ? 22 :
+      perfPeriod === "3M" ? 66 : 252;
     let cancelled = false;
     Promise.all([
-      apiGet<{ bars: { t: string; c: number }[] }>(`/quotes/SPY?range=${range}`).catch(() => null),
-      apiGet<{ bars: { t: string; c: number }[] }>(`/quotes/EWY?range=${range}`).catch(() => null),
+      apiGet<{ bars: { t: string; c: number }[] }>(`/quotes/SPY?range=${fetchRange}`).catch(() => null),
+      apiGet<{ bars: { t: string; c: number }[] }>(`/quotes/EWY?range=${fetchRange}`).catch(() => null),
     ]).then(([sp, kr]) => {
       if (cancelled) return;
-      const spBars = sp?.bars ?? [];
-      const krBars = kr?.bars ?? [];
+      const spBars = (sp?.bars ?? []).slice(-tail);
+      const krBars = (kr?.bars ?? []).slice(-tail);
       if (!spBars.length && !krBars.length) { setPerfData(null); return; }
       const sp0 = spBars[0]?.c ?? 1;
       const kr0 = krBars[0]?.c ?? 1;
       const len = Math.max(spBars.length, krBars.length);
-      // Build a date-keyed merged series. Each bar's t looks like
-      // "2026-04-21T00:00:00Z" → MM/DD label.
       const merged: PerfRow[] = Array.from({ length: len }, (_, i) => {
         const spBar = spBars[i];
         const krBar = krBars[i];
         const date = (spBar?.t || krBar?.t || "").slice(0, 10);
+        // For 1D / 1W show MM/DD; for longer ranges keep MM/DD too,
+        // recharts interval prop thins out tick labels automatically.
         const label = date ? `${date.slice(5, 7)}/${date.slice(8, 10)}` : `${i + 1}`;
         return {
           date,
