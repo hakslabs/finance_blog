@@ -6,6 +6,7 @@
 import { useState, useMemo, useContext, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { REPORTS } from "@/lib/data";
+import { useReportsList } from "@/features/reports";
 import {
   FileText, Bookmark, BookmarkCheck, X, Download,
   Search, ChevronDown, ChevronUp, Paperclip,
@@ -199,8 +200,27 @@ export default function Reports() {
     }
   }, [bookmarkCtx]);
 
+  const { data: liveReports } = useReportsList({ limit: 100 });
+  const liveAdapted = useMemo<Report[]>(() => {
+    if (!liveReports || liveReports.length === 0) return REPORTS;
+    return liveReports.map((r) => ({
+      id: r.id,
+      title: r.title,
+      summary: "",
+      source: r.source,
+      type: "Weekly",
+      pages: 0,
+      lang: (r.language ?? "ko").toUpperCase(),
+      region: "US",
+      category: r.category ?? "리서치",
+      tags: [] as string[],
+      date: (r.published_at ?? "").replace(/-/g, "."),
+      status: "신규",
+    }));
+  }, [liveReports]);
+
   const filtered = useMemo(() => {
-    let list = [...REPORTS];
+    let list = [...liveAdapted];
     if (activeTab === 1) {
       list = list.filter(r => r.type === "Daily" || r.type === "종목분석" || r.type === "실적분석");
     } else if (activeTab === 2) {
@@ -212,9 +232,9 @@ export default function Reports() {
       const q = searchQuery.toLowerCase();
       list = list.filter(r =>
         r.title.toLowerCase().includes(q) ||
-        r.summary.toLowerCase().includes(q) ||
+        (r.summary ?? "").toLowerCase().includes(q) ||
         r.source.toLowerCase().includes(q) ||
-        r.tags.some(t => t.toLowerCase().includes(q))
+        (r.tags ?? []).some(t => t.toLowerCase().includes(q))
       );
     }
     if (dateFrom) list = list.filter(r => r.date.replace(/\./g, "-") >= dateFrom);
