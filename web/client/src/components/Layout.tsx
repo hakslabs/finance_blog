@@ -15,7 +15,7 @@ import {
   Home, BarChart2, Newspaper, Users, FileText, BookOpen,
   User, Sun, Moon, Menu, ChevronLeft, ChevronRight, Calendar, Search,
   TrendingUp, TrendingDown, Activity, Bell, Shield,
-  LogOut, Settings
+  LogOut, Settings, Bookmark
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -380,7 +380,22 @@ type SearchResults = {
   reports: { id: string; title: string; source: string; category?: string | null; published_at?: string | null }[];
 };
 
+// Quick-access bookmark button shown in the header when the user is
+// signed in. Deep-links to MyPage's bookmarks tab via ?tab=bookmarks
+// (handled in pages/MyPage.tsx).
+function BookmarkHeaderButton() {
+  return (
+    <Link href="/mypage?tab=bookmarks">
+      <Button variant="ghost" size="icon" className="h-8 w-8" title="북마크">
+        <Bookmark size={16} />
+      </Button>
+    </Link>
+  );
+}
+
 function Header({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
+  const { user: authUser } = useAuth();
+  const isLoggedIn = !!authUser;
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState<SearchResults | null>(null);
   const [open, setOpen] = useState(false);
@@ -568,6 +583,9 @@ function Header({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
 
       <div className="flex items-center gap-1">
         <ThemeToggle />
+        {/* When signed in, slot the bookmark shortcut into the place
+            the dark-mode toggle used to occupy (just left of the bell). */}
+        {isLoggedIn && <BookmarkHeaderButton />}
         <NotificationButton />
         <UserMenu />
       </div>

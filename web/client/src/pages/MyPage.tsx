@@ -1038,9 +1038,28 @@ const MY_TABS = [
   { label: "북마크", icon: <Bookmark size={13} /> },
 ];
 
+// Maps `?tab=…` query values to the MY_TABS index, so header / cross-page
+// links can deep-link straight into a tab (e.g. the bookmark shortcut in
+// the global header sends `/mypage?tab=bookmarks`).
+const TAB_QUERY_INDEX: Record<string, number> = {
+  portfolio: 0,
+  watchlist: 1,
+  trades: 2,
+  journal: 3,
+  alerts: 4,
+  bookmarks: 5,
+};
+
+function initialTabFromUrl(): number {
+  if (typeof window === "undefined") return 0;
+  const q = new URLSearchParams(window.location.search).get("tab");
+  if (!q) return 0;
+  return TAB_QUERY_INDEX[q.toLowerCase()] ?? 0;
+}
+
 // ── Main ─────────────────────────────────────────────────────
 export default function MyPage() {
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState<number>(() => initialTabFromUrl());
   const TAB_CONTENT = [
     <PortfolioTab />,
     <WatchlistTab />,
