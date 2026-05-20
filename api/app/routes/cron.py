@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from app.jobs import (
     ingest_13f,
     ingest_av_targets,
+    ingest_fear_greed,
     ingest_finnhub,
     refresh_kr_daily,
     refresh_us_daily,
@@ -104,4 +105,16 @@ async def ingest_av_targets_route(
         return {"status": "ok", **result}
     except ingest_av_targets.IngestionError as exc:
         log.error("ingest_av_targets failed: %s", exc)
+        return {"status": "failed", "error": str(exc)}
+
+
+@router.get("/ingest-fear-greed")
+async def ingest_fear_greed_route(
+    _auth: None = Depends(_require_cron),
+) -> Dict[str, Any]:
+    try:
+        result = await ingest_fear_greed.run()
+        return {"status": "ok", **result}
+    except Exception as exc:  # noqa: BLE001 — CNN scrape is best-effort
+        log.error("ingest_fear_greed failed: %s", exc)
         return {"status": "failed", "error": str(exc)}
