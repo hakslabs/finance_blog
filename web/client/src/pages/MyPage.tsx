@@ -126,7 +126,7 @@ const INIT_ALERTS: AlertItem[] = [
 const SECTOR_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4"];
 
 // ── Stock Detail Modal ────────────────────────────────────────
-function StockDetailModal({ ticker, onClose }: { ticker: string; onClose: () => void }) {
+function StockDetailModal({ ticker, onClose, onAddTrade }: { ticker: string; onClose: () => void; onAddTrade?: (ticker: string) => void }) {
   const stock = ALL_STOCKS.find(s => s.ticker === ticker);
   if (!stock) return null;
   const isKR = isKRTicker(ticker);
@@ -190,7 +190,11 @@ function StockDetailModal({ ticker, onClose }: { ticker: string; onClose: () => 
           ))}
         </div>
         <div className="px-5 pb-5 flex gap-2">
-          <button onClick={() => { toast.success(`${ticker} 거래 추가`); onClose(); }}
+          <button
+            onClick={() => {
+              if (onAddTrade) { onAddTrade(ticker); onClose(); }
+              else toast.info("거래 추가는 거래내역 탭에서 이용할 수 있어요");
+            }}
             className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">거래 추가</button>
           <button onClick={() => toast.info("상세 분석 페이지 준비 중")}
             className="flex-1 py-2 rounded-lg bg-muted/50 text-foreground text-sm font-medium hover:bg-muted transition-colors">상세 분석</button>
@@ -199,6 +203,27 @@ function StockDetailModal({ ticker, onClose }: { ticker: string; onClose: () => 
     </div>
     </ModalPortal>
   );
+}
+
+// Append-to-localStorage helpers used by tabs that don't own the
+// trades/journals state but still want to register from inside
+// StockDetailModal (Portfolio / Watchlist tabs). The owning tab
+// (Trades / Journal) picks the new rows up on next mount via its
+// useLocalState rehydration.
+function appendToLocalArray<T>(key: string, item: T) {
+  try {
+    const raw = localStorage.getItem(key);
+    const arr: T[] = raw ? JSON.parse(raw) : [];
+    arr.push(item);
+    localStorage.setItem(key, JSON.stringify(arr));
+  } catch { /* localStorage disabled — skip */ }
+}
+
+function readLocalArray<T>(key: string, fallback: T[]): T[] {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) as T[] : fallback;
+  } catch { return fallback; }
 }
 
 // Sum the net (= 매수 − 매도) shares per symbol from the trades log.
@@ -218,17 +243,39 @@ function netSharesByTrade(trades: Trade[]): Record<string, number> {
 function AddTradeModal({
   onClose,
   onAdd,
+  onAddJournal,
   currentHoldings,
+  prefillSymbol,
 }: {
   onClose: () => void;
   onAdd: (t: Trade) => void;
+  // Called once per submit when the user opted into auto-creating a
+  // journal AND filled the journal fields. TradesTab writes the
+  // resulting entry into the `financelab_journals` localStorage key
+  // so the Journal tab picks it up on its next mount.
+  onAddJournal?: (j: Journal) => void;
   currentHoldings: Record<string, number>;
+  prefillSymbol?: string;
 }) {
   const todayIso = new Date().toISOString().slice(0, 10);
-  const [form, setForm] = useState({ date: todayIso, symbol: "", type: "매수" as "매수" | "매도", shares: "", price: "", fee: "", note: "", createJournal: true });
-  const [search, setSearch] = useState("");
+  const prefillStock = prefillSymbol ? ALL_STOCKS.find(s => s.ticker === prefillSymbol) : undefined;
+  const [form, setForm] = useState({
+    date: todayIso,
+    symbol: prefillStock?.ticker ?? "",
+    type: "매수" as "매수" | "매도",
+    shares: "",
+    price: prefillStock ? String(prefillStock.price) : "",
+    fee: "",
+    note: "",
+    createJournal: true,
+    // Journal fields — only validated when createJournal is on.
+    reason: "",
+    target: "",
+    stopLoss: "",
+  });
+  const [search, setSearch] = useState(prefillStock ? `${prefillStock.ticker} ${prefillStock.name}` : "");
   const [showSearch, setShowSearch] = useState(false);
-  const [touched, setTouched] = useState({ symbol: false, shares: false, price: false, date: false, fee: false });
+  const [touched, setTouched] = useState({ symbol: false, shares: false, price: false, date: false, fee: false, reason: false, target: false, stopLoss: false });
   const searchResults = useMemo(() => {
     if (!search.trim() || form.symbol) return [];
     const q = search.toLowerCase();
@@ -246,7 +293,10 @@ function AddTradeModal({
   const stockIsKR = form.symbol ? isKRTicker(form.symbol) : false;
   const isInUniverse = !!form.symbol && ALL_STOCKS.some(s => s.ticker === form.symbol);
 
-  const errors: { symbol?: string; shares?: string; price?: string; date?: string; fee?: string } = {};
+  const targetNum = form.target.trim() === "" ? NaN : parseFloat(form.target);
+  const stopLossNum = form.stopLoss.trim() === "" ? NaN : parseFloat(form.stopLoss);
+
+  const errors: { symbol?: string; shares?: string; price?: string; date?: string; fee?: string; reason?: string; target?: string; stopLoss?: string } = {};
   if (!form.symbol) errors.symbol = "검색 결과에서 종목을 선택해주세요";
   else if (!isInUniverse) errors.symbol = "지원하지 않는 종목입니다";
 
@@ -269,6 +319,26 @@ function AddTradeModal({
     errors.fee = "수수료는 0 이상이어야 합니다";
   }
 
+  // Journal fields are only required when the user opted in. The
+  // target / stop-loss sanity checks (target above buy price, stop
+  // below buy price for 매수; the reverse for 매도) keep the user
+  // from registering nonsense alerts later.
+  if (form.createJournal) {
+    if (!form.reason.trim()) errors.reason = "매수 이유를 적어주세요";
+    if (!form.target.trim()) errors.target = "목표가를 입력해주세요";
+    else if (!isFinite(targetNum) || targetNum <= 0) errors.target = "0보다 큰 목표가를 입력해주세요";
+    else if (isFinite(priceNum) && priceNum > 0) {
+      if (form.type === "매수" && targetNum <= priceNum) errors.target = "목표가는 매수가보다 높아야 합니다";
+      if (form.type === "매도" && targetNum >= priceNum) errors.target = "목표가는 매도가보다 낮아야 합니다";
+    }
+    if (!form.stopLoss.trim()) errors.stopLoss = "손절가를 입력해주세요";
+    else if (!isFinite(stopLossNum) || stopLossNum <= 0) errors.stopLoss = "0보다 큰 손절가를 입력해주세요";
+    else if (isFinite(priceNum) && priceNum > 0) {
+      if (form.type === "매수" && stopLossNum >= priceNum) errors.stopLoss = "손절가는 매수가보다 낮아야 합니다";
+      if (form.type === "매도" && stopLossNum <= priceNum) errors.stopLoss = "손절가는 매도가보다 높아야 합니다";
+    }
+  }
+
   const total = (isFinite(sharesNum) ? sharesNum : 0) * (isFinite(priceNum) ? priceNum : 0);
   const fee = isFinite(feeNum) ? feeNum : total * 0.001;
   const isValid = Object.keys(errors).length === 0;
@@ -285,20 +355,41 @@ function AddTradeModal({
       return;
     }
     const stock = ALL_STOCKS.find(s => s.ticker === form.symbol);
-    onAdd({ id: "t" + Date.now(), date: form.date, symbol: form.symbol, name: stock?.name ?? form.symbol, type: form.type, shares: sharesNum, price: priceNum, total, fee, note: form.note, journalLinked: form.createJournal });
-    toast.success(`${form.symbol} ${form.type} 거래 등록 완료`);
+    const tradeId = "t" + Date.now();
+    onAdd({ id: tradeId, date: form.date, symbol: form.symbol, name: stock?.name ?? form.symbol, type: form.type, shares: sharesNum, price: priceNum, total, fee, note: form.note, journalLinked: form.createJournal });
+    if (form.createJournal && onAddJournal) {
+      onAddJournal({
+        id: "j" + Date.now(),
+        date: form.date,
+        symbol: form.symbol,
+        name: stock?.name ?? form.symbol,
+        type: form.type,
+        reason: form.reason.trim(),
+        target: targetNum,
+        stopLoss: stopLossNum,
+        status: "진행중",
+        tradeId,
+        isMock: false,
+        followUps: [],
+      });
+    }
+    toast.success(
+      form.createJournal
+        ? `${form.symbol} ${form.type} 등록 · 투자일지도 작성됨`
+        : `${form.symbol} ${form.type} 거래 등록 완료`,
+    );
     onClose();
   };
   return (
     <ModalPortal>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl">
-        <div className="p-5 border-b border-border flex items-center justify-between">
+      <div className="relative bg-card border border-border rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] flex flex-col">
+        <div className="p-5 border-b border-border flex items-center justify-between flex-shrink-0">
           <h2 className="text-base font-bold font-['Outfit']">거래 추가</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"><X size={15} /></button>
         </div>
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-4 overflow-y-auto">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">종목 검색</label>
             <div className="relative">
@@ -404,8 +495,62 @@ function AddTradeModal({
             <input type="checkbox" checked={form.createJournal} onChange={e => setForm(f => ({ ...f, createJournal: e.target.checked }))} className="rounded" />
             <span className="text-sm text-muted-foreground">투자일지 자동 생성</span>
           </label>
+          {form.createJournal && (
+            <div className="border border-dashed border-border rounded-lg p-3 space-y-3 bg-muted/10">
+              <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">투자일지 항목</div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  {form.type === "매수" ? "매수 이유" : "매도 이유"}
+                </label>
+                <textarea value={form.reason}
+                  onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
+                  onBlur={() => setTouched(t => ({ ...t, reason: true }))}
+                  rows={3}
+                  placeholder={form.type === "매수" ? "왜 이 가격에 샀는지 (펀더멘털·매크로·기술적 근거 등)" : "왜 이 가격에 팔았는지 (목표 도달·전략 변경·손절 등)"}
+                  className={cn("w-full px-3 py-2 text-sm bg-card border rounded-lg focus:outline-none resize-none",
+                    (touched.reason || allTouchedOnSubmit) && errors.reason ? "border-down focus:border-down" : "border-border focus:border-primary"
+                  )} />
+                {(touched.reason || allTouchedOnSubmit) && errors.reason && (
+                  <div className="text-[11px] text-down mt-1">{errors.reason}</div>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">목표가</label>
+                  <input type="number" value={form.target}
+                    min={0} step="any"
+                    onChange={e => setForm(f => ({ ...f, target: e.target.value }))}
+                    onBlur={() => setTouched(t => ({ ...t, target: true }))}
+                    placeholder="0"
+                    className={cn("w-full px-3 py-2 text-sm bg-card border rounded-lg focus:outline-none font-mono",
+                      (touched.target || allTouchedOnSubmit) && errors.target ? "border-down focus:border-down" : "border-border focus:border-primary"
+                    )} />
+                  {(touched.target || allTouchedOnSubmit) && errors.target && (
+                    <div className="text-[11px] text-down mt-1">{errors.target}</div>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">손절가</label>
+                  <input type="number" value={form.stopLoss}
+                    min={0} step="any"
+                    onChange={e => setForm(f => ({ ...f, stopLoss: e.target.value }))}
+                    onBlur={() => setTouched(t => ({ ...t, stopLoss: true }))}
+                    placeholder="0"
+                    className={cn("w-full px-3 py-2 text-sm bg-card border rounded-lg focus:outline-none font-mono",
+                      (touched.stopLoss || allTouchedOnSubmit) && errors.stopLoss ? "border-down focus:border-down" : "border-border focus:border-primary"
+                    )} />
+                  {(touched.stopLoss || allTouchedOnSubmit) && errors.stopLoss && (
+                    <div className="text-[11px] text-down mt-1">{errors.stopLoss}</div>
+                  )}
+                </div>
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                목표가/손절가는 투자일지에서 한 번 더 확인할 수 있고, 알람도 거기서 만들 수 있어요.
+              </div>
+            </div>
+          )}
         </div>
-        <div className="px-5 pb-5 flex gap-2">
+        <div className="px-5 py-4 border-t border-border flex gap-2 flex-shrink-0">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-lg bg-muted/40 text-muted-foreground text-sm hover:text-foreground">취소</button>
           <button onClick={handleSubmit} disabled={!isValid}
             className={cn("flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors",
@@ -425,6 +570,7 @@ function AddTradeModal({
 // ── Portfolio Tab ─────────────────────────────────────────────
 function PortfolioTab() {
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
+  const [tradeForTicker, setTradeForTicker] = useState<string | null>(null);
   const holdings = INIT_HOLDINGS.map(h => {
     const isKR = isKRTicker(h.symbol);
     const pnl = (h.currentPrice - h.avgPrice) * h.shares;
@@ -565,7 +711,22 @@ function PortfolioTab() {
           </table>
         </div>
       </div>
-      {selectedTicker && <StockDetailModal ticker={selectedTicker} onClose={() => setSelectedTicker(null)} />}
+      {selectedTicker && (
+        <StockDetailModal
+          ticker={selectedTicker}
+          onClose={() => setSelectedTicker(null)}
+          onAddTrade={(t) => setTradeForTicker(t)}
+        />
+      )}
+      {tradeForTicker && (
+        <AddTradeModal
+          prefillSymbol={tradeForTicker}
+          onClose={() => setTradeForTicker(null)}
+          onAdd={(t) => appendToLocalArray<Trade>("financelab_trades", t)}
+          onAddJournal={(j) => appendToLocalArray<Journal>("financelab_journals", j)}
+          currentHoldings={netSharesByTrade(readLocalArray<Trade>("financelab_trades", INIT_TRADES))}
+        />
+      )}
     </div>
   );
 }
@@ -574,6 +735,7 @@ function PortfolioTab() {
 function WatchlistTab() {
   const { watchlist, addToWatchlist, removeFromWatchlist } = useWatchlist();
   const [search, setSearch] = useState("");
+  const [tradeForTicker, setTradeForTicker] = useState<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -669,7 +831,22 @@ function WatchlistTab() {
           </tbody>
         </table>
       </div>
-      {selectedTicker && <StockDetailModal ticker={selectedTicker} onClose={() => setSelectedTicker(null)} />}
+      {selectedTicker && (
+        <StockDetailModal
+          ticker={selectedTicker}
+          onClose={() => setSelectedTicker(null)}
+          onAddTrade={(t) => setTradeForTicker(t)}
+        />
+      )}
+      {tradeForTicker && (
+        <AddTradeModal
+          prefillSymbol={tradeForTicker}
+          onClose={() => setTradeForTicker(null)}
+          onAdd={(t) => appendToLocalArray<Trade>("financelab_trades", t)}
+          onAddJournal={(j) => appendToLocalArray<Journal>("financelab_journals", j)}
+          currentHoldings={netSharesByTrade(readLocalArray<Trade>("financelab_trades", INIT_TRADES))}
+        />
+      )}
     </div>
   );
 }
@@ -679,6 +856,7 @@ function TradesTab() {
   const [trades, setTrades] = useLocalState<Trade[]>("financelab_trades", INIT_TRADES);
   const { add: addTradeSynced } = useTradesBackendSync(trades, setTrades);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [tradeForTicker, setTradeForTicker] = useState<string | null>(null);
   const [period, setPeriod] = useState<"일" | "주" | "월" | "년">("월");
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   // 실현손익 누적 시계열 차트 데이터 생성 (현재 기준 과거 N 기간)
@@ -829,10 +1007,26 @@ function TradesTab() {
         <AddTradeModal
           onClose={() => setShowAddModal(false)}
           onAdd={t => addTradeSynced(t)}
+          onAddJournal={(j) => appendToLocalArray<Journal>("financelab_journals", j)}
           currentHoldings={netSharesByTrade(trades)}
         />
       )}
-      {selectedTicker && <StockDetailModal ticker={selectedTicker} onClose={() => setSelectedTicker(null)} />}
+      {selectedTicker && (
+        <StockDetailModal
+          ticker={selectedTicker}
+          onClose={() => setSelectedTicker(null)}
+          onAddTrade={(t) => setTradeForTicker(t)}
+        />
+      )}
+      {tradeForTicker && (
+        <AddTradeModal
+          prefillSymbol={tradeForTicker}
+          onClose={() => setTradeForTicker(null)}
+          onAdd={t => addTradeSynced(t)}
+          onAddJournal={(j) => appendToLocalArray<Journal>("financelab_journals", j)}
+          currentHoldings={netSharesByTrade(trades)}
+        />
+      )}
     </div>
   );
 }
@@ -902,6 +1096,53 @@ function JournalTab() {
             </div>
             {expandedId === j.id && (
               <div className="border-t border-border/50 p-4 space-y-3">
+                {/* Quick alert creation from the journal's target/stop-loss.
+                    Alerts persist into financelab_alerts; AlertsTab picks
+                    them up on its next mount. Clicking twice creates two
+                    rows — we leave dedupe up to the user for now since
+                    they may genuinely want multiple. */}
+                <div>
+                  <h4 className="text-xs font-semibold text-muted-foreground mb-2">알람 만들기</h4>
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      onClick={() => {
+                        appendToLocalArray<AlertItem>("financelab_alerts", {
+                          id: "a" + Date.now(),
+                          symbol: j.symbol,
+                          name: j.name,
+                          type: "목표가 도달",
+                          condition: `≥ ${fmtPrice(j.target, j.symbol)}`,
+                          status: "활성",
+                          created: new Date().toISOString().slice(0, 10),
+                          journalId: j.id,
+                        });
+                        toast.success(`${j.symbol} 목표가 ${fmtPrice(j.target, j.symbol)} 알람 등록`);
+                      }}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-up/40 bg-up/10 text-up hover:bg-up/15"
+                    >
+                      <TrendingUp size={11} /> 목표가 알람 ({fmtPrice(j.target, j.symbol)})
+                    </button>
+                    <button
+                      onClick={() => {
+                        appendToLocalArray<AlertItem>("financelab_alerts", {
+                          id: "a" + Date.now(),
+                          symbol: j.symbol,
+                          name: j.name,
+                          type: "손절 라인",
+                          condition: `≤ ${fmtPrice(j.stopLoss, j.symbol)}`,
+                          status: "활성",
+                          created: new Date().toISOString().slice(0, 10),
+                          journalId: j.id,
+                        });
+                        toast.success(`${j.symbol} 손절가 ${fmtPrice(j.stopLoss, j.symbol)} 알람 등록`);
+                      }}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-down/40 bg-down/10 text-down hover:bg-down/15"
+                    >
+                      <TrendingDown size={11} /> 손절가 알람 ({fmtPrice(j.stopLoss, j.symbol)})
+                    </button>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-1.5">알람은 [알람 설정] 탭에서 관리할 수 있어요.</div>
+                </div>
                 {j.followUps.length > 0 && (
                   <div>
                     <h4 className="text-xs font-semibold text-muted-foreground mb-2">후속 메모</h4>
