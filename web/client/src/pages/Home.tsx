@@ -143,7 +143,7 @@ function FearGreedGauge({ value, label, market, onClick }: {
     >
       <div className="text-xs font-bold text-muted-foreground mb-1">{market}</div>
       {/* viewBox: 0 0 180 105 — semi-circle fits with padding */}
-      <svg width="160" height="95" viewBox="0 0 180 105">
+      <svg width="160" height="115" viewBox="0 0 180 130">
         {/* Background arc */}
         <path d={arcPath(0, 100)} fill="none" stroke="var(--muted)" strokeWidth="14" strokeLinecap="round" />
         {/* Colored zones */}
@@ -159,10 +159,10 @@ function FearGreedGauge({ value, label, market, onClick }: {
           strokeLinecap="round"
         />
         <circle cx={cx} cy={cy} r="5" fill="var(--foreground)" />
-        {/* Value */}
-        <text x={cx} y={cy + 14} textAnchor="middle" fontSize="18" fontWeight="bold" fill={currentZone.color} fontFamily="'Space Mono', monospace">{value}</text>
+        {/* Value — placed below the pivot so it doesn't collide with the needle base */}
+        <text x={cx} y={cy + 26} textAnchor="middle" fontSize="18" fontWeight="bold" fill={currentZone.color} fontFamily="'Space Mono', monospace">{value}</text>
         {/* Zone label */}
-        <text x={cx} y={cy + 26} textAnchor="middle" fontSize="8" fill={currentZone.color} opacity="0.9">{currentZone.label}</text>
+        <text x={cx} y={cy + 38} textAnchor="middle" fontSize="9" fill={currentZone.color} opacity="0.9">{currentZone.label}</text>
       </svg>
       <p className="text-[10px] text-muted-foreground text-center max-w-[140px] leading-tight mt-1">{label}</p>
       <span className="text-[9px] text-primary opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 flex items-center gap-0.5">
