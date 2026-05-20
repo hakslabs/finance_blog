@@ -7,6 +7,7 @@ from app.routes.activity import router as activity_router
 from app.routes.admin_console import router as admin_console_router
 from app.routes.alerts import router as alerts_router
 from app.routes.bookmarks import router as bookmarks_router
+from app.routes.calendar import router as calendar_router
 from app.routes.cron import router as cron_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.fear_greed import router as fear_greed_router
@@ -63,6 +64,7 @@ app.include_router(activity_router, prefix="/v1")
 app.include_router(admin_console_router, prefix="/v1")
 app.include_router(alerts_router, prefix="/v1")
 app.include_router(bookmarks_router, prefix="/v1")
+app.include_router(calendar_router, prefix="/v1")
 app.include_router(cron_router, prefix="/v1")
 app.include_router(dashboard_router, prefix="/v1")
 app.include_router(fear_greed_router, prefix="/v1")
