@@ -35,15 +35,17 @@ async def _fetch_cnn_series() -> List[Dict[str, Any]]:
         return []
     body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
     series = body.get("fear_and_greed_historical", {}).get("data", []) if isinstance(body, dict) else []
-    out: List[Dict[str, Any]] = []
+    # CNN can emit multiple intraday points for the same date — keep only
+    # the latest score per date (last in chronological order).
+    by_date: Dict[str, int] = {}
     for row in series:
         ts_ms = row.get("x")
         score = row.get("y")
         if ts_ms is None or score is None:
             continue
         date = datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc).date().isoformat()
-        out.append({"date": date, "value": int(round(score))})
-    return out
+        by_date[date] = int(round(score))
+    return [{"date": d, "value": v} for d, v in sorted(by_date.items())]
 
 
 async def _upsert_history(settings: Settings, market: str, rows: List[Dict[str, Any]]) -> int:

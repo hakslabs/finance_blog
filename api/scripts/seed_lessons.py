@@ -97,6 +97,9 @@ LESSONS = [
 
 
 def upsert(table: str, rows: list[dict]) -> int:
+    """Upsert one row at a time so each row can omit columns it doesn't set
+    (PostgREST bulk mode requires uniform keys, but column DEFAULTs only fire
+    when a column is *omitted*, not when sent as null)."""
     if not rows:
         return 0
     headers = {
@@ -105,11 +108,15 @@ def upsert(table: str, rows: list[dict]) -> int:
         "Content-Type": "application/json",
         "Prefer": "resolution=merge-duplicates,return=minimal",
     }
-    r = httpx.post(f"{SB_URL}/rest/v1/{table}", json=rows, headers=headers, timeout=30.0)
-    if r.status_code >= 400:
-        sys.stderr.write(f"{table}: {r.status_code} {r.text[:200]}\n")
-        return 0
-    return len(rows)
+    ok = 0
+    with httpx.Client(timeout=30.0, headers=headers) as c:
+        for row in rows:
+            r = c.post(f"{SB_URL}/rest/v1/{table}", json=row)
+            if r.status_code >= 400:
+                sys.stderr.write(f"{table} row {row.get('id')}: {r.status_code} {r.text[:200]}\n")
+                continue
+            ok += 1
+    return ok
 
 
 def main() -> None:
