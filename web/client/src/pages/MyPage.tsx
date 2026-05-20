@@ -29,6 +29,7 @@ import { BookmarkContext } from "@/contexts/BookmarkContext";
 import { FollowContext } from "@/contexts/FollowContext";
 import { useWatchlist } from "@/contexts/WatchlistContext";
 import { useAlertsBackendSync } from "@/features/alerts/sync";
+import { useTradesBackendSync } from "@/features/portfolio/sync";
 
 // ── Helpers ──────────────────────────────────────────────────
 const ALL_STOCKS = [...US_STOCKS, ...KR_STOCKS];
@@ -559,6 +560,7 @@ function WatchlistTab() {
 // ── Trades Tab ────────────────────────────────────────────────
 function TradesTab() {
   const [trades, setTrades] = useLocalState<Trade[]>("financelab_trades", INIT_TRADES);
+  const { add: addTradeSynced } = useTradesBackendSync(trades, setTrades);
   const [showAddModal, setShowAddModal] = useState(false);
   const [period, setPeriod] = useState<"일" | "주" | "월" | "년">("월");
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
@@ -706,7 +708,7 @@ function TradesTab() {
           </table>
         </div>
       </div>
-      {showAddModal && <AddTradeModal onClose={() => setShowAddModal(false)} onAdd={t => setTrades(prev => [t, ...prev])} />}
+      {showAddModal && <AddTradeModal onClose={() => setShowAddModal(false)} onAdd={t => addTradeSynced(t)} />}
       {selectedTicker && <StockDetailModal ticker={selectedTicker} onClose={() => setSelectedTicker(null)} />}
     </div>
   );
