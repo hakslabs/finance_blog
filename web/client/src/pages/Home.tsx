@@ -628,22 +628,20 @@ function SectorRotationPanel() {
   // Map the backend SectorData shape onto the local rotation card's
   // shape (return1d/1w/1m + a derived `flow` label). `flow` doesn't
   // exist on the API yet — we proxy it from the daily rank.
-  const { data: liveSectors } = useSectors(market);
-  const fallback = market === "US" ? US_SECTORS : KR_SECTORS;
+  const { data: liveSectors, loading: sectorsLoading } = useSectors(market);
   const sectors = (liveSectors && liveSectors.length > 0)
     ? liveSectors.map((s, _, all) => ({
         sector: s.sector,
         return1d: s.returnDay,
         return1w: s.returnWeek,
         return1m: s.returnMonth,
-        // top quartile = 유입, bottom quartile = 유출, else 중립
         flow: s.rankDay <= Math.ceil(all.length / 4)
           ? "유입"
           : s.rankDay > all.length - Math.ceil(all.length / 4)
             ? "유출"
             : "중립",
       }))
-    : fallback;
+    : [];
   const getReturn = (s: typeof US_SECTORS[0]) =>
     period === "1d" ? s.return1d : period === "1w" ? s.return1w : s.return1m;
   const sorted = [...sectors].sort((a, b) => getReturn(b) - getReturn(a));
@@ -675,6 +673,14 @@ function SectorRotationPanel() {
         </div>
       </div>
       <div className="space-y-1.5">
+        {sectorsLoading && sorted.length === 0 && Array.from({ length: 8 }).map((_, i) => (
+          <div key={`sec-skel-${i}`} className="flex items-center gap-2 animate-pulse">
+            <div className="w-4 h-3 bg-muted/30 rounded" />
+            <div className="w-16 h-3 bg-muted/30 rounded" />
+            <div className="flex-1 h-5 bg-muted/20 rounded-full" />
+            <div className="w-8 h-3 bg-muted/30 rounded" />
+          </div>
+        ))}
         {sorted.map((s, rank) => {
           const ret = getReturn(s);
           const up = ret >= 0;
@@ -718,12 +724,12 @@ function StockListPanel({ isLoggedIn, marketTab, setMarketTab }: {
   const { watchlist, removeFromWatchlist } = useWatchlist();
   // /v1/movers is a price_bars_daily-backed top-movers feed (live). The
   // mock arrays remain as fallback when the DB is empty (dev / preview).
-  const { data: liveMarketStocks } = useStocks(marketTab);
+  const { data: liveMarketStocks, loading: stocksLoading } = useStocks(marketTab);
   const safeLive = liveMarketStocks ?? [];
-  const liveAll = useMemo(() => [...safeLive], [safeLive]);
-  const fallbackAll = [...US_STOCKS, ...KR_STOCKS];
-  const allStocks = liveAll.length > 0 ? liveAll : fallbackAll;
-  const topStocks = (safeLive.length > 0 ? safeLive : (marketTab === "KR" ? KR_STOCKS : US_STOCKS)).slice(0, 6);
+  // No mock fallback during loading — the panel renders a skeleton row
+  // list instead so users don't see stale demo tickers.
+  const allStocks = safeLive;
+  const topStocks = safeLive.slice(0, 6);
 
   // 관심종목 있으면 관심종목, 없으면 상위거래
   const hasWatchlist = watchlist.length > 0;
@@ -761,6 +767,19 @@ function StockListPanel({ isLoggedIn, marketTab, setMarketTab }: {
       )}
       <div className="flex-1 flex flex-col justify-between">
         <div className="space-y-0.5">
+          {stocksLoading && displayStocks.length === 0 && Array.from({ length: 6 }).map((_, i) => (
+            <div key={`stk-skel-${i}`} className="flex items-center gap-2 px-2 py-2 animate-pulse">
+              <div className="w-4 h-3 bg-muted/30 rounded" />
+              <div className="flex-1 space-y-1">
+                <div className="h-3 w-2/3 bg-muted/40 rounded" />
+                <div className="h-2.5 w-1/3 bg-muted/30 rounded" />
+              </div>
+              <div className="text-right space-y-1">
+                <div className="h-3 w-12 bg-muted/40 rounded" />
+                <div className="h-2.5 w-10 bg-muted/30 rounded ml-auto" />
+              </div>
+            </div>
+          ))}
           {displayStocks.map((s, i) => (
             <div key={s.ticker} className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-muted/50 transition-colors group">
               <span className="text-xs text-muted-foreground w-4 text-center">{i + 1}</span>
@@ -934,23 +953,33 @@ export default function Home() {
         )}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
-        {topIndices.map((idx) => {
-          const up = idx.change >= 0;
-          return (
-            <div
-              key={idx.name}
-              onClick={() => setSelectedIndex(idx)}
-              className="bg-card border border-border rounded-xl p-3.5 hover:border-primary/40 transition-colors cursor-pointer group"
-            >
-              <div className="text-xs text-muted-foreground mb-1 truncate">{idx.name}</div>
-              <div className="text-base font-bold font-mono">{idx.value.toLocaleString()}</div>
-              <div className={cn("flex items-center gap-1 mt-1 text-xs font-mono", up ? "text-up" : "text-down")}>
-                {up ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-                {up ? "+" : ""}{idx.change.toFixed(2)} ({up ? "+" : ""}{idx.changePct.toFixed(2)}%)
+        {topIndices.length === 0
+          ? // Skeleton — same outer dimensions as the card so the grid
+            // reserves the right space while the fetch is in flight.
+            Array.from({ length: 6 }).map((_, i) => (
+              <div key={`idx-skel-${i}`} className="bg-card border border-border rounded-xl p-3.5 animate-pulse">
+                <div className="h-3 w-12 bg-muted/40 rounded mb-2" />
+                <div className="h-5 w-20 bg-muted/40 rounded mb-2" />
+                <div className="h-3 w-16 bg-muted/30 rounded" />
               </div>
-            </div>
-          );
-        })}
+            ))
+          : topIndices.map((idx) => {
+              const up = idx.change >= 0;
+              return (
+                <div
+                  key={idx.name}
+                  onClick={() => setSelectedIndex(idx)}
+                  className="bg-card border border-border rounded-xl p-3.5 hover:border-primary/40 transition-colors cursor-pointer group"
+                >
+                  <div className="text-xs text-muted-foreground mb-1 truncate">{idx.name}</div>
+                  <div className="text-base font-bold font-mono">{idx.value.toLocaleString()}</div>
+                  <div className={cn("flex items-center gap-1 mt-1 text-xs font-mono", up ? "text-up" : "text-down")}>
+                    {up ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                    {up ? "+" : ""}{idx.change.toFixed(2)} ({up ? "+" : ""}{idx.changePct.toFixed(2)}%)
+                  </div>
+                </div>
+              );
+            })}
       </div>
 
       {/* ── Row 2: 공포탐욕지수 (left 2/5) + 시장 핵심뉴스 (right 3/5) ── */}
@@ -998,6 +1027,17 @@ export default function Home() {
           <SectionHeader title="시장 핵심 뉴스" sub="클릭하면 요약 확인" href="/news" updatedAt={newsUpdatedAt} />
           <div className="flex-1 flex flex-col justify-between">
             <div className="space-y-0">
+              {newsItems === null && (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <div key={`news-skel-${i}`} className="flex items-start gap-3 py-2.5 px-2 border-b border-border/40 last:border-0 animate-pulse">
+                    <div className="h-4 w-10 bg-muted/40 rounded shrink-0 mt-0.5" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-4 w-3/4 bg-muted/40 rounded" />
+                      <div className="h-3 w-1/2 bg-muted/30 rounded" />
+                    </div>
+                  </div>
+                ))
+              )}
               {(newsItems ?? []).slice(0, 5).map((news) => (
                 <div
                   key={news.id}
@@ -1035,7 +1075,17 @@ export default function Home() {
         <div className="xl:col-span-3 bg-card border border-border rounded-xl p-5 flex flex-col">
           <SectionHeader title="내 캘린더" sub="앞으로 14일 · 실적·배당·매크로" href="/calendar" updatedAt={null} />
           <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-1">
-            {(((calItems ?? []).length > 0) ? (calItems ?? []).slice(0, 9) : CALENDAR_EVENTS as any[]).map((raw, i) => {
+            {calItems === null && Array.from({ length: 6 }).map((_, i) => (
+              <div key={`cal-skel-${i}`} className="flex flex-col gap-1 p-2 rounded-lg bg-muted/15 border border-border/40 animate-pulse">
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="h-3 w-12 bg-muted/40 rounded" />
+                  <div className="h-3 w-8 bg-muted/30 rounded" />
+                </div>
+                <div className="h-4 w-full bg-muted/40 rounded" />
+                <div className="h-4 w-3/4 bg-muted/30 rounded" />
+              </div>
+            ))}
+            {calItems !== null && (((calItems ?? []).length > 0) ? (calItems ?? []).slice(0, 9) : []).map((raw: any, i: number) => {
               // Live unified item OR legacy mock row — coerce to a common
               // shape so the existing list cell template doesn't change.
               const isLive = (raw as { kind?: string }).kind !== undefined;

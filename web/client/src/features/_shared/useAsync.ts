@@ -2,7 +2,18 @@
  * Tiny SWR-ish hook: { data, loading, error, refetch } from an async fn.
  *
  * Re-fetches when `deps` change. Cancels stale fetches by ignoring late
- * resolutions. Falls back to `fallback` on error so pages keep rendering.
+ * resolutions.
+ *
+ * Loading semantics:
+ *  - During the FIRST in-flight request, `data` stays `null`.
+ *    Consumers should branch on `loading` to render a skeleton — they
+ *    should NOT fall back to mock arrays during initial loading,
+ *    because that flashes outdated demo numbers before the real
+ *    values arrive.
+ *  - On error, `data` switches to `fallback` (if provided) so pages
+ *    keep rendering with the safest available value.
+ *  - On dep change after the first load, the previous `data` stays
+ *    visible until the new fetch resolves (smooth re-fetch).
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -18,7 +29,9 @@ export function useAsync<T>(
   deps: ReadonlyArray<unknown> = [],
   fallback: T | null = null,
 ): AsyncState<T> {
-  const [data, setData] = useState<T | null>(fallback);
+  // Start with null — pages key their skeleton off `loading`, not off
+  // the presence of a fallback array.
+  const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const seq = useRef(0);

@@ -37,13 +37,16 @@ export const indicesService = {
 
 // Single fetch returning {items, updatedAt}. Consumers access via
 // `.data` like the other hooks, plus `.updatedAt` for the freshness hint.
+// During loading `data` is null so pages can render a skeleton instead
+// of flashing the MARKET_INDICES mock — the mock only appears as the
+// useAsync error fallback.
 export function useIndices() {
   const r = useAsync(
     () => indicesService.list(),
     [],
     { items: MARKET_INDICES as MarketIndex[], updatedAt: null as string | null },
   );
-  const data = r.data?.items ?? (MARKET_INDICES as MarketIndex[]);
+  const data = r.data?.items ?? null;
   const updatedAt = r.data?.updatedAt ?? null;
   return { ...r, data, updatedAt };
 }

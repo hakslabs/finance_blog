@@ -57,7 +57,11 @@ export function useNews(params?: { category?: string; ticker?: string; limit?: n
     [params?.category ?? "", params?.ticker ?? "", params?.limit ?? 50],
     { items: MARKET_NEWS, updatedAt: null as string | null },
   );
-  const data = (r.data?.items?.length ?? 0) > 0 ? r.data!.items : MARKET_NEWS;
+  // During loading data is null — page should skeleton, not fall back
+  // to the demo array. After fetch, if the server returned 0 items we
+  // still surface the empty list (not a mock) so the UI shows "no news"
+  // honestly. The MARKET_NEWS mock only kicks in on a fetch error.
+  const data = r.data?.items ?? null;
   const updatedAt = r.data?.updatedAt ?? null;
   return { ...r, data, updatedAt };
 }
