@@ -50,7 +50,7 @@ export const reportsService = {
 
 export function useReports(params?: { category?: string; ticker?: string; limit?: number }) {
   return useAsync(
-    () => reportsService.list(params).then((r) => (r.items.length ? r.items : REPORTS)),
+    () => reportsService.list(params).then((r) => r.items),
     [params?.category ?? "", params?.ticker ?? "", params?.limit ?? 50],
     REPORTS,
   );

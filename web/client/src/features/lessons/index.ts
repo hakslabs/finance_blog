@@ -38,7 +38,7 @@ export function useChapters() {
 
 export function useLessons(chapterId?: string) {
   return useAsync(
-    () => lessonsService.list(chapterId).then((r) => (r.items.length ? r.items : LEARN_GUIDES)),
+    () => lessonsService.list(chapterId).then((r) => r.items),
     [chapterId ?? ""],
     LEARN_GUIDES,
   );

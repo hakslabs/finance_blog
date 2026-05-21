@@ -36,11 +36,19 @@ type DisplayEvent = {
   holding: string | null;
   memo: number;
   tickers: string[];
-  // Parallel-indexed display labels. Defaults to the ticker itself when
-  // no company name is known (so legacy mock rows still render).
   tickerLabels?: string[];
   importance: string; // 상 | 중 | 하
   detail: string;
+  // Macro-event fields exposed from /v1/calendar (actual/forecast/previous
+  // releases). Stock events surface cash_amount / eps_estimate via the
+  // same triple. All optional — only present for live data.
+  actualValue?: string | null;
+  forecastValue?: string | null;
+  previousValue?: string | null;
+  cashAmount?: number | null;
+  epsEstimate?: number | null;
+  revenueEstimate?: number | null;
+  countryCode?: string | null;
 };
 
 const DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
@@ -78,6 +86,13 @@ function unifiedToDisplay(item: UnifiedCalendarItem): DisplayEvent {
     tickerLabels: item.symbol ? [item.symbol_name || item.symbol] : [],
     importance: importanceToKo(item.importance),
     detail: detailParts.join(" · "),
+    actualValue: item.actual_value ?? null,
+    forecastValue: item.forecast_value ?? null,
+    previousValue: item.previous_value ?? null,
+    cashAmount: item.cash_amount ?? null,
+    epsEstimate: item.eps_estimate ?? null,
+    revenueEstimate: item.revenue_estimate ?? null,
+    countryCode: item.country_code ?? null,
   };
 }
 
@@ -124,6 +139,10 @@ export default function CalendarPage() {
   const [viewMonth, setViewMonth] = useState(today.getMonth() + 1); // 1-based
   const [filterType, setFilterType] = useState("추천");
   const [selectedEvent, setSelectedEvent] = useState<DisplayEvent | null>(null);
+  // Importance threshold filter — independent of the type chip row.
+  // "상"(high)=3, "중+상"=2, "전체"=1. Stored as numeric so passing to
+  // /v1/calendar's min_importance is a single read.
+  const [minImportance, setMinImportance] = useState<1 | 2 | 3>(1);
   const [listView, setListView] = useState(false);
   const [memoOpen, setMemoOpen] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
@@ -161,7 +180,14 @@ export default function CalendarPage() {
   //     handled server-side so the SP500/NDX universe doesn't leak in)
   const symbolsParam = filterType === "매크로" ? undefined : watchlistSymbols;
 
+  // "추천" still implies importance≥2; users can further tighten via
+  // the explicit importance chip row.
+  const effectiveMinImportance: 1 | 2 | 3 = recommended
+    ? (Math.max(2, minImportance) as 1 | 2 | 3)
+    : minImportance;
+
   const { data: liveItems } = useUnifiedCalendar({
+    minImportance: effectiveMinImportance,
     from: fromIso,
     to: toIso,
     types: typesFilter,
@@ -253,7 +279,9 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Filter */}
+      {/* Filter rows. Top row = event type, bottom row = importance.
+          Type chip + importance chip combine: you can ask for
+          "매크로 중 상급 이벤트만" or "실적 중 모두". */}
       <div className="flex gap-1.5 flex-wrap">
         {FILTER_TYPES.map(t => (
           <button
@@ -266,6 +294,25 @@ export default function CalendarPage() {
                 : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
             )}
           >{t}</button>
+        ))}
+      </div>
+      <div className="flex gap-1.5 flex-wrap items-center">
+        <span className="text-[10px] text-muted-foreground">중요도</span>
+        {([
+          { label: "전체",  value: 1 as const },
+          { label: "중·상", value: 2 as const },
+          { label: "상급만", value: 3 as const },
+        ]).map(opt => (
+          <button
+            key={opt.label}
+            onClick={() => setMinImportance(opt.value)}
+            className={cn(
+              "text-[11px] px-2.5 py-1 rounded-md border transition-all",
+              minImportance === opt.value
+                ? "bg-primary/10 text-primary border-primary/40"
+                : "bg-card border-border/60 text-muted-foreground hover:text-foreground"
+            )}
+          >{opt.label}</button>
         ))}
       </div>
 
@@ -480,10 +527,67 @@ export default function CalendarPage() {
                   <div className="text-xs text-muted-foreground">{selectedEvent.month}월</div>
                 </div>
                 <div className="w-px self-stretch bg-border" />
-                <h2 className="text-base font-bold text-foreground font-['Outfit']">{selectedEvent.title}</h2>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-base font-bold text-foreground font-['Outfit']">{selectedEvent.title}</h2>
+                  {selectedEvent.countryCode && (
+                    <span className="text-[10px] text-muted-foreground mt-0.5 inline-block">
+                      국가 {selectedEvent.countryCode}
+                    </span>
+                  )}
+                </div>
               </div>
 
-              <p className="text-sm text-muted-foreground leading-relaxed mb-4">{selectedEvent.detail}</p>
+              {/* Actual / Forecast / Previous grid for macro events;
+                  EPS / 매출 / 배당 for stock events. Only the columns
+                  that have a value render so we don't waste space. */}
+              {(selectedEvent.actualValue || selectedEvent.forecastValue || selectedEvent.previousValue) && (
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  <div className="bg-muted/30 rounded-lg p-2.5 text-center">
+                    <div className="text-[10px] text-muted-foreground mb-1">이전</div>
+                    <div className="text-sm font-mono font-semibold text-muted-foreground">
+                      {selectedEvent.previousValue ?? "—"}
+                    </div>
+                  </div>
+                  <div className="bg-muted/30 rounded-lg p-2.5 text-center">
+                    <div className="text-[10px] text-muted-foreground mb-1">예상</div>
+                    <div className="text-sm font-mono font-semibold">
+                      {selectedEvent.forecastValue ?? "—"}
+                    </div>
+                  </div>
+                  <div className="bg-muted/30 rounded-lg p-2.5 text-center border border-primary/30">
+                    <div className="text-[10px] text-primary mb-1">실제</div>
+                    <div className="text-sm font-mono font-semibold text-primary">
+                      {selectedEvent.actualValue ?? "발표 대기"}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {(selectedEvent.cashAmount != null || selectedEvent.epsEstimate != null || selectedEvent.revenueEstimate != null) && (
+                <div className="bg-muted/30 rounded-lg p-3 mb-4 space-y-1.5">
+                  {selectedEvent.cashAmount != null && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">주당 배당</span>
+                      <span className="font-mono font-semibold">{selectedEvent.cashAmount}</span>
+                    </div>
+                  )}
+                  {selectedEvent.epsEstimate != null && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">EPS 예상</span>
+                      <span className="font-mono font-semibold">{selectedEvent.epsEstimate}</span>
+                    </div>
+                  )}
+                  {selectedEvent.revenueEstimate != null && (
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">매출 예상</span>
+                      <span className="font-mono font-semibold">{Number(selectedEvent.revenueEstimate).toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {selectedEvent.detail && (
+                <p className="text-sm text-muted-foreground leading-relaxed mb-4">{selectedEvent.detail}</p>
+              )}
 
               {selectedEvent.holding && (
                 <div className="flex items-center gap-2 p-3 bg-up/10 border border-up/20 rounded-lg mb-4">

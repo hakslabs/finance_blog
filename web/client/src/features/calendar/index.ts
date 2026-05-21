@@ -15,8 +15,10 @@ export const calendarService = {
 };
 
 export function useCalendarEvents(params?: { from?: string; to?: string; type?: string; ticker?: string }) {
+  // No mock injection: callers see null during load, [] when empty,
+  // [{...}] when populated. CALENDAR_EVENTS only on error.
   return useAsync(
-    () => calendarService.list(params).then((r) => (r.items.length ? r.items : CALENDAR_EVENTS)),
+    () => calendarService.list(params).then((r) => r.items),
     [params?.from ?? "", params?.to ?? "", params?.type ?? "", params?.ticker ?? ""],
     CALENDAR_EVENTS,
   );

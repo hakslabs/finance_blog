@@ -697,7 +697,7 @@ function SectorRotationPanel() {
                 />
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="text-[10px] font-mono font-bold" style={{ color: up ? "var(--up)" : "var(--down)" }}>
-                    {up ? "+" : ""}{ret}%
+                    {up ? "+" : ""}{ret.toFixed(1)}%
                   </span>
                 </div>
               </div>

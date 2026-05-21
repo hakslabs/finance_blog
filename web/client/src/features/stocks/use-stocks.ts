@@ -9,9 +9,11 @@ import { US_STOCKS, KR_STOCKS } from "@/services/mockData";
  * isn't reachable (build/preview).
  */
 export function useStocks(market: "US" | "KR") {
+  // Pages should branch on `loading` for skeletons; the mock array is
+  // only the safety net when the request errors out.
   const fallback = market === "US" ? US_STOCKS : KR_STOCKS;
   return useAsync(
-    () => stocksService.list(market, 100).then((r) => r.items.length ? r.items : fallback),
+    () => stocksService.list(market, 100).then((r) => r.items),
     [market],
     fallback,
   );

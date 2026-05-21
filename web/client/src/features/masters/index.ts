@@ -10,7 +10,7 @@ export const mastersService = {
 
 export function useMasters() {
   return useAsync(
-    () => mastersService.list().then((r) => (r.items.length ? r.items : MASTERS)),
+    () => mastersService.list().then((r) => r.items),
     [],
     MASTERS,
   );
