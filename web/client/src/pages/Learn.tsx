@@ -2,9 +2,11 @@
  * Learn.tsx — 학습 페이지 v2
  * 탭: 투자 기초 / 기술적 분석 / 가치 투자 / 퀀트 전략 / 매크로 경제 / 심화 과정
  */
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { useChapters, useLessons, lessonsService, type LessonProgress } from "@/features/lessons";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   BookOpen, TrendingUp, BarChart2, Calculator, Globe, Award,
   ChevronRight, Clock, Star, Lock, CheckCircle, Play, BookMarked
@@ -214,10 +216,77 @@ function LessonCard({ lesson }: { lesson: Lesson }) {
 
 export default function Learn() {
   const [activeTab, setActiveTab] = useState(0);
-  const chapters = LEARN_CONTENT[activeTab] ?? [];
+  const { user } = useAuth();
 
-  const totalLessons = chapters.reduce((sum, c) => sum + c.lessons.length, 0);
-  const completedLessons = chapters.reduce((sum, c) => sum + c.lessons.filter(l => l.completed).length, 0);
+  // Live chapters + lessons. Backend's chapter ids ("basics" /
+  // "technical" / "value" / "macro" / "quant") map to the in-page
+  // tabs at indexes 0/1/2/3/4 (label-matched via category).
+  const { data: liveChapters } = useChapters();
+  const { data: liveLessons } = useLessons();
+
+  // Per-user completion. The `/me/lesson-progress` route is auth-only
+  // — when signed out we just show the default uncompleted state.
+  const [progressMap, setProgressMap] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    lessonsService.myProgress()
+      .then((r) => {
+        if (cancelled) return;
+        const map: Record<string, boolean> = {};
+        for (const p of (r.items as LessonProgress[]) ?? []) {
+          map[p.lesson_id] = !!p.completed;
+        }
+        setProgressMap(map);
+      })
+      .catch(() => { /* unauthenticated or offline — keep defaults */ });
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // Map the backend chapters into the page's tab structure. Tab order
+  // and labels keep the previous LEARN_TABS shape so the icons line up.
+  const tabSpec = LEARN_TABS;
+  type LiveChapter = { id: string; title: string; description?: string; category: string; position: number };
+  const liveChapterByTabIdx: (LiveChapter | undefined)[] = useMemo(() => {
+    const list = (liveChapters ?? []) as LiveChapter[];
+    if (!list.length) return new Array(tabSpec.length).fill(undefined);
+    const byLabel: Record<string, LiveChapter> = {};
+    for (const c of list) byLabel[c.title] = c;
+    return tabSpec.map((t) => byLabel[t.label] ?? list[0]);
+  }, [liveChapters, tabSpec]);
+
+  const activeChapter = liveChapterByTabIdx[activeTab];
+  // Live-path: lessons for the active chapter. Falls back to the
+  // in-page LEARN_CONTENT mock when the live list is empty so the
+  // page never blanks on a preview env.
+  const liveLessonsForChapter = useMemo(() => {
+    if (!activeChapter || !liveLessons) return [];
+    return liveLessons
+      .filter((l: any) => l.chapter_id === activeChapter.id)
+      .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0));
+  }, [activeChapter, liveLessons]);
+
+  // Chapters render shape: { title, lessons[] }. Group live lessons by
+  // a single chapter title when present; otherwise use the mock pair.
+  const renderChapters: Chapter[] = useMemo(() => {
+    if (liveLessonsForChapter.length > 0 && activeChapter) {
+      const lessons: Lesson[] = liveLessonsForChapter.map((l: any) => ({
+        id: l.id,
+        title: l.title,
+        description: l.description ?? "",
+        duration: `${l.read_time ?? 10}분`,
+        level: (l.level ?? "초급") as Lesson["level"],
+        completed: !!progressMap[l.id],
+        locked: !!l.is_locked,
+        popular: !!l.is_popular,
+      }));
+      return [{ title: activeChapter.title, lessons }];
+    }
+    return LEARN_CONTENT[activeTab] ?? [];
+  }, [liveLessonsForChapter, activeChapter, progressMap, activeTab]);
+
+  const totalLessons = renderChapters.reduce((sum, c) => sum + c.lessons.length, 0);
+  const completedLessons = renderChapters.reduce((sum, c) => sum + c.lessons.filter(l => l.completed).length, 0);
   const progress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
 
   return (
@@ -255,7 +324,7 @@ export default function Learn() {
 
       {/* Chapters */}
       <div className="space-y-4">
-        {chapters.map((chapter, ci) => (
+        {renderChapters.map((chapter, ci) => (
           <div key={ci} className="bg-card border border-border rounded-xl p-5">
             <div className="flex items-center gap-2 mb-3">
               <BookMarked size={14} className="text-primary" />
