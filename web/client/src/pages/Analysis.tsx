@@ -236,7 +236,7 @@ function MacroCard({ ind, onEdit }: { ind: MacroIndicator; onEdit: (id: string) 
             </div>
             <div className="h-28">
               <StockMiniChart
-                data={historyData.map((d: any) => ({ date: String(d.date), value: Number(d.value) }))}
+                data={historyData.map((d: any) => ({ date: d.date, value: Number(d.value) }))}
                 color={color}
                 variant="area"
                 height={112}

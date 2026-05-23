@@ -58,16 +58,24 @@ export default function StockMiniChart({
     return data[data.length - 1].value >= data[0].value ? UP : DOWN;
   }, [color, data]);
 
-  const klineData = useMemo<KLineData[]>(
-    () =>
-      data.map((p) => {
-        const ts = new Date(p.date + "T00:00:00Z").getTime();
-        // Area mode uses `close` only; open/high/low mirror it so candle metrics
-        // stay valid if klinecharts ever needs them.
-        return { timestamp: ts, open: p.value, high: p.value, low: p.value, close: p.value };
-      }),
-    [data],
-  );
+  const klineData = useMemo<KLineData[]>(() => {
+    // Defensive timestamp parsing — fall back to a synthetic per-day stamp
+    // when the source uses non-ISO labels (e.g., "5월 18일"), so klinecharts
+    // never sees NaN (which crashes its date-tick formatter).
+    const todayMs = Date.now();
+    return data.map((p, i) => {
+      let ts = NaN;
+      if (p.date != null) {
+        const s = String(p.date);
+        const parsed = new Date(s + (/^\d{4}-\d{2}-\d{2}$/.test(s) ? "T00:00:00Z" : "")).getTime();
+        if (Number.isFinite(parsed)) ts = parsed;
+      }
+      if (!Number.isFinite(ts)) ts = todayMs - (data.length - 1 - i) * 86_400_000;
+      // Area mode uses `close` only; open/high/low mirror it so candle metrics
+      // stay valid if klinecharts ever needs them.
+      return { timestamp: ts, open: p.value, high: p.value, low: p.value, close: p.value };
+    });
+  }, [data]);
 
   useEffect(() => {
     if (!containerRef.current) return;

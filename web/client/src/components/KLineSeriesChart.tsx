@@ -78,14 +78,25 @@ export default function KLineSeriesChart({
   // crosshair/y-axis range still tracks something sensible.
   const klineData = useMemo<KLineData[]>(() => {
     const primaryKey = series[0]?.key;
-    return data.map((row) => {
-      const ts = typeof row.date === "number"
-        ? row.date
-        : new Date(String(row.date) + (String(row.date).length === 10 ? "T00:00:00Z" : "")).getTime();
+    // klinecharts requires strictly increasing valid timestamps. If a row's
+    // `date` parses to NaN (e.g., the source used a locale-formatted label
+    // like "5월 18일"), fall back to a synthetic per-day timestamp anchored
+    // to today and walking backwards by index — preserves order, never NaN.
+    const todayMs = Date.now();
+    return data.map((row, i) => {
+      let ts = NaN;
+      if (typeof row.date === "number" && Number.isFinite(row.date)) {
+        ts = row.date;
+      } else if (row.date != null) {
+        const s = String(row.date);
+        const parsed = new Date(s + (/^\d{4}-\d{2}-\d{2}$/.test(s) ? "T00:00:00Z" : "")).getTime();
+        if (Number.isFinite(parsed)) ts = parsed;
+      }
+      if (!Number.isFinite(ts)) {
+        ts = todayMs - (data.length - 1 - i) * 86_400_000;
+      }
       const v = primaryKey ? Number(row[primaryKey] ?? 0) : 0;
       const merged: any = { timestamp: ts, open: v, high: v, low: v, close: v };
-      // Carry every series field through so the custom indicator's calc
-      // can pluck them by key.
       for (const s of series) merged[s.key] = Number(row[s.key] ?? 0);
       return merged as KLineData;
     });
