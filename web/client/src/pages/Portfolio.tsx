@@ -8,8 +8,17 @@ import {
   PORTFOLIO_ALLOCATION,
   generatePortfolioChart,
 } from "@/lib/data";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
-import KLineSeriesChart from "@/components/KLineSeriesChart";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 import { TrendingUp, TrendingDown, PlusCircle, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -125,36 +134,58 @@ export default function Portfolio() {
             수익률 추이 (30일)
           </h2>
           <div className="h-56">
-            <KLineSeriesChart
-              data={chartData.map((d: any, i: number) => {
-                const dt = new Date();
-                dt.setDate(dt.getDate() - (chartData.length - 1 - i));
-                return { date: dt.toISOString().slice(0, 10), ...d };
-              })}
-              series={[
-                {
-                  key: "portfolio",
-                  label: "포트폴리오",
-                  color: "#38BDF8",
-                  type: "line",
-                },
-                {
-                  key: "kospi",
-                  label: "KOSPI",
-                  color: "#A78BFA",
-                  type: "line",
-                  dashed: true,
-                },
-                {
-                  key: "sp500",
-                  label: "S&P 500",
-                  color: "#FBBF24",
-                  type: "line",
-                  dashed: true,
-                },
-              ]}
-              height={224}
-            />
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={chartData}
+                margin={{ top: 4, right: 4, bottom: 0, left: -20 }}
+              >
+                <XAxis
+                  dataKey="day"
+                  tick={{ fontSize: 10 }}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 10 }}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "var(--card)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                    fontSize: 11,
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="portfolio"
+                  stroke="var(--sky)"
+                  strokeWidth={2}
+                  dot={false}
+                  name="포트폴리오"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="kospi"
+                  stroke="var(--violet)"
+                  strokeWidth={1.5}
+                  dot={false}
+                  strokeDasharray="4 2"
+                  name="KOSPI"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="sp500"
+                  stroke="var(--gold)"
+                  strokeWidth={1.5}
+                  dot={false}
+                  strokeDasharray="4 2"
+                  name="S&P 500"
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
 

@@ -1364,10 +1364,11 @@ export default function Home() {
     minImportance: 3,
   });
 
-  // Market comparison chart (Row 4L). Plot S&P 500 (SPY) and KOSPI
-  // (EWY) as **cumulative % return** from the first bar of the period,
-  // not absolute prices — base-100 normalization was hard for the user
-  // to read. X axis shows MM/DD; Y axis shows % change.
+  // Market comparison chart (Row 4L). Plot S&P 500 (SPY) and KOSPI200
+  // (069500 KODEX 200, KRW) as **cumulative % return** from the first bar
+  // of the period — not absolute prices. KODEX 200 tracks KOSPI200 in KRW
+  // directly, so it reflects the actual Korean-market move a domestic
+  // investor experiences (no USD-FX contamination like EWY).
   type PerfRow = {
     date: string;
     label: string;
@@ -1398,7 +1399,7 @@ export default function Home() {
         `/quotes/SPY?range=${fetchRange}`,
       ).catch(() => null),
       apiGet<{ bars: { t: string; c: number }[] }>(
-        `/quotes/EWY?range=${fetchRange}`,
+        `/quotes/069500.KS?range=${fetchRange}`,
       ).catch(() => null),
     ]).then(([sp, kr]) => {
       if (cancelled) return;

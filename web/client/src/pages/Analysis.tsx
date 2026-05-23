@@ -64,7 +64,6 @@ import { useWatchlist } from "@/contexts/WatchlistContext";
 import { useStocks } from "@/features/stocks";
 import StockChart from "@/components/StockChart";
 import StockMiniChart from "@/components/StockMiniChart";
-import KLineSeriesChart from "@/components/KLineSeriesChart";
 import { useSectors } from "@/features/sectors";
 import {
   US_STOCKS,
@@ -1796,18 +1795,55 @@ function ReturnComparisonPanel() {
                 ))}
               </div>
               <div className="h-52">
-                <KLineSeriesChart
-                  data={watchlistChartData}
-                  series={displayTickers.map((ticker, i) => ({
-                    key: ticker,
-                    label: ticker,
-                    color: COLORS[i % COLORS.length],
-                    type: "line",
-                  }))}
-                  height={208}
-                  valueFormatter={(v) => `${v.toFixed(1)}%`}
-                  zeroLine
-                />
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={watchlistChartData}
+                    margin={{ top: 4, right: 4, bottom: 0, left: -16 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="var(--border)"
+                      opacity={0.3}
+                    />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
+                      tickLine={false}
+                      axisLine={false}
+                      interval={Math.max(
+                        0,
+                        Math.floor(watchlistChartData.length / 6),
+                      )}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => `${v}%`}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: "var(--card)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "8px",
+                        fontSize: 10,
+                      }}
+                      formatter={(v: number) => [`${v.toFixed(2)}%`]}
+                    />
+                    <ReferenceLine y={0} stroke="var(--border)" strokeWidth={1} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    {displayTickers.map((ticker, i) => (
+                      <Line
+                        key={ticker}
+                        type="monotone"
+                        dataKey={ticker}
+                        stroke={COLORS[i % COLORS.length]}
+                        strokeWidth={1.5}
+                        dot={false}
+                      />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
               {/* Return summary */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
@@ -2022,27 +2058,40 @@ function StockAnalysisPanel({
         {activeTab === "재무제표" && (
           <div className="space-y-4">
             <div className="h-44">
-              <KLineSeriesChart
-                data={financialData.map((d: any) => ({
-                  date: String(d.year) + "-12-31",
-                  ...d,
-                }))}
-                series={[
-                  {
-                    key: "revenue",
-                    label: "매출액",
-                    color: "#38bdf8",
-                    type: "bar",
-                  },
-                  {
-                    key: "netIncome",
-                    label: "순이익",
-                    color: "#22c55e",
-                    type: "bar",
-                  },
-                ]}
-                height={176}
-              />
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={financialData}
+                  margin={{ top: 4, right: 4, bottom: 0, left: -16 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="var(--border)"
+                    opacity={0.3}
+                  />
+                  <XAxis
+                    dataKey="year"
+                    tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "var(--card)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "8px",
+                      fontSize: 10,
+                    }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="revenue" name="매출액" fill="#38bdf8" opacity={0.8} radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="netIncome" name="순이익" fill="#22c55e" opacity={0.8} radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
             <table className="w-full text-xs">
               <thead>
