@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useWatchlist } from "@/contexts/WatchlistContext";
 import { useStocks } from "@/features/stocks";
+import StockChart from "@/components/StockChart";
 import { useSectors } from "@/features/sectors";
 import {
   US_STOCKS, KR_STOCKS, US_SECTORS, KR_SECTORS, MACRO_INDICATORS
@@ -1240,148 +1241,13 @@ function StockAnalysisPanel({ stock, onClose }: { stock: AllStock; onClose: () =
       </div>
 
       <div className="p-4">
-        {/* ── 차트 탭 ── */}
+        {/* ── 차트 탭 ── (shared <StockChart> — real OHLCV from API) */}
         {activeTab === "차트" && (
-          <div className="space-y-3">
-            {/* Period + Indicator controls */}
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex rounded-lg border border-border overflow-hidden text-xs">
-                {(["1W", "1M", "3M", "1Y"] as Period[]).map(p => (
-                  <button key={p} onClick={() => setPeriod(p)}
-                    className={cn("px-2.5 py-1.5 font-medium transition-colors",
-                      period === p ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
-                    )}>{p}</button>
-                ))}
-              </div>
-              <div className="flex flex-wrap gap-1.5 ml-2">
-                {INDICATOR_OPTIONS.map(ind => (
-                  <button
-                    key={ind.id}
-                    onClick={() => toggleIndicator(ind.id)}
-                    className={cn(
-                      "px-2 py-1 rounded text-[10px] font-medium border transition-all",
-                      activeIndicators.includes(ind.id)
-                        ? "border-transparent text-white"
-                        : "border-border text-muted-foreground hover:border-primary/30"
-                    )}
-                    style={activeIndicators.includes(ind.id) ? { background: ind.color + "33", borderColor: ind.color, color: ind.color } : {}}
-                  >
-                    {ind.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Main price chart */}
-            <div className="h-52">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -16 }}>
-                  <defs>
-                    <linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.2} />
-                      <stop offset="100%" stopColor="#38bdf8" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.3} />
-                  <XAxis dataKey="date" tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false}
-                    interval={Math.floor(chartData.length / 6)} />
-                  <YAxis tick={{ fontSize: 9, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false}
-                    domain={["dataMin * 0.97", "dataMax * 1.03"]}
-                    tickFormatter={v => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : v.toFixed(0)} />
-                  <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px", fontSize: 10 }} />
-                  <Area type="monotone" dataKey="close" stroke="#38bdf8" strokeWidth={1.5} fill="url(#priceGrad)" dot={false} name="종가" />
-                  {activeIndicators.includes("bb") && (
-                    <>
-                      <Line type="monotone" dataKey="bb_upper" stroke="#94a3b8" strokeWidth={1} strokeDasharray="3 2" dot={false} name="BB상단" />
-                      <Line type="monotone" dataKey="bb_lower" stroke="#94a3b8" strokeWidth={1} strokeDasharray="3 2" dot={false} name="BB하단" />
-                      <Line type="monotone" dataKey="bb_mid" stroke="#94a3b8" strokeWidth={0.5} strokeDasharray="2 3" dot={false} name="BB중심" />
-                    </>
-                  )}
-                  {activeIndicators.includes("ma5") && (
-                    <Line type="monotone" dataKey="ma5" stroke="#f59e0b" strokeWidth={1} dot={false} name="MA5" />
-                  )}
-                  {activeIndicators.includes("ma20") && (
-                    <Line type="monotone" dataKey="ma20" stroke="#a855f7" strokeWidth={1} dot={false} name="MA20" />
-                  )}
-                  {activeIndicators.includes("ma60") && (
-                    <Line type="monotone" dataKey="ma60" stroke="#38bdf8" strokeWidth={1} dot={false} name="MA60" />
-                  )}
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Sub panels */}
-            {showVolume && (
-              <div>
-                <div className="text-[10px] text-muted-foreground mb-1 font-medium">거래량</div>
-                <div className="h-16">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} margin={{ top: 0, right: 4, bottom: 0, left: -16 }}>
-                      <XAxis dataKey="date" hide />
-                      <YAxis tick={{ fontSize: 8, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} tickFormatter={v => `${(v / 1e6).toFixed(0)}M`} />
-                      <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px", fontSize: 10 }}
-                        formatter={(v: number) => [`${(v / 1e6).toFixed(1)}M`, "거래량"]} />
-                      <Bar dataKey="volume" fill="#64748b" opacity={0.6} radius={[1, 1, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
-
-            {showMACD && (
-              <div>
-                <div className="text-[10px] text-muted-foreground mb-1 font-medium">MACD</div>
-                <div className="h-16">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={chartData} margin={{ top: 0, right: 4, bottom: 0, left: -16 }}>
-                      <XAxis dataKey="date" hide />
-                      <YAxis tick={{ fontSize: 8, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} />
-                      <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px", fontSize: 10 }} />
-                      <ReferenceLine y={0} stroke="var(--border)" />
-                      <Bar dataKey="macd" fill="#22c55e" opacity={0.5} radius={[1, 1, 0, 0]} name="MACD" />
-                      <Line type="monotone" dataKey="signal" stroke="#ef4444" strokeWidth={1} dot={false} name="Signal" />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
-
-            {showRSI && (
-              <div>
-                <div className="text-[10px] text-muted-foreground mb-1 font-medium">RSI</div>
-                <div className="h-16">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 0, right: 4, bottom: 0, left: -16 }}>
-                      <XAxis dataKey="date" hide />
-                      <YAxis tick={{ fontSize: 8, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} domain={[0, 100]} />
-                      <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px", fontSize: 10 }} />
-                      <ReferenceLine y={70} stroke="#ef4444" strokeDasharray="3 2" strokeWidth={0.8} />
-                      <ReferenceLine y={30} stroke="#22c55e" strokeDasharray="3 2" strokeWidth={0.8} />
-                      <Line type="monotone" dataKey="rsi" stroke="#f59e0b" strokeWidth={1.5} dot={false} name="RSI" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
-
-            {showStoch && (
-              <div>
-                <div className="text-[10px] text-muted-foreground mb-1 font-medium">스토캐스틱</div>
-                <div className="h-16">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 0, right: 4, bottom: 0, left: -16 }}>
-                      <XAxis dataKey="date" hide />
-                      <YAxis tick={{ fontSize: 8, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} domain={[0, 100]} />
-                      <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px", fontSize: 10 }} />
-                      <ReferenceLine y={80} stroke="#ef4444" strokeDasharray="3 2" strokeWidth={0.8} />
-                      <ReferenceLine y={20} stroke="#22c55e" strokeDasharray="3 2" strokeWidth={0.8} />
-                      <Line type="monotone" dataKey="stoch" stroke="#ec4899" strokeWidth={1.5} dot={false} name="Stoch %K" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
-          </div>
+          <StockChart
+            ticker={stock.ticker}
+            currency={stock.country === "KR" ? "KRW" : "USD"}
+            priceHeight={280}
+          />
         )}
 
         {/* ── 재무제표 탭 ── */}

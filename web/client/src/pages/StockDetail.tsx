@@ -3,20 +3,16 @@
  * Features: Price chart with expandable technical indicator panels
  * Indicators: Moving Averages, Bollinger Bands, MACD, RSI, Stochastic, Volume
  */
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams } from "wouter";
 import { cn } from "@/lib/utils";
 import { US_STOCKS, KR_STOCKS } from "@/lib/data";
-import { useStocks, useStock } from "@/features/stocks";
-import {
-  ComposedChart, AreaChart, Area, BarChart, Bar, LineChart, Line,
-  XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
-  CartesianGrid
-} from "recharts";
+import { useStocks, useStock, useStockBars } from "@/features/stocks";
+import type { Stock } from "@/types";
 import {
   ArrowLeft, TrendingUp, TrendingDown, Star, Bell,
-  ChevronDown, ChevronUp, Settings2, Eye, EyeOff
 } from "lucide-react";
+import StockChart from "@/components/StockChart";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useWatchlist } from "@/contexts/WatchlistContext";
@@ -24,10 +20,120 @@ import { PriceAlertDialog } from "@/components/PriceAlertDialog";
 import { toast } from "sonner";
 
 // ── Data generators ────────────────────────────────────────────
+// Build chart-ready rows from real OHLCV bars. Indicators (MA/BB/MACD/
+// RSI/Stoch) are computed from the real close series so the technical
+// panels reflect actual market data instead of the random mock. The
+// math here is the textbook definition — short rolling windows for
+// MAs, 14-period RSI, 12/26/9 MACD, 20/2 Bollinger, 14/3/3 Stoch.
+function buildBarsRows(bars: { date: string; open: number; high: number; low: number; close: number; volume: number }[]) {
+  const n = bars.length;
+  const closes = bars.map((b) => b.close);
+
+  const sma = (i: number, w: number) => {
+    if (i + 1 < w) return closes[i];
+    let s = 0; for (let k = i - w + 1; k <= i; k++) s += closes[k];
+    return s / w;
+  };
+  const stdev = (i: number, w: number, mean: number) => {
+    if (i + 1 < w) return 0;
+    let s = 0; for (let k = i - w + 1; k <= i; k++) s += (closes[k] - mean) ** 2;
+    return Math.sqrt(s / w);
+  };
+  // EMA series
+  const ema = (period: number) => {
+    const k = 2 / (period + 1);
+    const out: number[] = [];
+    closes.forEach((c, i) => { out.push(i === 0 ? c : c * k + out[i - 1] * (1 - k)); });
+    return out;
+  };
+  const ema12 = ema(12);
+  const ema26 = ema(26);
+  const macdLineArr = ema12.map((v, i) => v - ema26[i]);
+  // 9-EMA of MACD line for signal
+  const signalArr: number[] = [];
+  const sk = 2 / (9 + 1);
+  macdLineArr.forEach((v, i) => signalArr.push(i === 0 ? v : v * sk + signalArr[i - 1] * (1 - sk)));
+
+  // RSI(14)
+  const rsiArr: number[] = [];
+  let gain = 0, loss = 0;
+  for (let i = 0; i < n; i++) {
+    if (i === 0) { rsiArr.push(50); continue; }
+    const ch = closes[i] - closes[i - 1];
+    const g = Math.max(ch, 0), l = Math.max(-ch, 0);
+    if (i <= 14) {
+      gain += g; loss += l;
+      if (i === 14) {
+        const avgG = gain / 14, avgL = loss / 14;
+        rsiArr.push(avgL === 0 ? 100 : 100 - 100 / (1 + avgG / avgL));
+      } else {
+        rsiArr.push(50);
+      }
+    } else {
+      gain = (gain * 13 + g) / 14;
+      loss = (loss * 13 + l) / 14;
+      rsiArr.push(loss === 0 ? 100 : 100 - 100 / (1 + gain / loss));
+    }
+  }
+
+  // Stochastic %K(14), %D(3-SMA of %K)
+  const kArr: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const start = Math.max(0, i - 13);
+    let hi = -Infinity, lo = Infinity;
+    for (let k = start; k <= i; k++) {
+      hi = Math.max(hi, bars[k].high);
+      lo = Math.min(lo, bars[k].low);
+    }
+    kArr.push(hi === lo ? 50 : ((closes[i] - lo) / (hi - lo)) * 100);
+  }
+  const dArr = kArr.map((_, i) => {
+    if (i < 2) return kArr[i];
+    return (kArr[i] + kArr[i - 1] + kArr[i - 2]) / 3;
+  });
+
+  return bars.map((b, i) => {
+    const dt = new Date(b.date);
+    const label = `${dt.getMonth() + 1}/${dt.getDate()}`;
+    const ma20v = sma(i, 20);
+    const sd = stdev(i, 20, ma20v);
+    const isUp = b.close >= b.open;
+    return {
+      day: i + 1,
+      label,
+      date: b.date,
+      close: b.close,
+      open: b.open,
+      high: b.high,
+      low: b.low,
+      // Candle body & wick ranges — Recharts `Bar` with array dataKey
+      // renders from min to max of the pair, which is exactly what we
+      // need for OHLC candlesticks without writing a custom <Customized>.
+      candleBody: [b.open, b.close] as [number, number],
+      candleWick: [b.low, b.high] as [number, number],
+      isUp,
+      volume: Math.round(b.volume / 1_000_000), // → M for chart-tooltip parity
+      ma5: sma(i, 5),
+      ma20: ma20v,
+      ma60: sma(i, 60),
+      bbMiddle: ma20v,
+      bbUpper: ma20v + 2 * sd,
+      bbLower: ma20v - 2 * sd,
+      macdLine: macdLineArr[i],
+      signalLine: signalArr[i],
+      histogram: macdLineArr[i] - signalArr[i],
+      rsi: rsiArr[i],
+      stochK: kArr[i],
+      stochD: dArr[i],
+    };
+  });
+}
+
 function generatePriceData(days = 90, trend: "up" | "down" | "flat" = "up") {
   const data: Array<{
-    day: number; label: string;
+    day: number; label: string; date: string;
     close: number; open: number; high: number; low: number;
+    candleBody: [number, number]; candleWick: [number, number]; isUp: boolean;
     volume: number;
     ma5: number; ma20: number; ma60: number;
     bbUpper: number; bbMiddle: number; bbLower: number;
@@ -78,9 +184,14 @@ function generatePriceData(days = 90, trend: "up" | "down" | "flat" = "up") {
     date.setDate(date.getDate() + i);
     const label = `${date.getMonth() + 1}/${date.getDate()}`;
 
+    const isUp = close >= open;
     data.push({
-      day: i + 1, label,
-      close, open, high, low, volume,
+      day: i + 1, label, date: date.toISOString().slice(0, 10),
+      close, open, high, low,
+      candleBody: [open, close],
+      candleWick: [low, high],
+      isUp,
+      volume,
       ma5, ma20, ma60,
       bbUpper, bbMiddle, bbLower,
       macdLine, signalLine, histogram,
@@ -90,95 +201,133 @@ function generatePriceData(days = 90, trend: "up" | "down" | "flat" = "up") {
   return data;
 }
 
-// ── Indicator Panel Component ──────────────────────────────────
-interface IndicatorConfig {
-  id: string;
-  label: string;
-  shortLabel: string;
-  enabled: boolean;
+// ── Indicator config ───────────────────────────────────────────
+type IndicatorKey = "ma" | "bb" | "vol" | "macd" | "rsi" | "stoch";
+const INDICATOR_LABELS: Record<IndicatorKey, string> = {
+  ma: "MA", bb: "BB(20,2)", vol: "Vol", macd: "MACD", rsi: "RSI", stoch: "Stoch",
+};
+type IndicatorSet = Record<IndicatorKey, boolean>;
+const DEFAULT_INDICATORS: IndicatorSet = {
+  ma: true, bb: false, vol: true, macd: false, rsi: false, stoch: false,
+};
+
+type PeriodKey = "1W" | "1M" | "3M" | "6M" | "1Y" | "2Y" | "5Y";
+const PERIOD_DAYS: Record<PeriodKey, number> = {
+  "1W": 7, "1M": 22, "3M": 66, "6M": 130, "1Y": 252, "2Y": 504, "5Y": 1300,
+};
+const PERIOD_ORDER: PeriodKey[] = ["1W", "1M", "3M", "6M", "1Y", "2Y", "5Y"];
+
+const PALETTE = {
+  up: "#22c55e", down: "#ef4444",
+  ma5: "#FBBF24", ma20: "#A78BFA", ma60: "#F87171",
+  bb: "#38BDF8", macd: "#38BDF8", signal: "#F87171",
+  rsi: "#A78BFA", stochK: "#FBBF24", stochD: "#F87171",
+};
+
+// ── Candlestick renderer (Customized) ──────────────────────────
+// Recharts has no built-in candle. We render via <Customized>, which
+// receives the full chart state including the y-scale and the per-bar
+// x-positions from the price Bar series. Drawing rectangles + a thin
+// wick line per bar gives us the classic OHLC look without dragging
+// a heavy charting lib in.
+function Candles({ chartData }: { chartData: any[] }) {
+  return function CandleLayer(props: any) {
+    const xMap = props.xAxisMap as Record<string, any> | undefined;
+    const yMap = props.yAxisMap as Record<string, any> | undefined;
+    if (!xMap || !yMap) return null;
+    const xAxis = Object.values(xMap)[0] as any;
+    const yAxis = Object.values(yMap)[0] as any;
+    if (!xAxis?.scale || !yAxis?.scale) return null;
+    const slot = xAxis.bandSize ?? 8;
+    const bodyW = Math.max(1, Math.min(slot * 0.7, 8));
+    return (
+      <g>
+        {chartData.map((d, i) => {
+          const cx = xAxis.scale(d.label) + slot / 2;
+          if (cx == null || isNaN(cx)) return null;
+          const yHigh = yAxis.scale(d.high);
+          const yLow = yAxis.scale(d.low);
+          const yOpen = yAxis.scale(d.open);
+          const yClose = yAxis.scale(d.close);
+          const color = d.isUp ? PALETTE.up : PALETTE.down;
+          const top = Math.min(yOpen, yClose);
+          const h = Math.max(1, Math.abs(yClose - yOpen));
+          return (
+            <g key={i}>
+              <line x1={cx} x2={cx} y1={yHigh} y2={yLow} stroke={color} strokeWidth={1} />
+              <rect x={cx - bodyW / 2} y={top} width={bodyW} height={h} fill={color} />
+            </g>
+          );
+        })}
+      </g>
+    );
+  };
 }
 
-const DEFAULT_INDICATORS: IndicatorConfig[] = [
-  { id: "ma", label: "이동평균선 (MA5 · MA20 · MA60)", shortLabel: "MA", enabled: true },
-  { id: "bb", label: "볼린저 밴드 (BB 20,2)", shortLabel: "BB", enabled: false },
-  { id: "macd", label: "MACD (12,26,9)", shortLabel: "MACD", enabled: true },
-  { id: "rsi", label: "RSI (14)", shortLabel: "RSI", enabled: true },
-  { id: "stoch", label: "스토캐스틱 (14,3,3)", shortLabel: "Stoch", enabled: false },
-  { id: "volume", label: "거래량", shortLabel: "Vol", enabled: true },
-];
-
-function IndicatorToggle({
-  config,
-  onToggle,
+// ── Hover info strip ──────────────────────────────────────────
+// Compact OHLC + indicators row above the chart that updates as the
+// cursor moves across any synced pane. Mirrors TradingView's top-left
+// data legend so the user never has to mouse-hunt for a tooltip.
+function HoverInfo({
+  data, idx, indicators, currency,
 }: {
-  config: IndicatorConfig;
-  onToggle: (id: string) => void;
+  data: any[]; idx: number | null; indicators: IndicatorSet; currency: string;
 }) {
+  const d = idx != null && idx >= 0 && idx < data.length ? data[idx] : data[data.length - 1];
+  if (!d) return null;
+  const pctVsPrev = (() => {
+    const prevIdx = (idx ?? data.length - 1) - 1;
+    if (prevIdx < 0) return 0;
+    const prev = data[prevIdx];
+    return prev ? ((d.close - prev.close) / prev.close) * 100 : 0;
+  })();
+  const fmt = (v: number | undefined, digits = 2) =>
+    v == null || isNaN(v) ? "—" : v.toLocaleString(undefined, { maximumFractionDigits: digits, minimumFractionDigits: digits });
+  const items: { label: string; value: string; color?: string }[] = [
+    { label: "O", value: fmt(d.open), color: "text-muted-foreground" },
+    { label: "H", value: fmt(d.high), color: "text-up" },
+    { label: "L", value: fmt(d.low), color: "text-down" },
+    { label: "C", value: fmt(d.close), color: d.isUp ? "text-up" : "text-down" },
+    { label: "Δ", value: `${pctVsPrev >= 0 ? "+" : ""}${fmt(pctVsPrev)}%`, color: pctVsPrev >= 0 ? "text-up" : "text-down" },
+  ];
+  if (indicators.ma) {
+    items.push({ label: "MA5", value: fmt(d.ma5), color: "" });
+    items.push({ label: "MA20", value: fmt(d.ma20), color: "" });
+    items.push({ label: "MA60", value: fmt(d.ma60), color: "" });
+  }
+  if (indicators.bb) {
+    items.push({ label: "BB↑", value: fmt(d.bbUpper) });
+    items.push({ label: "BB↓", value: fmt(d.bbLower) });
+  }
+  if (indicators.rsi) items.push({ label: "RSI", value: fmt(d.rsi, 1) });
+  if (indicators.macd) items.push({ label: "MACD", value: fmt(d.macdLine, 3) });
+  return (
+    <div className="px-3 py-2 border-b border-border flex items-center gap-x-3 gap-y-1 text-[11px] flex-wrap bg-muted/10">
+      <span className="text-xs font-mono-num font-semibold text-foreground">{d.date || d.label}</span>
+      <span className="text-[10px] text-muted-foreground">{currency}</span>
+      {items.map((it) => (
+        <span key={it.label} className="flex items-center gap-1">
+          <span className="text-[10px] text-muted-foreground">{it.label}</span>
+          <span className={cn("font-mono-num font-medium", it.color)}>{it.value}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// Single chip used in the indicator toolbar.
+function Chip({ on, label, onClick, color }: { on: boolean; label: string; onClick: () => void; color?: string }) {
   return (
     <button
-      onClick={() => onToggle(config.id)}
+      onClick={onClick}
       className={cn(
-        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-150",
-        config.enabled
-          ? "bg-primary/10 border-primary text-primary"
-          : "bg-transparent border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground"
+        "text-[11px] px-2 py-0.5 rounded border transition-all font-medium",
+        on
+          ? "border-primary/40 bg-primary/10 text-primary"
+          : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40",
       )}
-    >
-      {config.enabled ? <Eye size={11} /> : <EyeOff size={11} />}
-      {config.shortLabel}
-    </button>
-  );
-}
-
-interface ExpandablePanelProps {
-  title: string;
-  subtitle?: string;
-  height?: number;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-  accentColor?: string;
-}
-
-function ExpandablePanel({ title, subtitle, height = 120, children, defaultOpen = true, accentColor = "var(--primary)" }: ExpandablePanelProps) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="border border-border rounded-xl overflow-hidden">
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-4 py-2.5 bg-muted/20 hover:bg-muted/40 transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          <div className="w-1.5 h-4 rounded-full" style={{ background: accentColor }} />
-          <span className="text-xs font-bold text-foreground">{title}</span>
-          {subtitle && <span className="text-[10px] text-muted-foreground">{subtitle}</span>}
-        </div>
-        {open ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
-      </button>
-      {open && (
-        <div className="px-2 pb-2 pt-1" style={{ height }}>
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Custom Tooltip ─────────────────────────────────────────────
-function PriceTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0]?.payload;
-  if (!d) return null;
-  return (
-    <div className="bg-card border border-border rounded-lg p-3 text-xs shadow-lg min-w-[160px]">
-      <div className="text-muted-foreground mb-1.5 font-medium">{d.label}</div>
-      <div className="space-y-0.5">
-        <div className="flex justify-between gap-4"><span className="text-muted-foreground">종가</span><span className="font-mono-num font-bold">{d.close?.toFixed(2)}</span></div>
-        <div className="flex justify-between gap-4"><span className="text-muted-foreground">시가</span><span className="font-mono-num">{d.open?.toFixed(2)}</span></div>
-        <div className="flex justify-between gap-4"><span className="text-muted-foreground">고가</span><span className="font-mono-num text-up">{d.high?.toFixed(2)}</span></div>
-        <div className="flex justify-between gap-4"><span className="text-muted-foreground">저가</span><span className="font-mono-num text-down">{d.low?.toFixed(2)}</span></div>
-        <div className="flex justify-between gap-4"><span className="text-muted-foreground">거래량</span><span className="font-mono-num">{d.volume}M</span></div>
-      </div>
-    </div>
+      style={on && color ? { color, borderColor: color + "66", background: color + "1a" } : undefined}
+    >{label}</button>
   );
 }
 
@@ -187,9 +336,10 @@ export default function StockDetail() {
   const params = useParams<{ ticker: string }>();
   const ticker = params.ticker?.toUpperCase() ?? "";
 
-  const [chartPeriod, setChartPeriod] = useState<"1W" | "1M" | "3M" | "6M" | "1Y">("3M");
+  const [chartPeriod, setChartPeriod] = useState<PeriodKey>("3M");
   const [activeTab, setActiveTab] = useState(0);
-  const [indicators, setIndicators] = useState<IndicatorConfig[]>(DEFAULT_INDICATORS);
+  const [indicators, setIndicators] = useState<IndicatorSet>(DEFAULT_INDICATORS);
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [alertOpen, setAlertOpen] = useState(false);
   const { isWatched, toggleWatchlist } = useWatchlist();
 
@@ -203,21 +353,113 @@ export default function StockDetail() {
     () => [...(liveUS ?? []), ...(liveKR ?? []), ...US_STOCKS, ...KR_STOCKS],
     [liveUS, liveKR],
   );
-  const stock = allStocks.find(s => s.ticker === ticker);
+  const fromListRaw = allStocks.find((s: any) => s.ticker === ticker);
+  // The mock US_STOCKS / KR_STOCKS arrays are looser than Stock (missing
+  // change / volume / country) — fill defaults so the rest of this file
+  // gets a real Stock.
+  const fromList: Stock | undefined = fromListRaw
+    ? {
+        ...(fromListRaw as Stock),
+        change: (fromListRaw as any).change ?? 0,
+        volume: (fromListRaw as any).volume ?? 0,
+        country: (fromListRaw as any).country ?? (/^\d/.test(fromListRaw.ticker) ? "KR" : "US"),
+      }
+    : undefined;
   const watched = isWatched(ticker);
 
-  const periodDays: Record<string, number> = { "1W": 7, "1M": 22, "3M": 66, "6M": 130, "1Y": 252 };
-  const days = periodDays[chartPeriod] ?? 66;
+  // Profile fallback — any ticker not in the movers list (which is most
+  // of the universe) still resolves through /v1/stocks/{ticker}/profile,
+  // so we render the page instead of bailing out to "not found".
+  // Note: Finnhub doesn't cover KR symbols → profile is null there.
+  // We compensate by synthesizing a Stock from bars data alone when
+  // the ticker looks Korean (numeric).
+  const { data: profile, loading: profileLoading } = useStock(
+    !fromList && ticker ? ticker : undefined,
+  );
+
+  const days = PERIOD_DAYS[chartPeriod] ?? 66;
+
+  // Real OHLCV from the bars endpoint. We always try to load real bars;
+  // fall back to the mock generator while loading or if the endpoint is
+  // empty, so the chart shape is always populated.
+  const { data: barsData } = useStockBars(ticker || undefined, days);
+  const isKrTicker = /^\d/.test(ticker);
+  // For KR tickers Finnhub returns nothing, so when bars resolved we
+  // still want a render — synthesize the Stock from the ticker alone.
+  const hasBars = !!(barsData && barsData.length);
+  const inferredStock: Stock | undefined = fromList ?? (profile
+    ? {
+        ticker,
+        name: profile.name || ticker,
+        sector: profile.sector || "—",
+        exchange: isKrTicker ? "KOSPI" : "NASDAQ",
+        country: isKrTicker ? "KR" : "US",
+        price: 0,
+        change: 0,
+        changePct: 0,
+        volume: 0,
+        marketCap: "",
+      }
+    : (isKrTicker && hasBars
+        ? {
+            ticker,
+            name: ticker,
+            sector: "—",
+            exchange: "KOSPI",
+            country: "KR",
+            price: 0,
+            change: 0,
+            changePct: 0,
+            volume: 0,
+            marketCap: "",
+          }
+        : undefined));
+
+  // Latest bar drives the header price/change if movers list didn't
+  // supply it (typical for the long tail of profile-only resolutions).
+  const latestBar = barsData && barsData.length ? barsData[barsData.length - 1] : null;
+  const prevBar = barsData && barsData.length > 1 ? barsData[barsData.length - 2] : null;
+  const livePrice = latestBar?.close ?? inferredStock?.price ?? 0;
+  const liveChange = latestBar && prevBar ? latestBar.close - prevBar.close : (inferredStock?.change ?? 0);
+  const liveChangePct = latestBar && prevBar
+    ? ((latestBar.close - prevBar.close) / prevBar.close) * 100
+    : (inferredStock?.changePct ?? 0);
+
+  const stock: Stock | undefined = inferredStock
+    ? { ...inferredStock, price: livePrice || inferredStock.price, change: liveChange, changePct: liveChangePct }
+    : undefined;
+
   const up = stock ? stock.changePct >= 0 : true;
-  const chartData = useMemo(() => generatePriceData(days, up ? "up" : "down"), [days, up]);
+  const chartData = useMemo(() => {
+    if (barsData && barsData.length > 5) return buildBarsRows(barsData);
+    return generatePriceData(days, up ? "up" : "down");
+  }, [barsData, days, up]);
 
-  const toggleIndicator = (id: string) => {
-    setIndicators(prev => prev.map(ind => ind.id === id ? { ...ind, enabled: !ind.enabled } : ind));
+  const toggle = (k: IndicatorKey) =>
+    setIndicators((prev) => ({ ...prev, [k]: !prev[k] }));
+  const currency = stock?.country === "KR" ? "KRW" : "USD";
+
+  // Sync the active cursor across all panes. Recharts `syncId` shares
+  // the vertical crosshair across charts sharing the id; we also use
+  // local hover state to drive the data-legend strip above.
+  const SYNC_ID = `sd-${ticker}`;
+  const onMove = (e: any) => {
+    if (e?.activeTooltipIndex != null) setHoveredIdx(e.activeTooltipIndex);
   };
-
-  const isEnabled = (id: string) => indicators.find(i => i.id === id)?.enabled ?? false;
+  const onLeave = () => setHoveredIdx(null);
+  const tickInterval = Math.max(0, Math.floor((chartData?.length ?? 0) / 8));
 
   if (!stock) {
+    // Still resolving the profile? Render a skeleton instead of the
+    // hard "not found" — most tickers go through this path.
+    if (profileLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center h-64 gap-2">
+          <div className="text-3xl font-bold font-mono-num text-muted-foreground/30">{ticker}</div>
+          <p className="text-muted-foreground text-xs">종목 정보를 불러오는 중…</p>
+        </div>
+      );
+    }
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <div className="text-5xl font-bold font-mono-num text-muted-foreground/20">{ticker}</div>
@@ -314,256 +556,12 @@ export default function StockDetail() {
         ))}
       </div>
 
-      {/* ── Tab 0: Chart & Indicators ── */}
+      {/* ── Tab 0: Chart & Indicators (shared component) ── */}
       {activeTab === 0 && (
-        <div className="space-y-3">
-          {/* Chart controls */}
-          <div className="bg-card border border-border rounded-xl p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              {/* Period selector */}
-              <div className="flex gap-1 bg-muted/40 p-1 rounded-lg">
-                {(["1W", "1M", "3M", "6M", "1Y"] as const).map(p => (
-                  <button key={p} onClick={() => setChartPeriod(p)}
-                    className={cn("text-xs px-2.5 py-1 rounded-md transition-colors font-medium",
-                      chartPeriod === p ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                    )}>{p}</button>
-                ))}
-              </div>
-
-              {/* Indicator toggles */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <Settings2 size={13} className="text-muted-foreground mr-1" />
-                {indicators.map(ind => (
-                  <IndicatorToggle key={ind.id} config={ind} onToggle={toggleIndicator} />
-                ))}
-              </div>
-            </div>
-
-            {/* Main price chart */}
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-                  <defs>
-                    <linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={up ? "#22c55e" : "#ef4444"} stopOpacity={0.15} />
-                      <stop offset="100%" stopColor={up ? "#22c55e" : "#ef4444"} stopOpacity={0} />
-                    </linearGradient>
-                    {isEnabled("bb") && (
-                      <linearGradient id="bbGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#38BDF8" stopOpacity={0.08} />
-                        <stop offset="100%" stopColor="#38BDF8" stopOpacity={0.02} />
-                      </linearGradient>
-                    )}
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.4} />
-                  <XAxis dataKey="label" tick={{ fontSize: 9 }} tickLine={false} axisLine={false}
-                    interval={Math.floor(chartData.length / 6)} />
-                  <YAxis tick={{ fontSize: 9 }} tickLine={false} axisLine={false}
-                    domain={["auto", "auto"]} tickFormatter={(v) => v.toFixed(0)} />
-                  <Tooltip content={<PriceTooltip />} />
-
-                  {/* Bollinger Bands */}
-                  {isEnabled("bb") && <>
-                    <Area type="monotone" dataKey="bbUpper" stroke="#38BDF8" strokeWidth={1}
-                      strokeDasharray="3 2" fill="none" dot={false} name="BB상단" />
-                    <Area type="monotone" dataKey="bbLower" stroke="#38BDF8" strokeWidth={1}
-                      strokeDasharray="3 2" fill="url(#bbGrad)" dot={false} name="BB하단" />
-                    <Line type="monotone" dataKey="bbMiddle" stroke="#38BDF8" strokeWidth={1}
-                      strokeDasharray="5 3" dot={false} name="BB중심" opacity={0.6} />
-                  </>}
-
-                  {/* Moving Averages */}
-                  {isEnabled("ma") && <>
-                    <Line type="monotone" dataKey="ma5" stroke="#FBBF24" strokeWidth={1.5}
-                      dot={false} name="MA5" />
-                    <Line type="monotone" dataKey="ma20" stroke="#A78BFA" strokeWidth={1.5}
-                      dot={false} name="MA20" />
-                    <Line type="monotone" dataKey="ma60" stroke="#F87171" strokeWidth={1.5}
-                      dot={false} name="MA60" />
-                  </>}
-
-                  {/* Price area */}
-                  <Area type="monotone" dataKey="close" stroke={up ? "#22c55e" : "#ef4444"}
-                    strokeWidth={2} fill="url(#priceGrad)" dot={false} name="종가" />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* MA legend */}
-            {isEnabled("ma") && (
-              <div className="flex gap-4 mt-2 flex-wrap">
-                {[
-                  { label: "MA5", color: "#FBBF24" },
-                  { label: "MA20", color: "#A78BFA" },
-                  { label: "MA60", color: "#F87171" },
-                ].map(l => (
-                  <div key={l.label} className="flex items-center gap-1.5">
-                    <div className="w-4 h-0.5 rounded" style={{ background: l.color }} />
-                    <span className="text-[10px] text-muted-foreground">{l.label}</span>
-                  </div>
-                ))}
-                {isEnabled("bb") && (
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-4 h-0.5 rounded border-t border-dashed" style={{ borderColor: "#38BDF8" }} />
-                    <span className="text-[10px] text-muted-foreground">BB (20,2)</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* ── Expandable Indicator Panels ── */}
-
-          {/* Volume */}
-          {isEnabled("volume") && (
-            <ExpandablePanel title="거래량" subtitle="Volume" height={110} accentColor="var(--muted-foreground)">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 2, right: 4, bottom: 0, left: -20 }}>
-                  <XAxis dataKey="label" tick={{ fontSize: 8 }} tickLine={false} axisLine={false}
-                    interval={Math.floor(chartData.length / 6)} />
-                  <YAxis tick={{ fontSize: 8 }} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px", fontSize: 10 }}
-                    formatter={(v: number) => [`${v}M`, "거래량"]}
-                  />
-                  <Bar dataKey="volume" radius={[2, 2, 0, 0]}
-                    fill="var(--muted-foreground)" opacity={0.5} name="거래량" />
-                </BarChart>
-              </ResponsiveContainer>
-            </ExpandablePanel>
-          )}
-
-          {/* MACD */}
-          {isEnabled("macd") && (
-            <ExpandablePanel title="MACD" subtitle="12, 26, 9" height={130} accentColor="#38BDF8">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData} margin={{ top: 2, right: 4, bottom: 0, left: -20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.3} />
-                  <XAxis dataKey="label" tick={{ fontSize: 8 }} tickLine={false} axisLine={false}
-                    interval={Math.floor(chartData.length / 6)} />
-                  <YAxis tick={{ fontSize: 8 }} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px", fontSize: 10 }}
-                    formatter={(v: number, name: string) => [v.toFixed(3), name]}
-                  />
-                  <ReferenceLine y={0} stroke="var(--border)" strokeWidth={1} />
-                  <Bar dataKey="histogram" name="히스토그램" radius={[1, 1, 0, 0]}
-                    fill="#38BDF8" opacity={0.5} />
-                  <Line type="monotone" dataKey="macdLine" stroke="#38BDF8" strokeWidth={1.5}
-                    dot={false} name="MACD" />
-                  <Line type="monotone" dataKey="signalLine" stroke="#F87171" strokeWidth={1.5}
-                    dot={false} name="시그널" strokeDasharray="3 2" />
-                </ComposedChart>
-              </ResponsiveContainer>
-              <div className="flex gap-4 mt-1">
-                {[
-                  { label: "MACD", color: "#38BDF8" },
-                  { label: "시그널", color: "#F87171" },
-                  { label: "히스토그램", color: "#38BDF8", opacity: 0.5 },
-                ].map(l => (
-                  <div key={l.label} className="flex items-center gap-1.5">
-                    <div className="w-3 h-0.5 rounded" style={{ background: l.color, opacity: l.opacity ?? 1 }} />
-                    <span className="text-[10px] text-muted-foreground">{l.label}</span>
-                  </div>
-                ))}
-              </div>
-            </ExpandablePanel>
-          )}
-
-          {/* RSI */}
-          {isEnabled("rsi") && (
-            <ExpandablePanel title="RSI" subtitle="14" height={130} accentColor="#A78BFA">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData} margin={{ top: 2, right: 4, bottom: 0, left: -20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.3} />
-                  <XAxis dataKey="label" tick={{ fontSize: 8 }} tickLine={false} axisLine={false}
-                    interval={Math.floor(chartData.length / 6)} />
-                  <YAxis tick={{ fontSize: 8 }} tickLine={false} axisLine={false}
-                    domain={[0, 100]} ticks={[20, 30, 50, 70, 80]} />
-                  <Tooltip
-                    contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px", fontSize: 10 }}
-                    formatter={(v: number) => [v.toFixed(1), "RSI"]}
-                  />
-                  {/* Overbought / Oversold zones */}
-                  <ReferenceLine y={70} stroke="#ef4444" strokeDasharray="3 2" strokeWidth={1} label={{ value: "과매수 70", position: "right", fontSize: 8, fill: "#ef4444" }} />
-                  <ReferenceLine y={30} stroke="#22c55e" strokeDasharray="3 2" strokeWidth={1} label={{ value: "과매도 30", position: "right", fontSize: 8, fill: "#22c55e" }} />
-                  <ReferenceLine y={50} stroke="var(--border)" strokeWidth={1} />
-                  <Area type="monotone" dataKey="rsi" stroke="#A78BFA" strokeWidth={2}
-                    fill="#A78BFA" fillOpacity={0.1} dot={false} name="RSI" />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </ExpandablePanel>
-          )}
-
-          {/* Stochastic */}
-          {isEnabled("stoch") && (
-            <ExpandablePanel title="스토캐스틱" subtitle="14, 3, 3" height={130} defaultOpen={false} accentColor="#FBBF24">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData} margin={{ top: 2, right: 4, bottom: 0, left: -20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.3} />
-                  <XAxis dataKey="label" tick={{ fontSize: 8 }} tickLine={false} axisLine={false}
-                    interval={Math.floor(chartData.length / 6)} />
-                  <YAxis tick={{ fontSize: 8 }} tickLine={false} axisLine={false}
-                    domain={[0, 100]} ticks={[20, 50, 80]} />
-                  <Tooltip
-                    contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "8px", fontSize: 10 }}
-                    formatter={(v: number, name: string) => [v.toFixed(1), name]}
-                  />
-                  <ReferenceLine y={80} stroke="#ef4444" strokeDasharray="3 2" strokeWidth={1} />
-                  <ReferenceLine y={20} stroke="#22c55e" strokeDasharray="3 2" strokeWidth={1} />
-                  <Line type="monotone" dataKey="stochK" stroke="#FBBF24" strokeWidth={1.5}
-                    dot={false} name="%K" />
-                  <Line type="monotone" dataKey="stochD" stroke="#F87171" strokeWidth={1.5}
-                    dot={false} name="%D" strokeDasharray="3 2" />
-                </ComposedChart>
-              </ResponsiveContainer>
-              <div className="flex gap-4 mt-1">
-                {[{ label: "%K", color: "#FBBF24" }, { label: "%D", color: "#F87171" }].map(l => (
-                  <div key={l.label} className="flex items-center gap-1.5">
-                    <div className="w-3 h-0.5 rounded" style={{ background: l.color }} />
-                    <span className="text-[10px] text-muted-foreground">{l.label}</span>
-                  </div>
-                ))}
-              </div>
-            </ExpandablePanel>
-          )}
-
-          {/* Current indicator values summary */}
-          <div className="bg-card border border-border rounded-xl p-4">
-            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-3">현재 지표 값</div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              {[
-                { label: "RSI (14)", value: chartData[chartData.length - 1]?.rsi.toFixed(1) ?? "—",
-                  status: (chartData[chartData.length - 1]?.rsi ?? 50) > 70 ? "과매수" : (chartData[chartData.length - 1]?.rsi ?? 50) < 30 ? "과매도" : "중립",
-                  color: (chartData[chartData.length - 1]?.rsi ?? 50) > 70 ? "text-down" : (chartData[chartData.length - 1]?.rsi ?? 50) < 30 ? "text-up" : "text-muted-foreground" },
-                { label: "MACD", value: chartData[chartData.length - 1]?.macdLine.toFixed(3) ?? "—",
-                  status: (chartData[chartData.length - 1]?.macdLine ?? 0) > (chartData[chartData.length - 1]?.signalLine ?? 0) ? "골든크로스" : "데드크로스",
-                  color: (chartData[chartData.length - 1]?.macdLine ?? 0) > (chartData[chartData.length - 1]?.signalLine ?? 0) ? "text-up" : "text-down" },
-                { label: "MA20", value: chartData[chartData.length - 1]?.ma20.toFixed(2) ?? "—",
-                  status: stock.price > (chartData[chartData.length - 1]?.ma20 ?? 0) ? "위" : "아래",
-                  color: stock.price > (chartData[chartData.length - 1]?.ma20 ?? 0) ? "text-up" : "text-down" },
-                { label: "BB 위치", value: (() => {
-                  const d = chartData[chartData.length - 1];
-                  if (!d) return "—";
-                  const pct = ((d.close - d.bbLower) / (d.bbUpper - d.bbLower) * 100).toFixed(0);
-                  return `${pct}%`;
-                })(),
-                  status: "밴드 내", color: "text-muted-foreground" },
-                { label: "Stoch %K", value: chartData[chartData.length - 1]?.stochK.toFixed(1) ?? "—",
-                  status: (chartData[chartData.length - 1]?.stochK ?? 50) > 80 ? "과매수" : (chartData[chartData.length - 1]?.stochK ?? 50) < 20 ? "과매도" : "중립",
-                  color: (chartData[chartData.length - 1]?.stochK ?? 50) > 80 ? "text-down" : (chartData[chartData.length - 1]?.stochK ?? 50) < 20 ? "text-up" : "text-muted-foreground" },
-                { label: "거래량", value: `${chartData[chartData.length - 1]?.volume ?? 0}M`,
-                  status: "평균 대비", color: "text-muted-foreground" },
-              ].map(item => (
-                <div key={item.label} className="bg-muted/30 rounded-lg p-2.5">
-                  <div className="text-[10px] text-muted-foreground">{item.label}</div>
-                  <div className="text-sm font-bold font-mono-num mt-0.5">{item.value}</div>
-                  <div className={cn("text-[10px] mt-0.5", item.color)}>{item.status}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <StockChart
+          ticker={ticker}
+          currency={stock.country === "KR" ? "KRW" : "USD"}
+        />
       )}
 
       {/* ── Tab 1: Financials ── */}

@@ -403,14 +403,25 @@ export default function News() {
                     : <><Bookmark size={13} /> 북마크</>
                   }
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 gap-1.5 text-xs"
-                  onClick={() => { toast.info("원문 링크 기능은 실제 API 연동 후 제공됩니다"); }}
-                >
-                  <ExternalLink size={13} /> 원문 보기
-                </Button>
+                {selectedNews.sourceUrl ? (
+                  <a
+                    href={selectedNews.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-border hover:bg-muted transition-colors"
+                  >
+                    <ExternalLink size={13} /> 원문 보기
+                  </a>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 gap-1.5 text-xs"
+                    disabled
+                  >
+                    <ExternalLink size={13} /> 원문 링크 없음
+                  </Button>
+                )}
               </div>
             </div>
           </div>

@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { lessonsService } from "@/features/lessons";
+import { lessonsService, useLesson } from "@/features/lessons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBookmark } from "@/contexts/BookmarkContext";
 
@@ -344,7 +344,25 @@ export default function LearnDetail() {
   const { isGuideBookmarked, toggleGuideBookmark } = useBookmark();
   const [completed, setCompleted] = useState(false);
   const [activeSection, setActiveSection] = useState<"content" | "quiz">("content");
-  const lesson = ALL_LESSONS.find(l => l.id === params.id);
+  const staticLesson = ALL_LESSONS.find(l => l.id === params.id);
+  // Backend fallback: if the lesson isn't in the static curriculum array
+  // (e.g. a chapter from /v1/lessons/chapters has a lesson id we never
+  // hardcoded), fetch /v1/lessons/{id} for title / description / content.
+  const { data: liveLesson, loading: lessonLoading } = useLesson(
+    !staticLesson && params.id ? params.id : undefined,
+  );
+  const lesson: Lesson | undefined = staticLesson ?? (liveLesson
+    ? {
+        id: (liveLesson as any).id ?? params.id ?? "",
+        title: (liveLesson as any).title ?? "강의",
+        description: (liveLesson as any).description ?? "",
+        duration: (liveLesson as any).duration ?? (liveLesson as any).read_time ? `${(liveLesson as any).read_time}분` : "—",
+        level: (((liveLesson as any).level as Lesson["level"]) ?? "입문"),
+        category: (liveLesson as any).category ?? "기타",
+        content: (liveLesson as any).content ?? "",
+        quiz: ((liveLesson as any).quiz as Lesson["quiz"]) ?? undefined,
+      }
+    : undefined);
   const categoryLessons = lesson ? ALL_LESSONS.filter(l => l.category === lesson.category) : [];
   const currentIdx = categoryLessons.findIndex(l => l.id === params.id);
   const prevLesson = currentIdx > 0 ? categoryLessons[currentIdx - 1] : null;
@@ -354,6 +372,14 @@ export default function LearnDetail() {
     window.scrollTo(0, 0);
   }, [params.id]);
   if (!lesson) {
+    if (lessonLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+          <BookOpen size={40} className="text-muted-foreground/30 animate-pulse" />
+          <p className="text-sm text-muted-foreground">강의를 불러오는 중…</p>
+        </div>
+      );
+    }
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <BookOpen size={48} className="text-muted-foreground/30" />

@@ -4,6 +4,7 @@
  * Layout: 탭 + 검색/필터 바 + 테이블 목록 + 우측 상세 패널 (split view)
  */
 import { useState, useMemo, useContext, useCallback } from "react";
+import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { REPORTS } from "@/lib/data";
 import { useReports } from "@/features/reports";
@@ -38,18 +39,32 @@ const RATING_STYLE: Record<string, string> = {
   "매도": "text-down bg-down/10 border-down/30",
 };
 
-const KEY_POINTS_DEFAULT = [
-  "연준 금리 동결 기조 유지 — 2026년 하반기 인하 가능성 높아짐",
-  "빅테크 실적 서프라이즈 지속 — AI 투자 수요 견조",
-  "중국 경기 부양책 효과 제한적 — 글로벌 수요 불확실성 지속",
-  "에너지 섹터 강세 — 지정학적 리스크 프리미엄 반영",
-];
-
-const FULL_TEXT_DEFAULT = `본 리포트는 현재 시장 환경과 주요 투자 기회를 심층 분석합니다. 거시경제 지표의 변화와 섹터별 영향을 종합적으로 검토하여 투자자들에게 실질적인 인사이트를 제공합니다.
-
-특히 연준의 통화정책 방향성과 기업 실적 사이클의 상관관계를 중점적으로 다룹니다. 단기적으로는 변동성이 높을 수 있으나, 중장기 관점에서는 선별적 종목 접근이 유효합니다.
-
-AI 인프라 투자 사이클이 본격화되면서 반도체, 전력, 데이터센터 관련 종목들의 수혜가 예상됩니다. 특히 HBM 수요 증가와 함께 국내 메모리 기업들의 실적 개선이 기대됩니다.`;
+// Pull per-report bullets straight from the report. We try, in order:
+//   1) explicit content field with bullet markers (- / •)
+//   2) sentence-split of summary, capped at 4 sentences
+//   3) derived facts from tickers / tags / rating
+// Falls back to the original generic list so the section never blanks.
+function deriveKeyPoints(r: Report): string[] {
+  const content = (r as any).content as string | undefined;
+  if (content) {
+    const bullets = content
+      .split("\n")
+      .map((l) => l.replace(/^[\s\-•·*]+/, "").trim())
+      .filter((l) => l.length > 8);
+    if (bullets.length >= 2) return bullets.slice(0, 6);
+  }
+  const sentences = (r.summary ?? "")
+    .split(/(?<=[.다요음])\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 10);
+  if (sentences.length >= 2) return sentences.slice(0, 4);
+  const facts: string[] = [];
+  if (r.rating) facts.push(`투자의견 ${r.rating}`);
+  if ((r as any).targetPrice) facts.push(`목표주가 ${(r as any).targetPrice}`);
+  if (r.tickers && r.tickers.length) facts.push(`관련 종목 ${r.tickers.join(", ")}`);
+  if (r.tags && r.tags.length) facts.push(`주요 키워드 ${r.tags.join(" · ")}`);
+  return facts;
+}
 
 // ── Detail Panel ──────────────────────────────────────────────
 function ReportDetailPanel({
@@ -67,6 +82,11 @@ function ReportDetailPanel({
   const ratingStr = (report as any).rating as string | undefined;
   const targetPrice = (report as any).targetPrice as string | undefined;
   const tickers = (report as any).tickers as string[] | undefined;
+  const content = (report as any).content as string | undefined;
+  const bodyUrl = (report as any).body_url as string | undefined;
+  const sourceUrl = (report as any).sourceUrl as string | undefined;
+  const downloadUrl = (report as any).downloadUrl as string | undefined;
+  const keyPoints = deriveKeyPoints(report);
 
   return (
     <div className="flex flex-col h-full bg-card">
@@ -129,25 +149,78 @@ function ReportDetailPanel({
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         <div>
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">AI 요약</h3>
-          <p className="text-sm leading-relaxed text-foreground/90">{report.summary}</p>
+          <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-line">
+            {report.summary || "요약이 제공되지 않은 리포트입니다."}
+          </p>
         </div>
+        {/* Quick facts row — rating / target / region — only when at
+            least one is set; otherwise the block is hidden so we don't
+            ship a row of em-dashes. */}
+        {(ratingStr || targetPrice || (tickers && tickers.length)) && (
+          <div>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">핵심 정보</h3>
+            <div className="grid grid-cols-2 gap-2">
+              {ratingStr && (
+                <div className="bg-muted/30 rounded-lg p-2.5">
+                  <div className="text-[10px] text-muted-foreground mb-1">투자의견</div>
+                  <div className={cn("text-sm font-bold", RATING_STYLE[ratingStr]?.split(" ")[0] ?? "")}>{ratingStr}</div>
+                </div>
+              )}
+              {targetPrice && (
+                <div className="bg-muted/30 rounded-lg p-2.5">
+                  <div className="text-[10px] text-muted-foreground mb-1">목표주가</div>
+                  <div className="text-sm font-bold font-mono text-up">{targetPrice}</div>
+                </div>
+              )}
+              {tickers && tickers.length > 0 && (
+                <div className="bg-muted/30 rounded-lg p-2.5 col-span-2">
+                  <div className="text-[10px] text-muted-foreground mb-1">관련 종목</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {tickers.map((t) => (
+                      <Link key={t} href={`/stocks/${t}`}>
+                        <span className="text-[11px] px-1.5 py-0.5 rounded bg-card border border-border font-mono hover:border-primary/50 hover:text-primary cursor-pointer">
+                          {t}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        {keyPoints.length > 0 && (
+          <div>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">핵심 포인트</h3>
+            <ul className="space-y-2">
+              {keyPoints.map((pt, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm">
+                  <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[9px] font-bold flex-shrink-0 mt-0.5">
+                    {i + 1}
+                  </span>
+                  <span className="text-foreground/80 leading-relaxed">{pt}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {content && (
+          <div>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">리포트 내용</h3>
+            <div className="text-sm text-foreground/70 leading-relaxed whitespace-pre-line bg-muted/20 rounded-lg p-3">
+              {content}
+            </div>
+          </div>
+        )}
+        {/* Meta: institution detail line that doesn't fit the header */}
         <div>
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">핵심 포인트</h3>
-          <ul className="space-y-2">
-            {KEY_POINTS_DEFAULT.map((pt, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm">
-                <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[9px] font-bold flex-shrink-0 mt-0.5">
-                  {i + 1}
-                </span>
-                <span className="text-foreground/80 leading-relaxed">{pt}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div>
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">리포트 내용</h3>
-          <div className="text-sm text-foreground/70 leading-relaxed whitespace-pre-line bg-muted/20 rounded-lg p-3">
-            {FULL_TEXT_DEFAULT}
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">발행 정보</h3>
+          <div className="text-xs text-muted-foreground space-y-1 bg-muted/20 rounded-lg p-3">
+            <div className="flex justify-between"><span>발행기관</span><span className="text-foreground">{report.source}</span></div>
+            <div className="flex justify-between"><span>지역</span><span className="text-foreground">{report.region}</span></div>
+            <div className="flex justify-between"><span>발행일</span><span className="text-foreground font-mono">{report.date}</span></div>
+            <div className="flex justify-between"><span>분량</span><span className="text-foreground">{report.pages} 페이지</span></div>
+            <div className="flex justify-between"><span>카테고리</span><span className="text-foreground">{report.category}</span></div>
           </div>
         </div>
         {report.tags && report.tags.length > 0 && (
@@ -165,11 +238,34 @@ function ReportDetailPanel({
       </div>
 
       {/* Footer */}
-      <div className="p-3 border-t border-border flex-shrink-0">
-        <button onClick={() => toast.info("원문 보기 기능 준비 중")}
-          className="w-full flex items-center justify-center gap-1.5 text-xs py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium">
-          <ExternalLink size={12} /> 원문 보기
-        </button>
+      <div className="p-3 border-t border-border flex-shrink-0 flex gap-2">
+        {(sourceUrl || bodyUrl) ? (
+          <a
+            href={sourceUrl || bodyUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex-1 flex items-center justify-center gap-1.5 text-xs py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+          >
+            <ExternalLink size={12} /> 원문 보기
+          </a>
+        ) : (
+          <button
+            onClick={() => toast.info("이 리포트는 원문 링크가 없어요")}
+            className="flex-1 flex items-center justify-center gap-1.5 text-xs py-2 rounded-lg bg-muted/40 text-muted-foreground cursor-not-allowed font-medium"
+          >
+            <ExternalLink size={12} /> 원문 링크 없음
+          </button>
+        )}
+        {downloadUrl && (
+          <a
+            href={downloadUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex-1 flex items-center justify-center gap-1.5 text-xs py-2 rounded-lg border border-border text-foreground hover:bg-muted transition-colors font-medium"
+          >
+            <Download size={12} /> PDF
+          </a>
+        )}
       </div>
     </div>
   );

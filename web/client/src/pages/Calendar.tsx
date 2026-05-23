@@ -5,13 +5,14 @@
  * - 이벤트 클릭 시 상세 모달
  * - 이벤트 추가 (메모)
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   ChevronLeft, ChevronRight, Plus, X, Star, Bell,
-  TrendingUp, Calendar as CalIcon, Bookmark, StickyNote
+  TrendingUp, Calendar as CalIcon, Bookmark, StickyNote,
+  SlidersHorizontal, RotateCcw
 } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -20,6 +21,7 @@ import { PriceAlertDialog } from "@/components/PriceAlertDialog";
 import { useBookmark } from "@/contexts/BookmarkContext";
 import { useWatchlist } from "@/contexts/WatchlistContext";
 import { useUnifiedCalendar, type UnifiedCalendarItem } from "@/features/calendar";
+import { useHoldings } from "@/features/portfolio";
 import { ModalPortal } from "@/components/ModalPortal";
 
 // Map backend UnifiedCalendarItem → the shape the rest of this page already
@@ -129,30 +131,62 @@ const IMPORTANCE_DOT: Record<string, string> = {
   "하": "bg-up",
 };
 
-const FILTER_TYPES = ["추천", "전체", "실적", "배당", "매크로", "이벤트"];
-
 const DAYS_OF_WEEK = ["일", "월", "화", "수", "목", "금", "토"];
+
+// ── Filter persistence ────────────────────────────────────────
+// Investing.com-style filter state: which sources are on (watchlist /
+// holdings / macro), the default importance threshold for macro, and
+// per-event opt-in / opt-out overrides for the listed macro events.
+const FILTER_STORAGE_KEY = "calendar:filters:v1";
+type CalendarFilters = {
+  sourceWatchlist: boolean;
+  sourceHoldings: boolean;
+  sourceMacro: boolean;
+  minImportance: 1 | 2 | 3;
+  // IDs the user explicitly hid (overrides importance threshold)
+  excludedMacroIds: string[];
+  // IDs the user explicitly enabled (overrides importance threshold)
+  includedMacroIds: string[];
+};
+const DEFAULT_FILTERS: CalendarFilters = {
+  sourceWatchlist: true,
+  sourceHoldings: false,
+  sourceMacro: true,
+  minImportance: 2,
+  excludedMacroIds: [],
+  includedMacroIds: [],
+};
+function loadFilters(): CalendarFilters {
+  try {
+    const raw = localStorage.getItem(FILTER_STORAGE_KEY);
+    if (!raw) return DEFAULT_FILTERS;
+    return { ...DEFAULT_FILTERS, ...JSON.parse(raw) };
+  } catch {
+    return DEFAULT_FILTERS;
+  }
+}
 
 export default function CalendarPage() {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth() + 1); // 1-based
-  const [filterType, setFilterType] = useState("추천");
   const [selectedEvent, setSelectedEvent] = useState<DisplayEvent | null>(null);
-  // Importance threshold filter — independent of the type chip row.
-  // "상"(high)=3, "중+상"=2, "전체"=1. Stored as numeric so passing to
-  // /v1/calendar's min_importance is a single read.
-  const [minImportance, setMinImportance] = useState<1 | 2 | 3>(1);
   const [listView, setListView] = useState(false);
   const [memoOpen, setMemoOpen] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<CalendarFilters>(() => loadFilters());
+  useEffect(() => {
+    try { localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filters)); } catch { /* ignore */ }
+  }, [filters]);
+  const excludedSet = useMemo(() => new Set(filters.excludedMacroIds), [filters.excludedMacroIds]);
+  const includedSet = useMemo(() => new Set(filters.includedMacroIds), [filters.includedMacroIds]);
+
   const { isBookmarked, addBookmark, removeBookmark } = useBookmark();
   const watchlist = useWatchlist();
+  const { data: holdings } = useHoldings();
 
   // ── Live calendar pull ─────────────────────────────────────────
-  // Range = the currently visible month. "추천" mode bumps min_importance
-  // server-side and we pass the user's watchlist symbols so personal
-  // earnings/dividends sneak through alongside high-importance macro.
   const fromIso = useMemo(
     () => `${viewYear}-${String(viewMonth).padStart(2, "0")}-01`,
     [viewYear, viewMonth],
@@ -161,62 +195,118 @@ export default function CalendarPage() {
     const last = new Date(viewYear, viewMonth, 0).getDate();
     return `${viewYear}-${String(viewMonth).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
   }, [viewYear, viewMonth]);
+
   const watchlistSymbols = useMemo(
     () => (watchlist.watchlist ?? []).map((w) => w.ticker.toUpperCase()),
     [watchlist.watchlist],
   );
-  const recommended = filterType === "추천";
-  const typesFilter: ("macro" | "earnings" | "dividend")[] | undefined =
-    filterType === "실적" ? ["earnings"] :
-    filterType === "배당" ? ["dividend"] :
-    filterType === "매크로" ? ["macro"] :
-    undefined;
+  const holdingSymbols = useMemo(
+    () => (holdings ?? []).map((h) => h.ticker.toUpperCase()),
+    [holdings],
+  );
 
-  // Stock-event scoping rule: stock events (earnings / dividends) are
-  // ALWAYS gated by the user's watchlist, regardless of which chip is
-  // active. Macro events (CPI / rates / FOMC) always show.
-  //   - "매크로" chip: server ignores symbols anyway, send undefined
-  //   - everything else: send the watchlist (empty array = match nothing,
-  //     handled server-side so the SP500/NDX universe doesn't leak in)
-  const symbolsParam = filterType === "매크로" ? undefined : watchlistSymbols;
+  // Stock-symbol scoping: union of enabled sources. `undefined` = "ask the
+  // server for no stock filter" (we never want that here — without symbols
+  // the SP500/NDX universe leaks in). An empty array means "match nothing"
+  // server-side which is what we want when both stock toggles are off.
+  const stockSymbols = useMemo(() => {
+    const set = new Set<string>();
+    if (filters.sourceWatchlist) watchlistSymbols.forEach((s) => set.add(s));
+    if (filters.sourceHoldings) holdingSymbols.forEach((s) => set.add(s));
+    return Array.from(set);
+  }, [filters.sourceWatchlist, filters.sourceHoldings, watchlistSymbols, holdingSymbols]);
 
-  // "추천" still implies importance≥2; users can further tighten via
-  // the explicit importance chip row.
-  const effectiveMinImportance: 1 | 2 | 3 = recommended
-    ? (Math.max(2, minImportance) as 1 | 2 | 3)
-    : minImportance;
-
+  // We fetch with min_importance=1 so all macro events for the month come
+  // back; the per-event checkbox list needs the full set, and the
+  // importance threshold is applied client-side along with the per-event
+  // include/exclude overrides.
   const { data: liveItems } = useUnifiedCalendar({
-    minImportance: effectiveMinImportance,
+    minImportance: 1,
     from: fromIso,
     to: toIso,
-    types: typesFilter,
-    symbols: symbolsParam,
-    recommended,
+    symbols: stockSymbols,
   });
 
-  // Live → display shape. If backend returned 0 rows (ingest not run yet)
-  // fall back to mock so the page never looks empty in dev — UNLESS the
-  // user is in a stock-only filter with an empty watchlist, in which
-  // case we want the empty state to surface rather than the mock list.
-  const liveDisplay: DisplayEvent[] = useMemo(
+  const liveDisplayAll: DisplayEvent[] = useMemo(
     () => (liveItems ?? []).map(unifiedToDisplay),
     [liveItems],
   );
-  const stockOnlyFilter = filterType === "실적" || filterType === "배당";
-  const watchlistEmpty = watchlistSymbols.length === 0;
-  const suppressMockFallback = stockOnlyFilter && watchlistEmpty;
-  const useLive = liveDisplay.length > 0 || suppressMockFallback;
-  const dataSource: DisplayEvent[] = useLive ? liveDisplay : (EVENTS_DATA as DisplayEvent[]);
+  // Mock fallback ONLY if we have no live data at all and the user hasn't
+  // explicitly emptied their sources. Avoids the "no watchlist" empty
+  // state being papered over by mock data.
+  const allSourcesOff = !filters.sourceWatchlist && !filters.sourceHoldings && !filters.sourceMacro;
+  const useLive = liveDisplayAll.length > 0 || allSourcesOff || stockSymbols.length > 0 || !filters.sourceMacro;
+  const rawSource: DisplayEvent[] = useLive ? liveDisplayAll : (EVENTS_DATA as DisplayEvent[]);
 
-  // Events for current month (filter chip already applied server-side for
-  // the live path; mock path still needs a client filter).
-  const monthEvents = dataSource.filter(e => {
-    if (e.year !== viewYear || e.month !== viewMonth) return false;
-    if (useLive) return true;
-    if (filterType === "전체" || filterType === "추천") return true;
-    return e.type === filterType;
+  // Apply source toggles + importance threshold + per-event overrides.
+  const isMacroVisible = (id: string, importance: string) => {
+    if (!filters.sourceMacro) return false;
+    if (excludedSet.has(id)) return false;
+    if (includedSet.has(id)) return true;
+    const score = importance === "상" ? 3 : importance === "중" ? 2 : 1;
+    return score >= filters.minImportance;
+  };
+  const isStockVisible = (tickers: string[]) => {
+    if (!filters.sourceWatchlist && !filters.sourceHoldings) return false;
+    if (!useLive) return true; // mock data: always show in stock toggles' presence
+    return tickers.some((t) =>
+      (filters.sourceWatchlist && watchlistSymbols.includes(t.toUpperCase())) ||
+      (filters.sourceHoldings && holdingSymbols.includes(t.toUpperCase()))
+    );
+  };
+
+  const dataSource: DisplayEvent[] = rawSource.filter((e) => {
+    if (e.type === "매크로") return isMacroVisible(String(e.id), e.importance);
+    if (e.type === "실적" || e.type === "배당") return isStockVisible(e.tickers);
+    // 이벤트 / 개인 — treat as stock-tied if it has tickers, otherwise show.
+    if (e.tickers && e.tickers.length) return isStockVisible(e.tickers);
+    return true;
   });
+
+  // Macro events available for the per-event checkbox list — sorted by
+  // importance (high→low) then date. Drawn from the unfiltered live set so
+  // the user can re-enable events they've hidden via the importance gate.
+  const macroEventsForList: DisplayEvent[] = useMemo(() => {
+    const list = (useLive ? liveDisplayAll : (EVENTS_DATA as DisplayEvent[]))
+      .filter((e) => e.type === "매크로" && e.year === viewYear && e.month === viewMonth);
+    const score = (imp: string) => (imp === "상" ? 3 : imp === "중" ? 2 : 1);
+    return list.sort((a, b) => {
+      const s = score(b.importance) - score(a.importance);
+      if (s !== 0) return s;
+      return a.date - b.date;
+    });
+  }, [liveDisplayAll, useLive, viewYear, viewMonth]);
+
+  // Filter-summary chip count for the header button.
+  const activeSourceCount =
+    (filters.sourceWatchlist ? 1 : 0) +
+    (filters.sourceHoldings ? 1 : 0) +
+    (filters.sourceMacro ? 1 : 0);
+
+  const watchlistEmpty = watchlistSymbols.length === 0;
+
+  const toggleMacroEvent = (id: string, importance: string) => {
+    const score = importance === "상" ? 3 : importance === "중" ? 2 : 1;
+    const defaultVisible = score >= filters.minImportance;
+    const currentlyVisible = includedSet.has(id) || (!excludedSet.has(id) && defaultVisible);
+    const nextVisible = !currentlyVisible;
+    setFilters((prev) => {
+      const inc = new Set(prev.includedMacroIds);
+      const exc = new Set(prev.excludedMacroIds);
+      inc.delete(id);
+      exc.delete(id);
+      if (nextVisible && !defaultVisible) inc.add(id);
+      if (!nextVisible && defaultVisible) exc.add(id);
+      return { ...prev, includedMacroIds: Array.from(inc), excludedMacroIds: Array.from(exc) };
+    });
+  };
+  const resetMacroOverrides = () =>
+    setFilters((p) => ({ ...p, includedMacroIds: [], excludedMacroIds: [] }));
+
+  // Events for current month (already filtered by source/importance).
+  const monthEvents = dataSource.filter(
+    (e) => e.year === viewYear && e.month === viewMonth,
+  );
 
   // Calendar grid
   const firstDay = new Date(viewYear, viewMonth - 1, 1).getDay(); // 0=Sun
@@ -256,6 +346,20 @@ export default function CalendarPage() {
           <Button
             variant="outline"
             size="sm"
+            className={cn(
+              "text-xs gap-1.5",
+              showFilters && "bg-primary/10 text-primary border-primary/40",
+            )}
+            onClick={() => setShowFilters((s) => !s)}
+          >
+            <SlidersHorizontal size={13} /> 필터
+            <span className="text-[10px] text-muted-foreground ml-0.5">
+              ({activeSourceCount}/3)
+            </span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             className={cn("text-xs gap-1.5", !listView && "bg-primary text-primary-foreground border-primary")}
             onClick={() => setListView(false)}
           >
@@ -279,56 +383,161 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Filter rows. Top row = event type, bottom row = importance.
-          Type chip + importance chip combine: you can ask for
-          "매크로 중 상급 이벤트만" or "실적 중 모두". */}
-      <div className="flex gap-1.5 flex-wrap">
-        {FILTER_TYPES.map(t => (
-          <button
-            key={t}
-            onClick={() => setFilterType(t)}
-            className={cn(
-              "text-xs px-3 py-1.5 rounded-lg border transition-all",
-              filterType === t
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
-            )}
-          >{t}</button>
-        ))}
-      </div>
-      <div className="flex gap-1.5 flex-wrap items-center">
-        <span className="text-[10px] text-muted-foreground">중요도</span>
-        {([
-          { label: "전체",  value: 1 as const },
-          { label: "중·상", value: 2 as const },
-          { label: "상급만", value: 3 as const },
-        ]).map(opt => (
-          <button
-            key={opt.label}
-            onClick={() => setMinImportance(opt.value)}
-            className={cn(
-              "text-[11px] px-2.5 py-1 rounded-md border transition-all",
-              minImportance === opt.value
-                ? "bg-primary/10 text-primary border-primary/40"
-                : "bg-card border-border/60 text-muted-foreground hover:text-foreground"
-            )}
-          >{opt.label}</button>
-        ))}
+      {/* Summary chip row — shows what's currently active at a glance. */}
+      <div className="flex gap-1.5 flex-wrap items-center text-[11px]">
+        <span className="text-muted-foreground">표시중:</span>
+        {filters.sourceWatchlist && (
+          <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/30">
+            관심종목 {watchlistSymbols.length}
+          </span>
+        )}
+        {filters.sourceHoldings && (
+          <span className="px-2 py-0.5 rounded-md bg-up/10 text-up border border-up/30">
+            보유종목 {holdingSymbols.length}
+          </span>
+        )}
+        {filters.sourceMacro && (
+          <span className="px-2 py-0.5 rounded-md bg-sky/10 text-sky border border-sky/30">
+            경제 이벤트 ({filters.minImportance === 3 ? "상급" : filters.minImportance === 2 ? "중·상" : "전체"})
+          </span>
+        )}
+        {activeSourceCount === 0 && (
+          <span className="text-muted-foreground">선택된 소스 없음 — 필터를 열어주세요</span>
+        )}
       </div>
 
-      {/* Empty-watchlist hint — surfaces when the calendar would otherwise
-          have no personal stock events to show. */}
-      {watchlistEmpty && filterType !== "매크로" && (
-        <div className="bg-muted/30 border border-border rounded-lg px-4 py-3 text-xs text-muted-foreground flex items-center justify-between gap-3 flex-wrap">
+      {/* Filter panel (collapsible). Investing.com-style: source toggles
+          + importance threshold + per-event checkbox list. */}
+      {showFilters && (
+        <div className="bg-card border border-border rounded-xl p-4 space-y-4 animate-fade-in">
+          {/* Sources */}
           <div>
-            <span className="font-semibold text-foreground">관심종목이 비어있어요.</span>{" "}
-            실적·배당 이벤트는 관심종목을 추가해야 나타납니다. (매크로 이벤트는 그대로 보입니다)
+            <h3 className="text-xs font-semibold text-foreground mb-2">표시할 이벤트</h3>
+            <div className="flex flex-wrap gap-2">
+              {([
+                { key: "sourceWatchlist" as const, label: "관심종목", count: watchlistSymbols.length, color: "primary" },
+                { key: "sourceHoldings" as const, label: "보유종목", count: holdingSymbols.length, color: "up" },
+                { key: "sourceMacro" as const, label: "경제 이벤트", count: null, color: "sky" },
+              ]).map((src) => {
+                const on = filters[src.key];
+                return (
+                  <button
+                    key={src.key}
+                    onClick={() => setFilters((p) => ({ ...p, [src.key]: !p[src.key] }))}
+                    className={cn(
+                      "text-xs px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5",
+                      on
+                        ? src.color === "primary" ? "bg-primary/10 text-primary border-primary/40"
+                        : src.color === "up" ? "bg-up/10 text-up border-up/40"
+                        : "bg-sky/10 text-sky border-sky/40"
+                        : "bg-card border-border text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <span className={cn(
+                      "w-3 h-3 rounded border flex items-center justify-center",
+                      on ? "border-current bg-current/20" : "border-border",
+                    )}>
+                      {on && <span className="w-1.5 h-1.5 rounded-sm bg-current" />}
+                    </span>
+                    {src.label}
+                    {src.count != null && (
+                      <span className="text-[10px] opacity-70">{src.count}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {filters.sourceWatchlist && watchlistEmpty && (
+              <div className="mt-2 text-[11px] text-muted-foreground">
+                관심종목이 비어있어요.{" "}
+                <Link href="/mypage?tab=watchlist">
+                  <span className="text-primary cursor-pointer underline">관심종목 관리 →</span>
+                </Link>
+              </div>
+            )}
+            {filters.sourceHoldings && holdingSymbols.length === 0 && (
+              <div className="mt-2 text-[11px] text-muted-foreground">
+                보유종목이 없습니다.{" "}
+                <Link href="/mypage?tab=portfolio">
+                  <span className="text-primary cursor-pointer underline">포트폴리오 추가 →</span>
+                </Link>
+              </div>
+            )}
           </div>
-          <Link href="/mypage?tab=watchlist">
-            <button className="text-xs px-2.5 py-1 rounded-md border border-primary/40 text-primary hover:bg-primary/10">
-              관심종목 관리 →
-            </button>
-          </Link>
+
+          {/* Macro importance threshold */}
+          {filters.sourceMacro && (
+            <div>
+              <h3 className="text-xs font-semibold text-foreground mb-2">경제 이벤트 기본 중요도</h3>
+              <div className="flex gap-1.5 flex-wrap items-center">
+                {([
+                  { label: "전체",   value: 1 as const },
+                  { label: "중·상",  value: 2 as const },
+                  { label: "상급만", value: 3 as const },
+                ]).map((opt) => (
+                  <button
+                    key={opt.label}
+                    onClick={() => setFilters((p) => ({ ...p, minImportance: opt.value }))}
+                    className={cn(
+                      "text-[11px] px-2.5 py-1 rounded-md border transition-all",
+                      filters.minImportance === opt.value
+                        ? "bg-primary/10 text-primary border-primary/40"
+                        : "bg-card border-border/60 text-muted-foreground hover:text-foreground"
+                    )}
+                  >{opt.label}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Per-event macro list */}
+          {filters.sourceMacro && macroEventsForList.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-semibold text-foreground">
+                  이번 달 경제 이벤트 ({macroEventsForList.length})
+                </h3>
+                {(filters.includedMacroIds.length > 0 || filters.excludedMacroIds.length > 0) && (
+                  <button
+                    onClick={resetMacroOverrides}
+                    className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1"
+                  >
+                    <RotateCcw size={10} /> 기본값으로
+                  </button>
+                )}
+              </div>
+              <div className="max-h-64 overflow-y-auto border border-border/50 rounded-lg divide-y divide-border/50">
+                {macroEventsForList.map((ev) => {
+                  const id = String(ev.id);
+                  const score = ev.importance === "상" ? 3 : ev.importance === "중" ? 2 : 1;
+                  const defaultVisible = score >= filters.minImportance;
+                  const checked =
+                    includedSet.has(id) || (!excludedSet.has(id) && defaultVisible);
+                  return (
+                    <label
+                      key={id}
+                      className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-muted/30 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleMacroEvent(id, ev.importance)}
+                        className="accent-primary w-3.5 h-3.5"
+                      />
+                      <div className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", IMPORTANCE_DOT[ev.importance])} />
+                      <span className="text-xs text-foreground flex-1 truncate">{ev.title}</span>
+                      <span className="text-[10px] text-muted-foreground tabular-nums">
+                        {ev.month}/{ev.date}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1.5">
+                체크박스로 개별 이벤트를 켜고 끌 수 있습니다. 중요도 기준값을 바꾸면 새 기본값이 적용됩니다.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -364,8 +573,7 @@ export default function CalendarPage() {
                 ? dataSource.filter(e =>
                     e.year === viewYear &&
                     e.month === viewMonth &&
-                    e.date === cell.date &&
-                    (useLive || filterType === "전체" || filterType === "추천" || e.type === filterType)
+                    e.date === cell.date
                   )
                 : [];
               const isToday = cell.isCurrentMonth && cell.date === today.getDate() && viewYear === today.getFullYear() && viewMonth === today.getMonth() + 1;

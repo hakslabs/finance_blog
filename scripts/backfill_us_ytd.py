@@ -1,17 +1,20 @@
-"""One-shot 2026 YTD backfill of US daily bars.
+"""One-shot historical backfill of US daily bars.
 
-Loops through every trading day from 2026-01-02 up to (yesterday US/Eastern)
-and calls api.app.jobs.refresh_us_daily.run() per date. Each call pulls
-Polygon's grouped-daily endpoint (1 call → ~12k US symbols), filters to the
-seeded `instruments` rows, and upserts into `price_bars_daily`. Idempotent
-via the composite PK so reruns are safe.
+Loops through every trading day from `--start` (default: 365 days ago) up to
+(yesterday US/Eastern) and calls api.app.jobs.refresh_us_daily.run() per
+date. Each call pulls Polygon's grouped-daily endpoint (1 call → ~12k US
+symbols), filters to the seeded `instruments` rows, and upserts into
+`price_bars_daily`. Idempotent via the composite PK so reruns are safe.
 
 Respects Polygon free-tier rate limit (~5 calls/min) by sleeping 13s between
 calls. On 429 it backs off 60s and retries once.
 
-Run:
+Run (1-year default):
     cd <repo>
     PYTHONPATH=api python scripts/backfill_us_ytd.py
+
+Custom range:
+    PYTHONPATH=api python scripts/backfill_us_ytd.py --start 2025-05-21
 """
 
 from __future__ import annotations
@@ -48,7 +51,16 @@ from app.settings import Settings  # noqa: E402
 
 SLEEP_BETWEEN_CALLS_S = 13.0  # 5 calls/min on Polygon free tier
 RATE_LIMIT_BACKOFF_S = 60.0
-START_DATE = date(2026, 1, 2)
+
+
+def _resolve_start_date() -> date:
+    """`--start YYYY-MM-DD` if provided, else 365 days back from today."""
+    for i, arg in enumerate(sys.argv):
+        if arg == "--start" and i + 1 < len(sys.argv):
+            return date.fromisoformat(sys.argv[i + 1])
+        if arg.startswith("--start="):
+            return date.fromisoformat(arg.split("=", 1)[1])
+    return (datetime.now(tz=timezone.utc) - timedelta(days=365)).date()
 
 
 def _trading_days(start: date, end: date):
@@ -66,8 +78,9 @@ async def main() -> int:
         print("POLYGON_API_KEY missing — aborting.", file=sys.stderr)
         return 1
 
+    start = _resolve_start_date()
     end = (datetime.now(tz=timezone.utc) - timedelta(days=1)).date()
-    days = list(_trading_days(START_DATE, end))
+    days = list(_trading_days(start, end))
     print(f"Backfilling {len(days)} weekday(s) from {days[0]} to {days[-1]}")
 
     succeeded = 0

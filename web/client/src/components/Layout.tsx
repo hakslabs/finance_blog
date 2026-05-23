@@ -409,7 +409,11 @@ function Header({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
     item.path === location || (item.path !== "/" && location.startsWith(item.path))
   );
 
-  // Debounced search against /v1/search
+  // Debounced search against /v1/search. We also stamp the request with
+  // a sequence id and discard responses that arrive after a newer
+  // keystroke — that's the real source of jank when a slow response
+  // for "S" lands after the user has typed "SK하이".
+  const searchSeq = useRef(0);
   useEffect(() => {
     const q = searchQuery.trim();
     if (!q) {
@@ -417,17 +421,25 @@ function Header({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
       setLoading(false);
       return;
     }
+    // Single-char queries explode the universe filter and rarely help;
+    // wait until the user has typed something more specific.
+    if (q.length < 2) {
+      setResults(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
+    const my = ++searchSeq.current;
     const t = setTimeout(async () => {
       try {
         const data = await apiGet<SearchResults>(`/search?q=${encodeURIComponent(q)}&limit=6`);
-        setResults(data);
+        if (my === searchSeq.current) setResults(data);
       } catch {
-        setResults({ query: q, symbols: [], masters: [], reports: [] });
+        if (my === searchSeq.current) setResults({ query: q, symbols: [], masters: [], reports: [] });
       } finally {
-        setLoading(false);
+        if (my === searchSeq.current) setLoading(false);
       }
-    }, 220);
+    }, 180);
     return () => clearTimeout(t);
   }, [searchQuery]);
 

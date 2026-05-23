@@ -435,48 +435,6 @@ export function generateSparkline(points = 20, trend: "up" | "down" | "flat" = "
   return data;
 }
 
-export function generateStockChart(days: number) {
-  let price = 100;
-  return Array.from({ length: days }, (_, i) => {
-    price += (Math.random() - 0.48) * 2;
-    const open = price;
-    const close = price + (Math.random() - 0.5) * 1.5;
-    const high = Math.max(open, close) + Math.random() * 0.8;
-    const low = Math.min(open, close) - Math.random() * 0.8;
-    const volume = Math.floor(Math.random() * 1000000 + 500000);
-    const ma5 = price + (Math.random() - 0.5) * 0.5;
-    const ma20 = price - (Math.random() - 0.5) * 1;
-    const ma60 = price - 2 + Math.random();
-    const rsi = 40 + Math.random() * 30;
-    const macd = (Math.random() - 0.5) * 2;
-    const signal = macd + (Math.random() - 0.5) * 0.5;
-    const bbUpper = close + 2 + Math.random();
-    const bbLower = close - 2 - Math.random();
-    const stochK = 30 + Math.random() * 50;
-    const stochD = stochK + (Math.random() - 0.5) * 5;
-    const date = new Date();
-    date.setDate(date.getDate() - (days - 1 - i));
-    return {
-      date: date.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" }),
-      open: parseFloat(open.toFixed(2)),
-      close: parseFloat(close.toFixed(2)),
-      high: parseFloat(high.toFixed(2)),
-      low: parseFloat(low.toFixed(2)),
-      volume,
-      ma5: parseFloat(ma5.toFixed(2)),
-      ma20: parseFloat(ma20.toFixed(2)),
-      ma60: parseFloat(ma60.toFixed(2)),
-      rsi: parseFloat(rsi.toFixed(1)),
-      macd: parseFloat(macd.toFixed(3)),
-      macdSignal: parseFloat(signal.toFixed(3)),
-      bbUpper: parseFloat(bbUpper.toFixed(2)),
-      bbLower: parseFloat(bbLower.toFixed(2)),
-      stochK: parseFloat(stochK.toFixed(1)),
-      stochD: parseFloat(stochD.toFixed(1)),
-    };
-  });
-}
-
 export function generatePortfolioChart(days = 30) {
   let portfolio = 100, kospi = 100, sp500 = 100;
   return Array.from({ length: days }, (_, i) => {

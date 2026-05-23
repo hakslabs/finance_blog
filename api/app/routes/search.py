@@ -7,6 +7,8 @@ frontend doesn't render the dropdown in that case).
 
 from __future__ import annotations
 
+import asyncio
+import time
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -57,19 +59,53 @@ def _escape(q: str) -> str:
     return f"*{cleaned}*"
 
 
+_UNIVERSE_CACHE: Dict[str, Any] = {"set": None, "ts": 0.0}
+_UNIVERSE_TTL = 300.0  # 5 min — universe changes via batch seed, not per-request
+
+
+def _universe_includes(universe: set[str], symbol: str) -> bool:
+    """Return True if symbol (or its bare 6-digit form) is in the universe.
+
+    KR instruments live in `instruments` as `000660.KS` while
+    `blog_index_universe` stores `000660` — normalise on lookup so the
+    KOSPI200 set isn't dropped by the filter.
+    """
+    if not symbol:
+        return False
+    s = symbol.upper()
+    if s in universe:
+        return True
+    if s.endswith((".KS", ".KQ")) and s[:-3] in universe:
+        return True
+    return False
+
+
+def _normalize_kr_symbol(symbol: str) -> str:
+    """Strip the `.KS` / `.KQ` suffix so frontend routes use bare codes."""
+    if symbol and symbol.upper().endswith((".KS", ".KQ")):
+        return symbol[:-3]
+    return symbol
+
+
 async def _load_universe(settings: Settings) -> set[str]:
     """Return the union of SP500 + NDX + KOSPI200 symbols (uppercased).
 
-    Empty set if the table is empty (= seed script hasn't run yet) — the
-    caller short-circuits the universe filter in that case so search
-    doesn't go dark while we wait for the seeder.
+    Cached for 5 minutes in-process so every keystroke doesn't pay the
+    `blog_index_universe` round-trip. Empty set if the table is empty.
     """
+    now = time.monotonic()
+    cached = _UNIVERSE_CACHE.get("set")
+    if cached is not None and now - _UNIVERSE_CACHE.get("ts", 0.0) < _UNIVERSE_TTL:
+        return cached  # type: ignore[return-value]
     rows = await _pg_get(
         settings,
         "blog_index_universe",
         {"select": "symbol", "limit": "5000"},
     )
-    return {(r.get("symbol") or "").upper() for r in rows if r.get("symbol")}
+    out = {(r.get("symbol") or "").upper() for r in rows if r.get("symbol")}
+    _UNIVERSE_CACHE["set"] = out
+    _UNIVERSE_CACHE["ts"] = now
+    return out
 
 
 async def _pg_get(
@@ -107,44 +143,64 @@ async def search(
 
     needle = _escape(q_trimmed)
 
-    # Instruments: match by symbol or name (case-insensitive). Gate by
-    # the blog's index universe (SP500 ∪ NDX ∪ KOSPI200) so the
-    # dropdown never returns tickers the blog doesn't cover.
-    universe = await _load_universe(settings)
-    sym_rows_raw = await _pg_get(
-        settings,
-        "instruments",
-        {
-            "select": "symbol,name,exchange,country_code,asset_type",
-            "or": f"(symbol.ilike.{needle},name.ilike.{needle})",
-            "is_active": "eq.true",
-            "order": "symbol.asc",
-            # Pull a bit extra since some will get filtered out below.
-            "limit": str(limit * 3),
-        },
+    # Run universe load + the three ilike queries in parallel. Universe
+    # is usually a cache hit so this is mostly 3 round-trips total
+    # instead of 4 sequential ones — the dropdown feels instant.
+    universe, sym_rows_raw, masters_rows, reports_rows = await asyncio.gather(
+        _load_universe(settings),
+        _pg_get(
+            settings,
+            "instruments",
+            {
+                "select": "symbol,name,exchange,country_code,asset_type",
+                "or": f"(symbol.ilike.{needle},name.ilike.{needle})",
+                "is_active": "eq.true",
+                "order": "symbol.asc",
+                # Slight over-fetch — universe filter + dedup drops a few.
+                "limit": str(limit * 4),
+            },
+        ),
+        _pg_get(
+            settings,
+            "masters",
+            {
+                "select": "slug,name,firm,country_code",
+                "or": f"(name.ilike.{needle},firm.ilike.{needle},slug.ilike.{needle})",
+                "order": "name.asc",
+                "limit": str(limit),
+            },
+        ),
+        _pg_get(
+            settings,
+            "reports",
+            {
+                "select": "id,title,source,category,published_at",
+                "or": f"(title.ilike.{needle},source.ilike.{needle})",
+                "order": "published_at.desc",
+                "limit": str(limit),
+            },
+        ),
     )
-    sym_rows = [r for r in sym_rows_raw if (r.get("symbol") or "").upper() in universe][:limit] \
-        if universe else sym_rows_raw[:limit]
-    masters_rows = await _pg_get(
-        settings,
-        "masters",
-        {
-            "select": "slug,name,firm,country_code",
-            "or": f"(name.ilike.{needle},firm.ilike.{needle},slug.ilike.{needle})",
-            "order": "name.asc",
-            "limit": str(limit),
-        },
-    )
-    reports_rows = await _pg_get(
-        settings,
-        "reports",
-        {
-            "select": "id,title,source,category,published_at",
-            "or": f"(title.ilike.{needle},source.ilike.{needle})",
-            "order": "published_at.desc",
-            "limit": str(limit),
-        },
-    )
+
+    # Universe gate + KR symbol normalisation. Without the suffix strip,
+    # KOSPI200 names match in `instruments` but get filtered out because
+    # `blog_index_universe` keeps the bare 6-digit form. We also dedupe
+    # the legacy duplicate rows (same symbol, different exchange label).
+    seen_syms: set[str] = set()
+    sym_rows: List[Dict[str, Any]] = []
+    for r in sym_rows_raw:
+        raw_sym = (r.get("symbol") or "").upper()
+        if universe and not _universe_includes(universe, raw_sym):
+            continue
+        bare = _normalize_kr_symbol(raw_sym)
+        if bare in seen_syms:
+            continue
+        seen_syms.add(bare)
+        r = dict(r)
+        r["symbol"] = bare  # frontend links use bare codes
+        sym_rows.append(r)
+        if len(sym_rows) >= limit:
+            break
 
     return SearchResponse(
         query=q_trimmed,

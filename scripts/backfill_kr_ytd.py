@@ -1,17 +1,20 @@
-"""One-shot 2026 YTD backfill of KR daily bars (KOSPI + KOSDAQ).
+"""One-shot historical backfill of KR daily bars (KOSPI + KOSDAQ).
 
 Mirrors backfill_us_ytd.py but for the KR market. Loops through every
-trading day from 2026-01-02 up to (yesterday) and calls
-api.app.jobs.refresh_kr_daily.run() per date. Each call pulls KRX
-`sto/stk_bydd_trd` (one API call covers the full universe), filters
-to seeded `instruments` (country_code='KR'), and upserts into
+trading day from `--start` (default: 365 days ago) up to (yesterday) and
+calls api.app.jobs.refresh_kr_daily.run() per date. Each call pulls KRX
+`sto/stk_bydd_trd` (one API call covers the full universe), filters to
+seeded `instruments` (country_code='KR'), and upserts into
 `price_bars_daily`. Idempotent.
 
 KRX OpenAPI is gentler than Polygon — small sleep (1.5s) between
 calls is plenty.
 
-Run:
+Run (1-year default):
     PYTHONPATH=api python scripts/backfill_kr_ytd.py
+
+Custom range:
+    PYTHONPATH=api python scripts/backfill_kr_ytd.py --start 2025-05-21
 """
 
 from __future__ import annotations
@@ -46,7 +49,16 @@ from app.settings import Settings  # noqa: E402
 
 
 SLEEP_BETWEEN_CALLS_S = 1.5
-START_DATE = date(2026, 1, 2)
+
+
+def _resolve_start_date() -> date:
+    """`--start YYYY-MM-DD` if provided, else 365 days back from today."""
+    for i, arg in enumerate(sys.argv):
+        if arg == "--start" and i + 1 < len(sys.argv):
+            return date.fromisoformat(sys.argv[i + 1])
+        if arg.startswith("--start="):
+            return date.fromisoformat(arg.split("=", 1)[1])
+    return (datetime.now(tz=timezone.utc) - timedelta(days=365)).date()
 
 
 def _trading_days(start: date, end: date):
@@ -63,8 +75,9 @@ async def main() -> int:
         print("KRX_API_KEY missing — aborting.", file=sys.stderr)
         return 1
 
+    start = _resolve_start_date()
     end = date.today() - timedelta(days=1)
-    days = list(_trading_days(START_DATE, end))
+    days = list(_trading_days(start, end))
     print(f"Backfilling {len(days)} KR trading day(s) from {days[0]} to {days[-1]}")
 
     succeeded = 0

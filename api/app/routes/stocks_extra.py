@@ -26,12 +26,12 @@ router = APIRouter(prefix="/stocks", tags=["stocks"])
 
 
 class Bar(BaseModel):
-    t: str   # ISO date (YYYY-MM-DD)
-    o: float
-    h: float
-    l: float
-    c: float
-    v: Optional[float] = None
+    date: str   # ISO date (YYYY-MM-DD)
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: Optional[float] = None
 
 
 class BarsResponse(BaseModel):
@@ -197,34 +197,89 @@ async def stock_bars(
         "Authorization": f"Bearer {settings.supabase_service_role_key}",
         "Accept": "application/json",
     }
+    # KR symbols are stored in instruments with the legacy ".KS" suffix
+    # from KRX while the URL/universe use bare 6-digit codes. Try the
+    # request value first, then a few common aliases so the route works
+    # for /stocks/000660 AND /stocks/000660.KS.
+    candidates = [symbol]
+    if symbol.isdigit() and len(symbol) == 6:
+        candidates += [f"{symbol}.KS", f"{symbol}.KQ"]
+    elif symbol.endswith((".KS", ".KQ")):
+        candidates.insert(0, symbol[:-3])
     async with httpx.AsyncClient(timeout=8.0, headers=headers) as client:
-        inst_resp = await client.get(
-            f"{base}/rest/v1/instruments",
-            params={"symbol": f"eq.{symbol}", "select": "id", "limit": "1"},
-        )
-        if inst_resp.status_code >= 400 or not inst_resp.json():
+        # Collect ALL candidate instrument_ids — legacy data sometimes has
+        # the same `symbol` duplicated under different `exchange` labels
+        # (e.g. 005930.KS exists once as KRX and once as KOSPI). The
+        # 5-year backfill landed on one of them; we don't know which
+        # ahead of time, so query bars across the full set and let the
+        # one with data win.
+        inst_ids: List[str] = []
+        for cand in candidates:
+            inst_resp = await client.get(
+                f"{base}/rest/v1/instruments",
+                params={
+                    "symbol": f"eq.{cand}",
+                    "select": "id",
+                    "is_active": "eq.true",
+                    "limit": "5",
+                },
+            )
+            if inst_resp.status_code < 400 and inst_resp.json():
+                inst_ids.extend(r["id"] for r in inst_resp.json())
+        if not inst_ids:
             return BarsResponse(symbol=symbol, items=[])
-        inst_id = inst_resp.json()[0]["id"]
-        bars_resp = await client.get(
-            f"{base}/rest/v1/price_bars_daily",
-            params={
-                "instrument_id": f"eq.{inst_id}",
-                "select": "ts,o,h,l,c,v",
-                "order": "ts.desc",
-                "limit": str(days),
-            },
-        )
-        if bars_resp.status_code >= 400:
-            return BarsResponse(symbol=symbol, items=[])
-    rows = list(reversed(bars_resp.json()))  # 시간 오름차순
+        # Fetch per-id with paginated offsets. PostgREST hard-caps each
+        # response at 1000 rows, so 5-year requests need multiple pages.
+        PAGE = 1000
+        all_rows: List[Dict[str, Any]] = []
+        for iid in inst_ids:
+            offset = 0
+            collected = 0
+            while collected < days:
+                page_size = min(PAGE, days - collected)
+                r = await client.get(
+                    f"{base}/rest/v1/price_bars_daily",
+                    params={
+                        "instrument_id": f"eq.{iid}",
+                        "select": "t,o,h,l,c,v",
+                        "order": "t.desc",
+                        "limit": str(page_size),
+                        "offset": str(offset),
+                    },
+                )
+                if r.status_code >= 400:
+                    break
+                rows = r.json()
+                if not rows:
+                    break
+                all_rows.extend(rows)
+                collected += len(rows)
+                offset += len(rows)
+                if len(rows) < page_size:
+                    break  # exhausted this id's history
+        # Sort descending by date so dedup keeps the freshest ingest.
+        all_rows.sort(key=lambda r: str(r.get("t", "")), reverse=True)
+    # Dedup by date (keep first occurrence from the desc-ordered list)
+    # then flip to ascending and trim to `days`.
+    seen: set[str] = set()
+    deduped: List[Dict[str, Any]] = []
+    for r in all_rows:
+        d = str(r["t"])[:10]
+        if d in seen:
+            continue
+        seen.add(d)
+        deduped.append(r)
+        if len(deduped) >= days:
+            break
+    rows = list(reversed(deduped))
     items = [
         Bar(
-            t=str(r["ts"])[:10],
-            o=float(r["o"]),
-            h=float(r["h"]),
-            l=float(r["l"]),
-            c=float(r["c"]),
-            v=float(r["v"]) if r.get("v") is not None else None,
+            date=str(r["t"])[:10],
+            open=float(r["o"]),
+            high=float(r["h"]),
+            low=float(r["l"]),
+            close=float(r["c"]),
+            volume=float(r["v"]) if r.get("v") is not None else None,
         )
         for r in rows
     ]
