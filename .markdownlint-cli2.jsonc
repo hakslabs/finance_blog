@@ -4,7 +4,10 @@
     "MD013": false,
     "MD033": false,
     "MD034": false,
-    "MD040": false
+    "MD040": false,
+    // Pipe-table alignment is cosmetic and breaks on any wide-cell change.
+    // Not worth gating CI on. Prettier owns table formatting via format:check.
+    "MD060": false
   },
   "globs": ["*.md", "docs/**/*.md"],
   "ignores": ["node_modules", "web/node_modules"]

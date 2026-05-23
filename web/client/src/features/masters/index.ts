@@ -17,7 +17,7 @@ export function useMasters() {
 }
 
 export function useMaster(id: string | undefined) {
-  const fallback = id ? MASTERS.find((m) => m.id === id) ?? null : null;
+  const fallback = id ? (MASTERS.find((m) => m.id === id) ?? null) : null;
   return useAsync(
     () => (id ? mastersService.get(id) : Promise.reject(new Error("no id"))),
     [id],

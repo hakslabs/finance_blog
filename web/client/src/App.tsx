@@ -69,14 +69,14 @@ export default function App() {
       <ThemeProvider defaultTheme="dark" switchable>
         <AuthProvider>
           <WatchlistProvider>
-          <BookmarkProvider>
-          <FollowProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
-          </FollowProvider>
-          </BookmarkProvider>
+            <BookmarkProvider>
+              <FollowProvider>
+                <TooltipProvider>
+                  <Toaster />
+                  <Router />
+                </TooltipProvider>
+              </FollowProvider>
+            </BookmarkProvider>
           </WatchlistProvider>
         </AuthProvider>
       </ThemeProvider>

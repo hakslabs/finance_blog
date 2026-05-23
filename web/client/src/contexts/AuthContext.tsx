@@ -7,7 +7,13 @@
  *  - 로그인 시 access_token을 localStorage["supabase_jwt"] 에 저장 → lib/http가 Bearer로 전송.
  *  - 공개 API 표면은 mock 시절과 동일하게 유지 (login/logout/updateLastMarket).
  */
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 import { supabase, supabaseEnabled } from "@/lib/supabase";
 
 export type User = {
@@ -41,21 +47,43 @@ const STORAGE_KEY = "financelab_user";
 const JWT_KEY = "supabase_jwt";
 
 const MOCK_USERS: Record<string, User> = {
-  "user@example.com": { id: "u1", email: "user@example.com", name: "투자자", plan: "free", lastMarket: "US" },
-  "admin@financelab.pro": { id: "admin1", email: "admin@financelab.pro", name: "관리자", plan: "premium", lastMarket: "US" },
+  "user@example.com": {
+    id: "u1",
+    email: "user@example.com",
+    name: "투자자",
+    plan: "free",
+    lastMarket: "US",
+  },
+  "admin@financelab.pro": {
+    id: "admin1",
+    email: "admin@financelab.pro",
+    name: "관리자",
+    plan: "premium",
+    lastMarket: "US",
+  },
 };
 
-function userFromSupabase(sbUser: { id: string; email?: string | null; user_metadata?: Record<string, unknown> }): User {
+function userFromSupabase(sbUser: {
+  id: string;
+  email?: string | null;
+  user_metadata?: Record<string, unknown>;
+}): User {
   const meta = sbUser.user_metadata ?? {};
   const adminEmails = ["admin@financelab.pro", "superadmin@financelab.pro"];
   const email = sbUser.email ?? "";
   return {
     id: sbUser.id,
     email,
-    name: (meta.full_name as string) ?? (meta.name as string) ?? (email || "사용자").split("@")[0],
+    name:
+      (meta.full_name as string) ??
+      (meta.name as string) ??
+      (email || "사용자").split("@")[0],
     avatar: (meta.avatar_url as string) ?? undefined,
     plan: adminEmails.includes(email) ? "premium" : "free",
-    lastMarket: (typeof window !== "undefined" && (localStorage.getItem("financelab_last_market") as "US" | "KR")) || "US",
+    lastMarket:
+      (typeof window !== "undefined" &&
+        (localStorage.getItem("financelab_last_market") as "US" | "KR")) ||
+      "US",
   };
 }
 
@@ -76,30 +104,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           setIsLoading(false);
         }
-        const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-          if (session?.user) {
-            setUser(userFromSupabase(session.user));
-            localStorage.setItem(JWT_KEY, session.access_token);
-          } else {
-            setUser(null);
-            localStorage.removeItem(JWT_KEY);
-          }
-        });
+        const { data: sub } = supabase.auth.onAuthStateChange(
+          (_event, session) => {
+            if (session?.user) {
+              setUser(userFromSupabase(session.user));
+              localStorage.setItem(JWT_KEY, session.access_token);
+            } else {
+              setUser(null);
+              localStorage.removeItem(JWT_KEY);
+            }
+          },
+        );
         return () => sub.subscription.unsubscribe();
       }
       // Mock path
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        try { setUser(JSON.parse(stored)); } catch { /* ignore */ }
+        try {
+          setUser(JSON.parse(stored));
+        } catch {
+          /* ignore */
+        }
       }
       setIsLoading(false);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const login = async (email = "user@example.com", password?: string) => {
     if (supabaseEnabled && supabase && password) {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       if (error) throw error;
       return;
     }
@@ -146,7 +185,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, loginWithGoogle, logout, updateLastMarket }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        login,
+        loginWithGoogle,
+        logout,
+        updateLastMarket,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

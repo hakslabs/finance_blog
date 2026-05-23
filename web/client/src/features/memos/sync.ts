@@ -36,7 +36,9 @@ interface SerializedBody {
   name: string;
 }
 
-export function journalToMemo(j: LocalJournal): Parameters<typeof memosService.create>[0] {
+export function journalToMemo(
+  j: LocalJournal,
+): Parameters<typeof memosService.create>[0] {
   const body: SerializedBody = {
     reason: j.reason,
     type: j.type,
@@ -89,20 +91,30 @@ export function useJournalsBackendSync(
   const hydratedFor = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!user) { hydratedFor.current = null; return; }
+    if (!user) {
+      hydratedFor.current = null;
+      return;
+    }
     if (hydratedFor.current === user.id) return;
     hydratedFor.current = user.id;
     (async () => {
       try {
-        const res = await memosService.list({ target_kind: "stock", limit: 200 });
-        const fromServer = res.items.map(memoToJournal).filter((x): x is LocalJournal => x !== null);
+        const res = await memosService.list({
+          target_kind: "stock",
+          limit: 200,
+        });
+        const fromServer = res.items
+          .map(memoToJournal)
+          .filter((x): x is LocalJournal => x !== null);
         if (fromServer.length === 0) return;
         setJournals((prev) => {
           const serverIds = new Set(fromServer.map((j) => j.id));
           const localOnly = prev.filter((j) => !serverIds.has(j.id));
           return [...fromServer, ...localOnly];
         });
-      } catch { /* */ }
+      } catch {
+        /* */
+      }
     })();
   }, [user, setJournals]);
 
@@ -127,16 +139,24 @@ export function useJournalsBackendSync(
         const saved = await memosService.create(memoPayload);
         const remapped = memoToJournal(saved);
         if (remapped) {
-          setJournals((prev) => prev.map((x) => (x.id === j.id ? remapped : x)));
+          setJournals((prev) =>
+            prev.map((x) => (x.id === j.id ? remapped : x)),
+          );
         }
       }
-    } catch { /* */ }
+    } catch {
+      /* */
+    }
   };
 
   const remove = async (id: string) => {
     setJournals((prev) => prev.filter((j) => j.id !== id));
     if (!user) return;
-    try { await memosService.remove(id); } catch { /* */ }
+    try {
+      await memosService.remove(id);
+    } catch {
+      /* */
+    }
   };
 
   return { upsert, remove };

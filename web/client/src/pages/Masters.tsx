@@ -23,13 +23,21 @@ import { followsService } from "@/features/follows";
 import { toast } from "sonner";
 
 const STRATEGY_FILTERS = ["전체", "가치투자", "성장투자", "매크로", "역발상"];
-const SECTOR_FILTERS = ["전체", "테크", "금융", "소비재", "에너지", "바이오", "ETF"];
+const SECTOR_FILTERS = [
+  "전체",
+  "테크",
+  "금융",
+  "소비재",
+  "에너지",
+  "바이오",
+  "ETF",
+];
 const AUM_FILTERS = ["전체", "$100억 이상", "$1,000억 이상", "$1조 이상"];
 
 const UPDATE_TYPE_COLORS: Record<string, string> = {
   "13F": "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  "인터뷰": "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-  "포트폴리오": "bg-violet-500/20 text-violet-400 border-violet-500/30",
+  인터뷰: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+  포트폴리오: "bg-violet-500/20 text-violet-400 border-violet-500/30",
 };
 
 function parseAum(aum: string): number {
@@ -56,7 +64,12 @@ export default function Masters() {
     if (showFollowedOnly && !followCtx?.isFollowing(m.id)) return false;
     if (strategyFilter !== "전체") {
       const styles = (m as any).style || [];
-      if (!styles.some((s: string) => s.includes(strategyFilter.replace("투자", "")))) return false;
+      if (
+        !styles.some((s: string) =>
+          s.includes(strategyFilter.replace("투자", "")),
+        )
+      )
+        return false;
     }
     if (sectorFilter !== "전체") {
       const sectors = (m as any).sectors || [];
@@ -71,18 +84,21 @@ export default function Masters() {
     return true;
   });
 
-  const feedItems = mastersList.filter((m) => followCtx?.isFollowing(m.id))
+  const feedItems = mastersList
+    .filter((m) => followCtx?.isFollowing(m.id))
     .flatMap((m) =>
       ((m as any).updates || []).map((u: any) => ({
         ...u,
         masterId: m.id,
         masterName: m.nameKo,
         masterFund: m.fund,
-      }))
+      })),
     )
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const followedCount = mastersList.filter((m) => followCtx?.isFollowing(m.id)).length;
+  const followedCount = mastersList.filter((m) =>
+    followCtx?.isFollowing(m.id),
+  ).length;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -94,8 +110,12 @@ export default function Masters() {
               <Award className="w-4 h-4 text-emerald-400" />
             </div>
             <div>
-              <h1 className="text-lg font-bold font-mono tracking-tight">고수 따라잡기</h1>
-              <p className="text-xs text-muted-foreground">세계 최고 투자자들의 전략을 분석합니다</p>
+              <h1 className="text-lg font-bold font-mono tracking-tight">
+                고수 따라잡기
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                세계 최고 투자자들의 전략을 분석합니다
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -155,7 +175,9 @@ export default function Masters() {
               <div className="flex flex-wrap gap-3 mb-6 p-4 bg-card/50 rounded-xl border border-border/50">
                 <div className="flex items-center gap-2 flex-wrap">
                   <Filter className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground font-medium">전략</span>
+                  <span className="text-xs text-muted-foreground font-medium">
+                    전략
+                  </span>
                   {STRATEGY_FILTERS.map((f) => (
                     <button
                       key={f}
@@ -171,7 +193,9 @@ export default function Masters() {
                   ))}
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-muted-foreground font-medium">섹터</span>
+                  <span className="text-xs text-muted-foreground font-medium">
+                    섹터
+                  </span>
                   {SECTOR_FILTERS.map((f) => (
                     <button
                       key={f}
@@ -187,7 +211,9 @@ export default function Masters() {
                   ))}
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-muted-foreground font-medium">운용규모</span>
+                  <span className="text-xs text-muted-foreground font-medium">
+                    운용규모
+                  </span>
                   {AUM_FILTERS.map((f) => (
                     <button
                       key={f}
@@ -207,7 +233,8 @@ export default function Masters() {
               {/* 거장 카드 그리드 */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredMasters.map((master, i) => {
-                  const isFollowing = followCtx?.isFollowing(master.id) ?? false;
+                  const isFollowing =
+                    followCtx?.isFollowing(master.id) ?? false;
                   const updates = (master as any).updates || [];
                   const latestUpdate = updates[0];
                   const sectors = (master as any).sectors || [];
@@ -231,13 +258,21 @@ export default function Masters() {
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
-                                <h3 className="font-bold text-sm">{master.nameKo}</h3>
-                                <span className="text-xs text-muted-foreground font-mono">{master.name}</span>
+                                <h3 className="font-bold text-sm">
+                                  {master.nameKo}
+                                </h3>
+                                <span className="text-xs text-muted-foreground font-mono">
+                                  {master.name}
+                                </span>
                               </div>
-                              <p className="text-xs text-muted-foreground mt-0.5">{master.title}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {master.title}
+                              </p>
                               <div className="flex items-center gap-1 mt-1">
                                 <Building2 className="w-3 h-3 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground">{master.fund}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {master.fund}
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -249,7 +284,9 @@ export default function Masters() {
                                 toast.success(`${master.nameKo} 팔로우 취소`);
                               } else {
                                 followCtx?.follow(master.id);
-                                toast.success(`${master.nameKo} 팔로우 시작! 업데이트 소식을 받습니다.`);
+                                toast.success(
+                                  `${master.nameKo} 팔로우 시작! 업데이트 소식을 받습니다.`,
+                                );
                               }
                             }}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
@@ -259,9 +296,15 @@ export default function Masters() {
                             }`}
                           >
                             {isFollowing ? (
-                              <><Bell className="w-3 h-3" />팔로잉</>
+                              <>
+                                <Bell className="w-3 h-3" />
+                                팔로잉
+                              </>
                             ) : (
-                              <><BellOff className="w-3 h-3" />팔로우</>
+                              <>
+                                <BellOff className="w-3 h-3" />
+                                팔로우
+                              </>
                             )}
                           </button>
                         </div>
@@ -269,30 +312,51 @@ export default function Masters() {
                         {/* 수익률 지표 */}
                         <div className="grid grid-cols-3 gap-3 mb-4">
                           <div className="bg-muted/30 rounded-lg p-2.5">
-                            <div className="text-[10px] text-muted-foreground mb-1">YTD 수익률</div>
-                            <div className={`text-sm font-bold font-mono ${master.returnYtd >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                              {master.returnYtd >= 0 ? "+" : ""}{master.returnYtd}%
+                            <div className="text-[10px] text-muted-foreground mb-1">
+                              YTD 수익률
+                            </div>
+                            <div
+                              className={`text-sm font-bold font-mono ${master.returnYtd >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                            >
+                              {master.returnYtd >= 0 ? "+" : ""}
+                              {master.returnYtd}%
                             </div>
                           </div>
                           <div className="bg-muted/30 rounded-lg p-2.5">
-                            <div className="text-[10px] text-muted-foreground mb-1">5년 수익률</div>
-                            <div className={`text-sm font-bold font-mono ${master.return5y >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                              {master.return5y >= 0 ? "+" : ""}{master.return5y}%
+                            <div className="text-[10px] text-muted-foreground mb-1">
+                              5년 수익률
+                            </div>
+                            <div
+                              className={`text-sm font-bold font-mono ${master.return5y >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                            >
+                              {master.return5y >= 0 ? "+" : ""}
+                              {master.return5y}%
                             </div>
                           </div>
                           <div className="bg-muted/30 rounded-lg p-2.5">
-                            <div className="text-[10px] text-muted-foreground mb-1">운용규모</div>
-                            <div className="text-sm font-bold font-mono text-foreground">{master.aum}</div>
+                            <div className="text-[10px] text-muted-foreground mb-1">
+                              운용규모
+                            </div>
+                            <div className="text-sm font-bold font-mono text-foreground">
+                              {master.aum}
+                            </div>
                           </div>
                         </div>
 
                         {/* 전략 태그 */}
                         <div className="flex flex-wrap gap-1.5 mb-3">
-                          <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-violet-500/10 text-violet-400 border-violet-500/30">
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-2 py-0.5 bg-violet-500/10 text-violet-400 border-violet-500/30"
+                          >
                             {master.strategy}
                           </Badge>
                           {sectors.slice(0, 3).map((s: string) => (
-                            <Badge key={s} variant="outline" className="text-[10px] px-2 py-0.5 text-muted-foreground">
+                            <Badge
+                              key={s}
+                              variant="outline"
+                              className="text-[10px] px-2 py-0.5 text-muted-foreground"
+                            >
                               {s}
                             </Badge>
                           ))}
@@ -300,7 +364,9 @@ export default function Masters() {
 
                         {/* 주요 보유 종목 */}
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-muted-foreground">주요 보유</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            주요 보유
+                          </span>
                           <div className="flex gap-1">
                             {master.topHoldings.slice(0, 4).map((h) => (
                               <span
@@ -321,12 +387,18 @@ export default function Masters() {
                             <Zap className="w-3 h-3 text-amber-400 mt-0.5 flex-shrink-0" />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-0.5">
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded border ${UPDATE_TYPE_COLORS[latestUpdate.type] || "bg-muted/50 text-muted-foreground border-border"}`}>
+                                <span
+                                  className={`text-[10px] px-1.5 py-0.5 rounded border ${UPDATE_TYPE_COLORS[latestUpdate.type] || "bg-muted/50 text-muted-foreground border-border"}`}
+                                >
                                   {latestUpdate.type}
                                 </span>
-                                <span className="text-[10px] text-muted-foreground font-mono">{latestUpdate.date}</span>
+                                <span className="text-[10px] text-muted-foreground font-mono">
+                                  {latestUpdate.date}
+                                </span>
                               </div>
-                              <p className="text-xs text-muted-foreground truncate">{latestUpdate.title}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {latestUpdate.title}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -335,7 +407,9 @@ export default function Masters() {
                       {/* 상세 보기 링크 */}
                       <Link href={`/masters/${master.id}`}>
                         <div className="px-5 py-3 border-t border-border/30 flex items-center justify-between group-hover:bg-emerald-500/5 transition-colors cursor-pointer">
-                          <span className="text-xs text-muted-foreground">포트폴리오 · 투자철학 · 13F 분석</span>
+                          <span className="text-xs text-muted-foreground">
+                            포트폴리오 · 투자철학 · 13F 분석
+                          </span>
                           <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-emerald-400 transition-colors" />
                         </div>
                       </Link>
@@ -373,7 +447,9 @@ export default function Masters() {
               <div className="max-w-2xl">
                 <div className="flex items-center gap-2 mb-5">
                   <Bell className="w-4 h-4 text-emerald-400" />
-                  <h2 className="text-sm font-semibold">팔로우한 거장 업데이트</h2>
+                  <h2 className="text-sm font-semibold">
+                    팔로우한 거장 업데이트
+                  </h2>
                   {feedItems.length > 0 && (
                     <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[10px]">
                       {feedItems.length}개
@@ -384,8 +460,12 @@ export default function Masters() {
                 {feedItems.length === 0 ? (
                   <div className="text-center py-16 bg-card/50 rounded-xl border border-border/50">
                     <BellOff className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-30" />
-                    <p className="text-sm text-muted-foreground mb-2">팔로우한 거장이 없습니다.</p>
-                    <p className="text-xs text-muted-foreground">거장 카드의 팔로우 버튼을 눌러 업데이트를 받아보세요.</p>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      팔로우한 거장이 없습니다.
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      거장 카드의 팔로우 버튼을 눌러 업데이트를 받아보세요.
+                    </p>
                     <button
                       onClick={() => setActiveTab("all")}
                       className="mt-4 text-xs text-emerald-400 hover:underline"
@@ -415,23 +495,33 @@ export default function Masters() {
                                 href={`/masters/${item.masterId}`}
                                 onClick={() => {
                                   // mark this feed entry as read for the current user
-                                  followsService.feedRead(
-                                    item.masterId,
-                                    `${item.date}|${item.type}|${item.title}`,
-                                  ).catch(() => {});
+                                  followsService
+                                    .feedRead(
+                                      item.masterId,
+                                      `${item.date}|${item.type}|${item.title}`,
+                                    )
+                                    .catch(() => {});
                                 }}
                               >
                                 <span className="text-sm font-semibold hover:text-emerald-400 transition-colors cursor-pointer">
                                   {item.masterName}
                                 </span>
                               </Link>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded border ${UPDATE_TYPE_COLORS[item.type] || "bg-muted/50 text-muted-foreground border-border"}`}>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded border ${UPDATE_TYPE_COLORS[item.type] || "bg-muted/50 text-muted-foreground border-border"}`}
+                              >
                                 {item.type}
                               </span>
-                              <span className="text-[10px] text-muted-foreground font-mono ml-auto">{item.date}</span>
+                              <span className="text-[10px] text-muted-foreground font-mono ml-auto">
+                                {item.date}
+                              </span>
                             </div>
-                            <p className="text-sm font-medium mb-1">{item.title}</p>
-                            <p className="text-xs text-muted-foreground leading-relaxed">{item.detail}</p>
+                            <p className="text-sm font-medium mb-1">
+                              {item.title}
+                            </p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              {item.detail}
+                            </p>
                           </div>
                         </div>
                       </motion.div>

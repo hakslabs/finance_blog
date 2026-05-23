@@ -36,8 +36,8 @@ If a new variable is introduced, add a row here in the same PR. If a row says "b
 
 ### Web authorization UI
 
-| Variable            | Used by | Browser-safe                | Source                                  | First PR | Required                    | Missing behavior                     |
-| ------------------- | ------- | --------------------------- | --------------------------------------- | -------- | --------------------------- | ------------------------------------ |
+| Variable            | Used by | Browser-safe                | Source                                  | First PR | Required                     | Missing behavior                     |
+| ------------------- | ------- | --------------------------- | --------------------------------------- | -------- | ---------------------------- | ------------------------------------ |
 | `VITE_ADMIN_EMAILS` | web     | yes (not a secret; UI only) | comma-separated owner/admin user emails | PR-16    | yes before exposing `/admin` | admin nav hidden; admin route denied |
 
 ### Auth

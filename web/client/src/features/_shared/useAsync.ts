@@ -57,7 +57,9 @@ export function useAsync<T>(
 
   useEffect(() => {
     run();
-    return () => { seq.current++; };
+    return () => {
+      seq.current++;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 

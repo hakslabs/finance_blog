@@ -5,7 +5,13 @@
  * target_ref=event.id). Loads any existing memo for this event/user on open.
  */
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -19,16 +25,26 @@ interface Props {
   eventTitle?: string;
 }
 
-export function EventMemoDialog({ open, onOpenChange, eventId, eventTitle }: Props) {
+export function EventMemoDialog({
+  open,
+  onOpenChange,
+  eventId,
+  eventTitle,
+}: Props) {
   const { user } = useAuth();
   const [existing, setExisting] = useState<Memo | null>(null);
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!open || !user) { setExisting(null); setBody(""); return; }
+    if (!open || !user) {
+      setExisting(null);
+      setBody("");
+      return;
+    }
     let cancelled = false;
-    memosService.list({ target_kind: "calendar_event", target_ref: eventId, limit: 1 })
+    memosService
+      .list({ target_kind: "calendar_event", target_ref: eventId, limit: 1 })
       .then((r) => {
         if (cancelled) return;
         const m = r.items[0] ?? null;
@@ -36,12 +52,20 @@ export function EventMemoDialog({ open, onOpenChange, eventId, eventTitle }: Pro
         setBody(m?.body ?? "");
       })
       .catch(() => {});
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [open, user, eventId]);
 
   const save = async () => {
-    if (!user) { toast.error("로그인이 필요합니다"); return; }
-    if (!body.trim()) { toast.error("내용을 입력해주세요"); return; }
+    if (!user) {
+      toast.error("로그인이 필요합니다");
+      return;
+    }
+    if (!body.trim()) {
+      toast.error("내용을 입력해주세요");
+      return;
+    }
     setBusy(true);
     try {
       if (existing) {
@@ -93,12 +117,25 @@ export function EventMemoDialog({ open, onOpenChange, eventId, eventTitle }: Pro
         </div>
         <DialogFooter className="gap-2">
           {existing && (
-            <Button variant="outline" onClick={remove} disabled={busy} className="mr-auto text-down">
+            <Button
+              variant="outline"
+              onClick={remove}
+              disabled={busy}
+              className="mr-auto text-down"
+            >
               삭제
             </Button>
           )}
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>취소</Button>
-          <Button onClick={save} disabled={busy}>{busy ? "저장 중…" : "저장"}</Button>
+          <Button
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            disabled={busy}
+          >
+            취소
+          </Button>
+          <Button onClick={save} disabled={busy}>
+            {busy ? "저장 중…" : "저장"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

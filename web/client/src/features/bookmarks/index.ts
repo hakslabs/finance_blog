@@ -15,7 +15,9 @@ export interface BookmarkItem {
 
 export const bookmarksService = {
   list: (kind?: BookmarkKind) =>
-    apiGet<{ items: BookmarkItem[] }>(`/me/bookmarks${kind ? `?kind=${kind}` : ""}`),
+    apiGet<{ items: BookmarkItem[] }>(
+      `/me/bookmarks${kind ? `?kind=${kind}` : ""}`,
+    ),
   add: (kind: BookmarkKind, ref: string) =>
     apiPost<BookmarkItem>(`/me/bookmarks`, { kind, ref }),
   remove: (kind: BookmarkKind, ref: string) =>

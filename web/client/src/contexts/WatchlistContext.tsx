@@ -6,7 +6,15 @@
  *   * mutation 은 optimistic + fire-and-forget 서버 호출, 실패 시 토스트
  * - 비로그인 또는 supabase 미설정 시 localStorage 로컬 only
  */
-import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  ReactNode,
+} from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { watchlistsService } from "@/features/watchlists";
 
@@ -38,17 +46,26 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       return stored ? JSON.parse(stored) : [];
-    } catch { return []; }
+    } catch {
+      return [];
+    }
   });
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(watchlist)); } catch { /* */ }
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(watchlist));
+    } catch {
+      /* */
+    }
   }, [watchlist]);
 
   // Hydrate from server when user logs in
   const hydratedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (!user) { hydratedFor.current = null; return; }
+    if (!user) {
+      hydratedFor.current = null;
+      return;
+    }
     if (hydratedFor.current === user.id) return;
     hydratedFor.current = user.id;
     (async () => {
@@ -60,46 +77,66 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
           const localOnly = prev.filter((w) => !serverTickers.has(w.ticker));
           const fromServer: WatchItem[] = res.items.map((i) => {
             const existing = prev.find((w) => w.ticker === i.symbol);
-            return existing ?? {
-              ticker: i.symbol,
-              name: i.symbol,
-              exchange: i.exchange ?? "",
-              price: 0,
-              changePct: 0,
-              sector: "—",
-              addedAt: i.added_at ?? new Date().toISOString(),
-            };
+            return (
+              existing ?? {
+                ticker: i.symbol,
+                name: i.symbol,
+                exchange: i.exchange ?? "",
+                price: 0,
+                changePct: 0,
+                sector: "—",
+                addedAt: i.added_at ?? new Date().toISOString(),
+              }
+            );
           });
           return [...fromServer, ...localOnly];
         });
-      } catch { /* offline / not logged in */ }
+      } catch {
+        /* offline / not logged in */
+      }
     })();
   }, [user]);
 
-  const isWatched = useCallback((ticker: string) =>
-    watchlist.some((w) => w.ticker === ticker), [watchlist]);
+  const isWatched = useCallback(
+    (ticker: string) => watchlist.some((w) => w.ticker === ticker),
+    [watchlist],
+  );
 
-  const addToWatchlist = useCallback((item: Omit<WatchItem, "addedAt">) => {
-    setWatchlist((prev) => prev.some((w) => w.ticker === item.ticker)
-      ? prev
-      : [...prev, { ...item, addedAt: new Date().toISOString() }]);
-    if (user) {
-      watchlistsService.add({ symbol: item.ticker, exchange: item.exchange }).catch(() => {});
-    }
-  }, [user]);
+  const addToWatchlist = useCallback(
+    (item: Omit<WatchItem, "addedAt">) => {
+      setWatchlist((prev) =>
+        prev.some((w) => w.ticker === item.ticker)
+          ? prev
+          : [...prev, { ...item, addedAt: new Date().toISOString() }],
+      );
+      if (user) {
+        watchlistsService
+          .add({ symbol: item.ticker, exchange: item.exchange })
+          .catch(() => {});
+      }
+    },
+    [user],
+  );
 
-  const removeFromWatchlist = useCallback((ticker: string) => {
-    setWatchlist((prev) => prev.filter((w) => w.ticker !== ticker));
-    if (user) {
-      watchlistsService.remove(ticker).catch(() => {});
-    }
-  }, [user]);
+  const removeFromWatchlist = useCallback(
+    (ticker: string) => {
+      setWatchlist((prev) => prev.filter((w) => w.ticker !== ticker));
+      if (user) {
+        watchlistsService.remove(ticker).catch(() => {});
+      }
+    },
+    [user],
+  );
 
-  const toggleWatchlist = useCallback((item: Omit<WatchItem, "addedAt">): boolean => {
-    const wasIn = watchlist.some((w) => w.ticker === item.ticker);
-    if (wasIn) removeFromWatchlist(item.ticker); else addToWatchlist(item);
-    return !wasIn;
-  }, [watchlist, addToWatchlist, removeFromWatchlist]);
+  const toggleWatchlist = useCallback(
+    (item: Omit<WatchItem, "addedAt">): boolean => {
+      const wasIn = watchlist.some((w) => w.ticker === item.ticker);
+      if (wasIn) removeFromWatchlist(item.ticker);
+      else addToWatchlist(item);
+      return !wasIn;
+    },
+    [watchlist, addToWatchlist, removeFromWatchlist],
+  );
 
   const clearWatchlist = useCallback(() => {
     const items = [...watchlist];
@@ -110,9 +147,16 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
   }, [user, watchlist]);
 
   return (
-    <WatchlistContext.Provider value={{
-      watchlist, isWatched, addToWatchlist, removeFromWatchlist, toggleWatchlist, clearWatchlist,
-    }}>
+    <WatchlistContext.Provider
+      value={{
+        watchlist,
+        isWatched,
+        addToWatchlist,
+        removeFromWatchlist,
+        toggleWatchlist,
+        clearWatchlist,
+      }}
+    >
       {children}
     </WatchlistContext.Provider>
   );
@@ -120,6 +164,7 @@ export function WatchlistProvider({ children }: { children: ReactNode }) {
 
 export function useWatchlist() {
   const ctx = useContext(WatchlistContext);
-  if (!ctx) throw new Error("useWatchlist must be used within WatchlistProvider");
+  if (!ctx)
+    throw new Error("useWatchlist must be used within WatchlistProvider");
   return ctx;
 }

@@ -3,44 +3,344 @@
 // ============================================================
 
 export const MARKET_INDICES = [
-  { symbol: "KOSPI",   name: "코스피",       value: 2684.32, change: 18.42, changePct: 0.69,  market: "KR" as const,     source: "mock" as const },
-  { symbol: "KOSDAQ",  name: "코스닥",       value: 872.14,  change: 4.21,  changePct: 0.49,  market: "KR" as const,     source: "mock" as const },
-  { symbol: "S&P 500", name: "S&P 500",      value: 5812.44, change: 21.82, changePct: 0.38,  market: "US" as const,     source: "mock" as const },
-  { symbol: "NASDAQ",  name: "나스닥",       value: 18024.1, change: 128.6, changePct: 0.72,  market: "US" as const,     source: "mock" as const },
-  { symbol: "DOW",     name: "다우",         value: 39142.2, change: -84.3, changePct: -0.22, market: "US" as const,     source: "mock" as const },
-  { symbol: "USD/KRW", name: "원/달러",       value: 1387.20, change: -3.10, changePct: -0.22, market: "FX" as const,     source: "mock" as const },
-  { symbol: "WTI",     name: "국제유가",     value: 71.84,   change: 0.42,  changePct: 0.59,  market: "COMM" as const,   source: "mock" as const },
-  { symbol: "GOLD",    name: "금",           value: 2318.4,  change: 9.4,   changePct: 0.41,  market: "COMM" as const,   source: "mock" as const },
-  { symbol: "BTC",     name: "비트코인",     value: 61240,   change: -820,  changePct: -1.32, market: "CRYPTO" as const, source: "mock" as const },
-  { symbol: "VIX",     name: "공포지수",     value: 14.2,    change: -0.4,  changePct: -2.74, market: "VOL" as const,    source: "mock" as const },
+  {
+    symbol: "KOSPI",
+    name: "코스피",
+    value: 2684.32,
+    change: 18.42,
+    changePct: 0.69,
+    market: "KR" as const,
+    source: "mock" as const,
+  },
+  {
+    symbol: "KOSDAQ",
+    name: "코스닥",
+    value: 872.14,
+    change: 4.21,
+    changePct: 0.49,
+    market: "KR" as const,
+    source: "mock" as const,
+  },
+  {
+    symbol: "S&P 500",
+    name: "S&P 500",
+    value: 5812.44,
+    change: 21.82,
+    changePct: 0.38,
+    market: "US" as const,
+    source: "mock" as const,
+  },
+  {
+    symbol: "NASDAQ",
+    name: "나스닥",
+    value: 18024.1,
+    change: 128.6,
+    changePct: 0.72,
+    market: "US" as const,
+    source: "mock" as const,
+  },
+  {
+    symbol: "DOW",
+    name: "다우",
+    value: 39142.2,
+    change: -84.3,
+    changePct: -0.22,
+    market: "US" as const,
+    source: "mock" as const,
+  },
+  {
+    symbol: "USD/KRW",
+    name: "원/달러",
+    value: 1387.2,
+    change: -3.1,
+    changePct: -0.22,
+    market: "FX" as const,
+    source: "mock" as const,
+  },
+  {
+    symbol: "WTI",
+    name: "국제유가",
+    value: 71.84,
+    change: 0.42,
+    changePct: 0.59,
+    market: "COMM" as const,
+    source: "mock" as const,
+  },
+  {
+    symbol: "GOLD",
+    name: "금",
+    value: 2318.4,
+    change: 9.4,
+    changePct: 0.41,
+    market: "COMM" as const,
+    source: "mock" as const,
+  },
+  {
+    symbol: "BTC",
+    name: "비트코인",
+    value: 61240,
+    change: -820,
+    changePct: -1.32,
+    market: "CRYPTO" as const,
+    source: "mock" as const,
+  },
+  {
+    symbol: "VIX",
+    name: "공포지수",
+    value: 14.2,
+    change: -0.4,
+    changePct: -2.74,
+    market: "VOL" as const,
+    source: "mock" as const,
+  },
 ];
 
 export const US_STOCKS = [
-  { ticker: "AAPL", name: "Apple Inc.", exchange: "NASDAQ", price: 184.32, changePct: 1.24, marketCap: "$2.87T", sector: "기술", pe: 28.4, roe: 147.6 },
-  { ticker: "NVDA", name: "NVIDIA Corporation", exchange: "NASDAQ", price: 912.18, changePct: 3.42, marketCap: "$2.24T", sector: "반도체", pe: 65.2, roe: 91.4 },
-  { ticker: "MSFT", name: "Microsoft Corporation", exchange: "NASDAQ", price: 424.10, changePct: 0.82, marketCap: "$3.15T", sector: "기술", pe: 36.1, roe: 38.5 },
-  { ticker: "TSLA", name: "Tesla Inc.", exchange: "NASDAQ", price: 218.40, changePct: -2.10, marketCap: "$694B", sector: "자동차", pe: 52.1, roe: 18.2 },
-  { ticker: "GOOGL", name: "Alphabet Inc.", exchange: "NASDAQ", price: 174.50, changePct: 0.56, marketCap: "$2.16T", sector: "기술", pe: 24.8, roe: 27.3 },
-  { ticker: "AMZN", name: "Amazon.com Inc.", exchange: "NASDAQ", price: 186.80, changePct: 1.78, marketCap: "$1.94T", sector: "소매/클라우드", pe: 41.2, roe: 22.1 },
-  { ticker: "META", name: "Meta Platforms Inc.", exchange: "NASDAQ", price: 489.20, changePct: 2.34, marketCap: "$1.23T", sector: "기술", pe: 26.4, roe: 34.8 },
-  { ticker: "AVGO", name: "Broadcom Inc.", exchange: "NASDAQ", price: 1420.00, changePct: 1.92, marketCap: "$656B", sector: "반도체", pe: 31.2, roe: 28.4 },
-  { ticker: "AMD", name: "Advanced Micro Devices", exchange: "NASDAQ", price: 158.40, changePct: -0.68, marketCap: "$256B", sector: "반도체", pe: 44.8, roe: 12.1 },
-  { ticker: "JPM", name: "JPMorgan Chase", exchange: "NYSE", price: 198.42, changePct: 0.34, marketCap: "$573B", sector: "금융", pe: 11.8, roe: 16.2 },
-  { ticker: "XOM", name: "Exxon Mobil", exchange: "NYSE", price: 112.84, changePct: 0.82, marketCap: "$448B", sector: "에너지", pe: 13.4, roe: 18.9 },
-  { ticker: "CVX", name: "Chevron Corporation", exchange: "NYSE", price: 154.22, changePct: 0.61, marketCap: "$285B", sector: "에너지", pe: 12.1, roe: 14.8 },
-  { ticker: "BAC", name: "Bank of America", exchange: "NYSE", price: 38.42, changePct: -0.28, marketCap: "$302B", sector: "금융", pe: 12.4, roe: 10.8 },
-  { ticker: "KO", name: "Coca-Cola Company", exchange: "NYSE", price: 62.18, changePct: 0.14, marketCap: "$268B", sector: "소비재", pe: 22.8, roe: 42.1 },
+  {
+    ticker: "AAPL",
+    name: "Apple Inc.",
+    exchange: "NASDAQ",
+    price: 184.32,
+    changePct: 1.24,
+    marketCap: "$2.87T",
+    sector: "기술",
+    pe: 28.4,
+    roe: 147.6,
+  },
+  {
+    ticker: "NVDA",
+    name: "NVIDIA Corporation",
+    exchange: "NASDAQ",
+    price: 912.18,
+    changePct: 3.42,
+    marketCap: "$2.24T",
+    sector: "반도체",
+    pe: 65.2,
+    roe: 91.4,
+  },
+  {
+    ticker: "MSFT",
+    name: "Microsoft Corporation",
+    exchange: "NASDAQ",
+    price: 424.1,
+    changePct: 0.82,
+    marketCap: "$3.15T",
+    sector: "기술",
+    pe: 36.1,
+    roe: 38.5,
+  },
+  {
+    ticker: "TSLA",
+    name: "Tesla Inc.",
+    exchange: "NASDAQ",
+    price: 218.4,
+    changePct: -2.1,
+    marketCap: "$694B",
+    sector: "자동차",
+    pe: 52.1,
+    roe: 18.2,
+  },
+  {
+    ticker: "GOOGL",
+    name: "Alphabet Inc.",
+    exchange: "NASDAQ",
+    price: 174.5,
+    changePct: 0.56,
+    marketCap: "$2.16T",
+    sector: "기술",
+    pe: 24.8,
+    roe: 27.3,
+  },
+  {
+    ticker: "AMZN",
+    name: "Amazon.com Inc.",
+    exchange: "NASDAQ",
+    price: 186.8,
+    changePct: 1.78,
+    marketCap: "$1.94T",
+    sector: "소매/클라우드",
+    pe: 41.2,
+    roe: 22.1,
+  },
+  {
+    ticker: "META",
+    name: "Meta Platforms Inc.",
+    exchange: "NASDAQ",
+    price: 489.2,
+    changePct: 2.34,
+    marketCap: "$1.23T",
+    sector: "기술",
+    pe: 26.4,
+    roe: 34.8,
+  },
+  {
+    ticker: "AVGO",
+    name: "Broadcom Inc.",
+    exchange: "NASDAQ",
+    price: 1420.0,
+    changePct: 1.92,
+    marketCap: "$656B",
+    sector: "반도체",
+    pe: 31.2,
+    roe: 28.4,
+  },
+  {
+    ticker: "AMD",
+    name: "Advanced Micro Devices",
+    exchange: "NASDAQ",
+    price: 158.4,
+    changePct: -0.68,
+    marketCap: "$256B",
+    sector: "반도체",
+    pe: 44.8,
+    roe: 12.1,
+  },
+  {
+    ticker: "JPM",
+    name: "JPMorgan Chase",
+    exchange: "NYSE",
+    price: 198.42,
+    changePct: 0.34,
+    marketCap: "$573B",
+    sector: "금융",
+    pe: 11.8,
+    roe: 16.2,
+  },
+  {
+    ticker: "XOM",
+    name: "Exxon Mobil",
+    exchange: "NYSE",
+    price: 112.84,
+    changePct: 0.82,
+    marketCap: "$448B",
+    sector: "에너지",
+    pe: 13.4,
+    roe: 18.9,
+  },
+  {
+    ticker: "CVX",
+    name: "Chevron Corporation",
+    exchange: "NYSE",
+    price: 154.22,
+    changePct: 0.61,
+    marketCap: "$285B",
+    sector: "에너지",
+    pe: 12.1,
+    roe: 14.8,
+  },
+  {
+    ticker: "BAC",
+    name: "Bank of America",
+    exchange: "NYSE",
+    price: 38.42,
+    changePct: -0.28,
+    marketCap: "$302B",
+    sector: "금융",
+    pe: 12.4,
+    roe: 10.8,
+  },
+  {
+    ticker: "KO",
+    name: "Coca-Cola Company",
+    exchange: "NYSE",
+    price: 62.18,
+    changePct: 0.14,
+    marketCap: "$268B",
+    sector: "소비재",
+    pe: 22.8,
+    roe: 42.1,
+  },
 ];
 
 export const KR_STOCKS = [
-  { ticker: "005930", name: "삼성전자", exchange: "KRX", price: 78400, changePct: 0.51, marketCap: "₩468조", sector: "반도체/전자", pe: 18.2, roe: 8.4 },
-  { ticker: "000660", name: "SK하이닉스", exchange: "KRX", price: 198500, changePct: -1.24, marketCap: "₩144조", sector: "반도체", pe: 24.1, roe: 12.8 },
-  { ticker: "373220", name: "LG에너지솔루션", exchange: "KRX", price: 362000, changePct: 0.83, marketCap: "₩165조", sector: "배터리", pe: 42.8, roe: 6.2 },
-  { ticker: "207940", name: "삼성바이오로직스", exchange: "KRX", price: 821000, changePct: 1.42, marketCap: "₩58조", sector: "바이오", pe: 68.4, roe: 8.1 },
-  { ticker: "035420", name: "NAVER", exchange: "KRX", price: 189400, changePct: -0.31, marketCap: "₩31조", sector: "IT/플랫폼", pe: 28.4, roe: 14.2 },
-  { ticker: "005380", name: "현대차", exchange: "KRX", price: 241500, changePct: 2.11, marketCap: "₩51조", sector: "자동차", pe: 6.8, roe: 12.4 },
-  { ticker: "051910", name: "LG화학", exchange: "KRX", price: 312000, changePct: -0.64, marketCap: "₩22조", sector: "화학/배터리", pe: 18.4, roe: 6.8 },
-  { ticker: "068270", name: "셀트리온", exchange: "KRX", price: 168400, changePct: 0.84, marketCap: "₩22조", sector: "바이오", pe: 34.2, roe: 8.4 },
+  {
+    ticker: "005930",
+    name: "삼성전자",
+    exchange: "KRX",
+    price: 78400,
+    changePct: 0.51,
+    marketCap: "₩468조",
+    sector: "반도체/전자",
+    pe: 18.2,
+    roe: 8.4,
+  },
+  {
+    ticker: "000660",
+    name: "SK하이닉스",
+    exchange: "KRX",
+    price: 198500,
+    changePct: -1.24,
+    marketCap: "₩144조",
+    sector: "반도체",
+    pe: 24.1,
+    roe: 12.8,
+  },
+  {
+    ticker: "373220",
+    name: "LG에너지솔루션",
+    exchange: "KRX",
+    price: 362000,
+    changePct: 0.83,
+    marketCap: "₩165조",
+    sector: "배터리",
+    pe: 42.8,
+    roe: 6.2,
+  },
+  {
+    ticker: "207940",
+    name: "삼성바이오로직스",
+    exchange: "KRX",
+    price: 821000,
+    changePct: 1.42,
+    marketCap: "₩58조",
+    sector: "바이오",
+    pe: 68.4,
+    roe: 8.1,
+  },
+  {
+    ticker: "035420",
+    name: "NAVER",
+    exchange: "KRX",
+    price: 189400,
+    changePct: -0.31,
+    marketCap: "₩31조",
+    sector: "IT/플랫폼",
+    pe: 28.4,
+    roe: 14.2,
+  },
+  {
+    ticker: "005380",
+    name: "현대차",
+    exchange: "KRX",
+    price: 241500,
+    changePct: 2.11,
+    marketCap: "₩51조",
+    sector: "자동차",
+    pe: 6.8,
+    roe: 12.4,
+  },
+  {
+    ticker: "051910",
+    name: "LG화학",
+    exchange: "KRX",
+    price: 312000,
+    changePct: -0.64,
+    marketCap: "₩22조",
+    sector: "화학/배터리",
+    pe: 18.4,
+    roe: 6.8,
+  },
+  {
+    ticker: "068270",
+    name: "셀트리온",
+    exchange: "KRX",
+    price: 168400,
+    changePct: 0.84,
+    marketCap: "₩22조",
+    sector: "바이오",
+    pe: 34.2,
+    roe: 8.4,
+  },
 ];
 
 // Ticker → display name lookup. Tickers should only be visible on the
@@ -51,7 +351,9 @@ export const KR_STOCKS = [
 export function tickerToName(ticker: string | null | undefined): string {
   if (!ticker) return "";
   const t = ticker.toUpperCase();
-  const hit = US_STOCKS.find((s) => s.ticker === t) ?? KR_STOCKS.find((s) => s.ticker === t);
+  const hit =
+    US_STOCKS.find((s) => s.ticker === t) ??
+    KR_STOCKS.find((s) => s.ticker === t);
   return hit?.name ?? ticker;
 }
 
@@ -66,7 +368,8 @@ export const MASTERS = [
     holdings: 47,
     lastFiling: "2026 Q1",
     cagr5y: 13.4,
-    description: "오마하의 현인. 내재가치 대비 할인된 우량 기업을 장기 보유하는 가치투자의 대명사.",
+    description:
+      "오마하의 현인. 내재가치 대비 할인된 우량 기업을 장기 보유하는 가치투자의 대명사.",
     principles: [
       "이해할 수 있는 사업에만 투자한다",
       "경제적 해자가 있는 기업을 우선 검토한다",
@@ -106,7 +409,8 @@ export const MASTERS = [
     holdings: 380,
     lastFiling: "2026 Q1",
     cagr5y: 7.8,
-    description: "올웨더 포트폴리오 창시자. 경제 사이클과 매크로 분석을 통한 리스크 패리티 전략.",
+    description:
+      "올웨더 포트폴리오 창시자. 경제 사이클과 매크로 분석을 통한 리스크 패리티 전략.",
     principles: [
       "모든 경제 환경에서 작동하는 포트폴리오를 구성한다",
       "상관관계가 낮은 자산으로 리스크를 분산한다",
@@ -136,7 +440,8 @@ export const MASTERS = [
     holdings: 36,
     lastFiling: "2026 Q1",
     cagr5y: -4.2,
-    description: "파괴적 혁신 기업에 집중 투자. AI, 유전체학, 핀테크, 로봇공학 등 미래 기술 테마.",
+    description:
+      "파괴적 혁신 기업에 집중 투자. AI, 유전체학, 핀테크, 로봇공학 등 미래 기술 테마.",
     principles: [
       "5년 이상 장기 시계에서 파괴적 혁신을 평가한다",
       "단기 변동성을 기회로 활용해 비중을 확대한다",
@@ -166,7 +471,8 @@ export const MASTERS = [
     holdings: 11,
     lastFiling: "2026 Q1",
     cagr5y: 9.1,
-    description: "빅쇼트의 주인공. 역발상 투자와 숏 포지션으로 시장의 거품을 공략.",
+    description:
+      "빅쇼트의 주인공. 역발상 투자와 숏 포지션으로 시장의 거품을 공략.",
     principles: [
       "군중과 반대 방향에서 기회를 찾는다",
       "철저한 바텀업 리서치로 숨겨진 가치를 발굴한다",
@@ -195,7 +501,8 @@ export const MASTERS = [
     holdings: 0,
     lastFiling: "히스토리",
     cagr5y: null,
-    description: "마젤란 펀드 13년간 연평균 29% 수익. '10배 주식(텐배거)'과 생활 속 투자 아이디어 발굴의 대가.",
+    description:
+      "마젤란 펀드 13년간 연평균 29% 수익. '10배 주식(텐배거)'과 생활 속 투자 아이디어 발굴의 대가.",
     principles: [
       "자신이 잘 아는 분야에서 투자 아이디어를 찾는다",
       "PEG 비율로 성장 대비 밸류에이션을 평가한다",
@@ -215,7 +522,8 @@ export const MASTERS = [
     holdings: 0,
     lastFiling: "히스토리",
     cagr5y: null,
-    description: "가치투자의 아버지. '현명한 투자자'와 '증권분석' 저자. 안전마진 개념의 창시자.",
+    description:
+      "가치투자의 아버지. '현명한 투자자'와 '증권분석' 저자. 안전마진 개념의 창시자.",
     principles: [
       "내재가치보다 충분히 낮은 가격에서만 매수한다 (안전마진)",
       "시장을 Mr. Market으로 의인화해 감정적 반응을 피한다",
@@ -235,7 +543,8 @@ export const MASTERS = [
     holdings: 0,
     lastFiling: "히스토리",
     cagr5y: null,
-    description: "버핏의 파트너. 다학제적 사고와 멘탈 모델로 복잡한 투자 결정을 단순화.",
+    description:
+      "버핏의 파트너. 다학제적 사고와 멘탈 모델로 복잡한 투자 결정을 단순화.",
     principles: [
       "다양한 학문의 멘탈 모델을 투자에 적용한다",
       "역발상 — 실패를 피하는 방법을 먼저 생각한다",
@@ -252,7 +561,8 @@ export const REPORTS = [
   {
     id: "r001",
     title: "큐틴 아메리카 (미국주식 Weekly)",
-    summary: "미국 주식 시장 주간 동향 요약. S&P500 상승세 지속, AI 섹터 강세 지속.",
+    summary:
+      "미국 주식 시장 주간 동향 요약. S&P500 상승세 지속, AI 섹터 강세 지속.",
     source: "키움증권",
     type: "Weekly",
     pages: 12,
@@ -266,7 +576,8 @@ export const REPORTS = [
   {
     id: "r002",
     title: "[미국주식] Trump Showtime: AI 슈퍼사이클 모멘텀 & 확장될 리쇼어링",
-    summary: "AI 인프라 투자 사이클 본격화. 데이터센터 전력소비 증가와 반도체 수혜 지속.",
+    summary:
+      "AI 인프라 투자 사이클 본격화. 데이터센터 전력소비 증가와 반도체 수혜 지속.",
     source: "하나증권",
     type: "Thematic",
     pages: 24,
@@ -294,7 +605,8 @@ export const REPORTS = [
   {
     id: "r004",
     title: "[ATI (NYS:ATI)] 대체 불가능한 항공·방산 소재 플랫폼",
-    summary: "ATI의 항공우주 소재 독점적 지위 분석. 방산 수요 증가로 수혜 전망. 목표주가 $65.",
+    summary:
+      "ATI의 항공우주 소재 독점적 지위 분석. 방산 수요 증가로 수혜 전망. 목표주가 $65.",
     source: "신한투자증권",
     type: "종목분석",
     pages: 18,
@@ -311,7 +623,8 @@ export const REPORTS = [
   {
     id: "r005",
     title: "[MP 머티리얼스 (NYS:MP)] 달라질 미래 체급에 베팅",
-    summary: "희토류 소재 독점 공급자. 전기차·스마트폰 수요 증가로 장기 성장 기대. 목표주가 $28.",
+    summary:
+      "희토류 소재 독점 공급자. 전기차·스마트폰 수요 증가로 장기 성장 기대. 목표주가 $28.",
     source: "신한투자증권",
     type: "종목분석",
     pages: 16,
@@ -328,7 +641,8 @@ export const REPORTS = [
   {
     id: "r006",
     title: "DB Morning Express",
-    summary: "오늘의 주요 시장 이슈 및 주목 종목 요약. 미국 시장 강세, 국내 시장 보합.",
+    summary:
+      "오늘의 주요 시장 이슈 및 주목 종목 요약. 미국 시장 강세, 국내 시장 보합.",
     source: "DB증권",
     type: "Morning",
     pages: 8,
@@ -341,8 +655,10 @@ export const REPORTS = [
   },
   {
     id: "r007",
-    title: "[Multi Asset Strategy: 두각(頭角)]-미 10년 국채금리 4.6% VS 실질 정책금리 -0.06%",
-    summary: "미국 장기금리 상승과 실질금리 경로 분석. 주식·채권 자산배분 전략 시사점.",
+    title:
+      "[Multi Asset Strategy: 두각(頭角)]-미 10년 국채금리 4.6% VS 실질 정책금리 -0.06%",
+    summary:
+      "미국 장기금리 상승과 실질금리 경로 분석. 주식·채권 자산배분 전략 시사점.",
     source: "유안타증권",
     type: "Strategy",
     pages: 14,
@@ -356,7 +672,8 @@ export const REPORTS = [
   {
     id: "r008",
     title: "미국 고용시장 통계 착시의 한계: 얼음장 밑의 균열",
-    summary: "BLS 실업률 데이터 해석 주의. 실제 노동시장 상황은 헤드라인 대비 약화 진행 중.",
+    summary:
+      "BLS 실업률 데이터 해석 주의. 실제 노동시장 상황은 헤드라인 대비 약화 진행 중.",
     source: "유안타증권",
     type: "Macro",
     pages: 10,
@@ -384,7 +701,8 @@ export const REPORTS = [
   {
     id: "r010",
     title: "Global Market Insight",
-    summary: "글로벌 주요 시장 주간 동향 요약. 미국·유럽·아시아 시장 종합 분석.",
+    summary:
+      "글로벌 주요 시장 주간 동향 요약. 미국·유럽·아시아 시장 종합 분석.",
     source: "키움증권",
     type: "Weekly",
     pages: 20,
@@ -398,8 +716,10 @@ export const REPORTS = [
   // ── 2026-05-17 ──
   {
     id: "r011",
-    title: "[삼성전자 (005930)] HBM4 양산 일정 확인 - 반도체 사이클 상승 가속화",
-    summary: "HBM4 양산 시작 확인. 2026년 메모리 실적 회복 기대. 목표주가 90,000원.",
+    title:
+      "[삼성전자 (005930)] HBM4 양산 일정 확인 - 반도체 사이클 상승 가속화",
+    summary:
+      "HBM4 양산 시작 확인. 2026년 메모리 실적 회복 기대. 목표주가 90,000원.",
     source: "삼성증권",
     type: "종목분석",
     pages: 22,
@@ -416,7 +736,8 @@ export const REPORTS = [
   {
     id: "r012",
     title: "NVDA Q1 FY2027 실적 분석 - 데이터센터 수요 사상 최대",
-    summary: "NVDA Q1 매출 $44.1B, 예상치 대폭 상회. H100/H200 수요 공급 부족 지속.",
+    summary:
+      "NVDA Q1 매출 $44.1B, 예상치 대폭 상회. H100/H200 수요 공급 부족 지속.",
     source: "리틀리지연구소",
     type: "실적분석",
     pages: 14,
@@ -492,25 +813,102 @@ export const REPORTS = [
   },
 ];
 
-
 export const LEARN_CATEGORIES = [
-  { id: "financial-statements", title: "재무제표 읽는 법", count: 12, desc: "손익계산서·재무상태표·현금흐름표를 한 번에 연결" },
-  { id: "technical-analysis", title: "기술적 분석 입문", count: 18, desc: "추세·거래량·변동성을 신호가 아니라 확률로 해석" },
-  { id: "value-investing", title: "가치투자 기초", count: 9, desc: "안전마진과 이익의 질을 동시에 점검" },
-  { id: "quant-factors", title: "퀀트 팩터 입문", count: 14, desc: "가치·모멘텀·퀄리티 팩터를 규칙으로 비교" },
-  { id: "options-derivatives", title: "옵션·파생", count: 8, desc: "레버리지 상품의 손익 구조와 위험 한도 이해" },
-  { id: "macro-rates", title: "매크로·금리", count: 6, desc: "금리·물가·환율이 밸류에이션과 섹터에 주는 영향" },
+  {
+    id: "financial-statements",
+    title: "재무제표 읽는 법",
+    count: 12,
+    desc: "손익계산서·재무상태표·현금흐름표를 한 번에 연결",
+  },
+  {
+    id: "technical-analysis",
+    title: "기술적 분석 입문",
+    count: 18,
+    desc: "추세·거래량·변동성을 신호가 아니라 확률로 해석",
+  },
+  {
+    id: "value-investing",
+    title: "가치투자 기초",
+    count: 9,
+    desc: "안전마진과 이익의 질을 동시에 점검",
+  },
+  {
+    id: "quant-factors",
+    title: "퀀트 팩터 입문",
+    count: 14,
+    desc: "가치·모멘텀·퀄리티 팩터를 규칙으로 비교",
+  },
+  {
+    id: "options-derivatives",
+    title: "옵션·파생",
+    count: 8,
+    desc: "레버리지 상품의 손익 구조와 위험 한도 이해",
+  },
+  {
+    id: "macro-rates",
+    title: "매크로·금리",
+    count: 6,
+    desc: "금리·물가·환율이 밸류에이션과 섹터에 주는 영향",
+  },
 ];
 
 export const LEARN_GUIDES = [
-  { id: "1", title: "DCF 모델, 가정 5개로 끝내기", desc: "매출 성장률, 마진, 재투자, WACC, 터미널 성장률만으로 보수적 가치를 잡습니다.", category: "재무", readTime: 15 },
-  { id: "2", title: "골든크로스, 정말 작동할까? 백테스트", desc: "단순 이동평균 신호를 시장 국면별로 나눠 해석합니다.", category: "기술", readTime: 8 },
-  { id: "3", title: "Graham의 Net-Net 종목 찾기", desc: "유동자산 기반 안전마진 스크리닝을 실전 후보군으로 연결합니다.", category: "가치", readTime: 12 },
-  { id: "4", title: "ROE 분해 - DuPont 5단계", desc: "ROE를 마진, 회전율, 레버리지로 분해해 지속성을 봅니다.", category: "재무", readTime: 10 },
-  { id: "5", title: "순이익보다 현금흐름을 먼저 보는 이유", desc: "이익은 나는데 현금이 안 들어오는 기업을 운전자본과 투자현금흐름으로 걸러냅니다.", category: "재무", readTime: 11 },
-  { id: "6", title: "초보 투자자의 포지션 크기 정하기", desc: "확신이 아니라 손실 허용폭을 기준으로 종목 비중과 추가매수 한도를 정합니다.", category: "리스크", readTime: 9 },
-  { id: "7", title: "금리 사이클이 성장주와 배당주에 미치는 영향", desc: "할인율 변화가 장기 성장 현금흐름과 고배당 자산의 상대 매력을 어떻게 바꾸는지 봅니다.", category: "매크로", readTime: 13 },
-  { id: "8", title: "가치·모멘텀·퀄리티 팩터를 같이 쓰는 법", desc: "단일 팩터 쏠림을 줄이고 서로 다른 시장 국면에서 버틸 수 있는 스코어를 만듭니다.", category: "퀀트", readTime: 14 },
+  {
+    id: "1",
+    title: "DCF 모델, 가정 5개로 끝내기",
+    desc: "매출 성장률, 마진, 재투자, WACC, 터미널 성장률만으로 보수적 가치를 잡습니다.",
+    category: "재무",
+    readTime: 15,
+  },
+  {
+    id: "2",
+    title: "골든크로스, 정말 작동할까? 백테스트",
+    desc: "단순 이동평균 신호를 시장 국면별로 나눠 해석합니다.",
+    category: "기술",
+    readTime: 8,
+  },
+  {
+    id: "3",
+    title: "Graham의 Net-Net 종목 찾기",
+    desc: "유동자산 기반 안전마진 스크리닝을 실전 후보군으로 연결합니다.",
+    category: "가치",
+    readTime: 12,
+  },
+  {
+    id: "4",
+    title: "ROE 분해 - DuPont 5단계",
+    desc: "ROE를 마진, 회전율, 레버리지로 분해해 지속성을 봅니다.",
+    category: "재무",
+    readTime: 10,
+  },
+  {
+    id: "5",
+    title: "순이익보다 현금흐름을 먼저 보는 이유",
+    desc: "이익은 나는데 현금이 안 들어오는 기업을 운전자본과 투자현금흐름으로 걸러냅니다.",
+    category: "재무",
+    readTime: 11,
+  },
+  {
+    id: "6",
+    title: "초보 투자자의 포지션 크기 정하기",
+    desc: "확신이 아니라 손실 허용폭을 기준으로 종목 비중과 추가매수 한도를 정합니다.",
+    category: "리스크",
+    readTime: 9,
+  },
+  {
+    id: "7",
+    title: "금리 사이클이 성장주와 배당주에 미치는 영향",
+    desc: "할인율 변화가 장기 성장 현금흐름과 고배당 자산의 상대 매력을 어떻게 바꾸는지 봅니다.",
+    category: "매크로",
+    readTime: 13,
+  },
+  {
+    id: "8",
+    title: "가치·모멘텀·퀄리티 팩터를 같이 쓰는 법",
+    desc: "단일 팩터 쏠림을 줄이고 서로 다른 시장 국면에서 버틸 수 있는 스코어를 만듭니다.",
+    category: "퀀트",
+    readTime: 14,
+  },
 ];
 
 export const SECTOR_ROTATION = [
@@ -525,18 +923,38 @@ export const SECTOR_ROTATION = [
 ];
 
 export const TECHNICAL_SIGNALS = [
-  { ticker: "NVDA", signal: "골든크로스 (MA20/60)", time: "오늘 09:42", type: "bullish" },
-  { ticker: "AAPL", signal: "RSI 과매수 (78)", time: "오늘 11:15", type: "warning" },
-  { ticker: "005930", signal: "거래량 +320% 급증", time: "어제", type: "bullish" },
+  {
+    ticker: "NVDA",
+    signal: "골든크로스 (MA20/60)",
+    time: "오늘 09:42",
+    type: "bullish",
+  },
+  {
+    ticker: "AAPL",
+    signal: "RSI 과매수 (78)",
+    time: "오늘 11:15",
+    type: "warning",
+  },
+  {
+    ticker: "005930",
+    signal: "거래량 +320% 급증",
+    time: "어제",
+    type: "bullish",
+  },
   { ticker: "TSLA", signal: "MACD 데드크로스", time: "5/04", type: "bearish" },
   { ticker: "000660", signal: "52주 신저가", time: "5/03", type: "bearish" },
-  { ticker: "META", signal: "볼린저밴드 상단 돌파", time: "오늘 14:22", type: "bullish" },
+  {
+    ticker: "META",
+    signal: "볼린저밴드 상단 돌파",
+    time: "오늘 14:22",
+    type: "bullish",
+  },
 ];
 
 export const MARKET_NEWS = [
   {
     id: 1,
-    title: "연준 위원, \"9월 인하 가능성 열어둘 것\"",
+    title: '연준 위원, "9월 인하 가능성 열어둘 것"',
     source: "Bloomberg",
     time: "12분",
     category: "매크로",
@@ -582,21 +1000,100 @@ export const MARKET_NEWS = [
 ];
 
 export const CALENDAR_EVENTS = [
-  { date: "06", day: "화", title: "미 무역수지", type: "매크로", holding: null, memo: 0 },
-  { date: "07", day: "수", title: "NVDA 실적 (장마감 후)", type: "실적", holding: "12.4%", memo: 9 },
-  { date: "08", day: "목", title: "AAPL 분기 배당락", type: "배당", holding: "9.1%", memo: 4 },
-  { date: "08", day: "목", title: "FOMC 회의록", type: "매크로", holding: null, memo: 0 },
-  { date: "13", day: "화", title: "AAPL WWDC", type: "실적", holding: "9.1%", memo: 4 },
-  { date: "15", day: "목", title: "미 CPI", type: "매크로", holding: null, memo: 0 },
-  { date: "22", day: "목", title: "005930 잠정실적", type: "실적", holding: "18.2%", memo: 6 },
+  {
+    date: "06",
+    day: "화",
+    title: "미 무역수지",
+    type: "매크로",
+    holding: null,
+    memo: 0,
+  },
+  {
+    date: "07",
+    day: "수",
+    title: "NVDA 실적 (장마감 후)",
+    type: "실적",
+    holding: "12.4%",
+    memo: 9,
+  },
+  {
+    date: "08",
+    day: "목",
+    title: "AAPL 분기 배당락",
+    type: "배당",
+    holding: "9.1%",
+    memo: 4,
+  },
+  {
+    date: "08",
+    day: "목",
+    title: "FOMC 회의록",
+    type: "매크로",
+    holding: null,
+    memo: 0,
+  },
+  {
+    date: "13",
+    day: "화",
+    title: "AAPL WWDC",
+    type: "실적",
+    holding: "9.1%",
+    memo: 4,
+  },
+  {
+    date: "15",
+    day: "목",
+    title: "미 CPI",
+    type: "매크로",
+    holding: null,
+    memo: 0,
+  },
+  {
+    date: "22",
+    day: "목",
+    title: "005930 잠정실적",
+    type: "실적",
+    holding: "18.2%",
+    memo: 6,
+  },
 ];
 
 export const PORTFOLIO_HOLDINGS = [
-  { ticker: "005930", name: "삼성전자", weight: 18.2, changePct: 0.51, value: "₩877만" },
-  { ticker: "NVDA", name: "NVIDIA", weight: 12.4, changePct: 3.42, value: "₩598만" },
-  { ticker: "AAPL", name: "Apple", weight: 9.1, changePct: 1.24, value: "₩439만" },
-  { ticker: "000660", name: "SK하이닉스", weight: 7.6, changePct: -1.24, value: "₩366만" },
-  { ticker: "QQQ", name: "Invesco QQQ", weight: 6.8, changePct: 0.42, value: "₩328만" },
+  {
+    ticker: "005930",
+    name: "삼성전자",
+    weight: 18.2,
+    changePct: 0.51,
+    value: "₩877만",
+  },
+  {
+    ticker: "NVDA",
+    name: "NVIDIA",
+    weight: 12.4,
+    changePct: 3.42,
+    value: "₩598만",
+  },
+  {
+    ticker: "AAPL",
+    name: "Apple",
+    weight: 9.1,
+    changePct: 1.24,
+    value: "₩439만",
+  },
+  {
+    ticker: "000660",
+    name: "SK하이닉스",
+    weight: 7.6,
+    changePct: -1.24,
+    value: "₩366만",
+  },
+  {
+    ticker: "QQQ",
+    name: "Invesco QQQ",
+    weight: 6.8,
+    changePct: 0.42,
+    value: "₩328만",
+  },
 ];
 
 export const PORTFOLIO_ALLOCATION = [
@@ -608,7 +1105,10 @@ export const PORTFOLIO_ALLOCATION = [
 ];
 
 // Generate sparkline data
-export function generateSparkline(points = 20, trend: "up" | "down" | "flat" = "up") {
+export function generateSparkline(
+  points = 20,
+  trend: "up" | "down" | "flat" = "up",
+) {
   const data = [];
   let value = 100;
   for (let i = 0; i < points; i++) {

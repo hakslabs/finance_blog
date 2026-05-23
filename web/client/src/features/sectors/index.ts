@@ -11,7 +11,10 @@ export const sectorsService = {
 export function useSectors(market: "US" | "KR") {
   const fallback = market === "US" ? US_SECTORS : KR_SECTORS;
   return useAsync(
-    () => sectorsService.list(market).then((r) => (r.items.length ? r.items : fallback)),
+    () =>
+      sectorsService
+        .list(market)
+        .then((r) => (r.items.length ? r.items : fallback)),
     [market],
     fallback,
   );

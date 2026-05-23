@@ -10,8 +10,11 @@
  */
 import { useEffect, useMemo, useRef } from "react";
 import {
-  init, dispose, registerIndicator,
-  type Chart, type KLineData,
+  init,
+  dispose,
+  registerIndicator,
+  type Chart,
+  type KLineData,
 } from "klinecharts";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -49,7 +52,9 @@ export interface KLineSeriesChartProps {
 
 function readToken(name: string, fallback: string): string {
   if (typeof window === "undefined") return fallback;
-  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const v = getComputedStyle(document.documentElement)
+    .getPropertyValue(name)
+    .trim();
   return v || fallback;
 }
 
@@ -89,7 +94,9 @@ export default function KLineSeriesChart({
         ts = row.date;
       } else if (row.date != null) {
         const s = String(row.date);
-        const parsed = new Date(s + (/^\d{4}-\d{2}-\d{2}$/.test(s) ? "T00:00:00Z" : "")).getTime();
+        const parsed = new Date(
+          s + (/^\d{4}-\d{2}-\d{2}$/.test(s) ? "T00:00:00Z" : ""),
+        ).getTime();
         if (Number.isFinite(parsed)) ts = parsed;
       }
       if (!Number.isFinite(ts)) {
@@ -159,7 +166,10 @@ export default function KLineSeriesChart({
 
   useEffect(() => {
     if (!containerRef.current) return;
-    const muted = readToken("--muted-foreground", isDark ? "#9ca3af" : "#6b7280");
+    const muted = readToken(
+      "--muted-foreground",
+      isDark ? "#9ca3af" : "#6b7280",
+    );
     const fg = readToken("--foreground", isDark ? "#e5e7eb" : "#111827");
     const border = readToken("--border", isDark ? "#1f2937" : "#e5e7eb");
 
@@ -177,44 +187,146 @@ export default function KLineSeriesChart({
               { offset: 0, color: "transparent" },
               { offset: 1, color: "transparent" },
             ],
-            point: { show: false, color: "transparent", radius: 0, rippleColor: "transparent", rippleRadius: 0, animation: false, animationDuration: 0 },
+            point: {
+              show: false,
+              color: "transparent",
+              radius: 0,
+              rippleColor: "transparent",
+              rippleRadius: 0,
+              animation: false,
+              animationDuration: 0,
+            },
           },
           priceMark: {
             show: false,
-            high: { show: false, color: muted, textOffset: 0, textSize: 9, textFamily: "Helvetica", textWeight: "normal" },
-            low:  { show: false, color: muted, textOffset: 0, textSize: 9, textFamily: "Helvetica", textWeight: "normal" },
-            last: { show: false, upColor: muted, downColor: muted, noChangeColor: muted,
-              line: { show: false, style: "dashed", dashedValue: [3, 3], size: 1 },
-              text: { show: false, size: 9, paddingLeft: 2, paddingRight: 2, paddingTop: 1, paddingBottom: 1,
-                style: "fill", color: "#fff", borderColor: "transparent", borderStyle: "solid", borderSize: 0, borderRadius: 2,
-                backgroundColor: muted, family: "Helvetica", weight: "normal" } },
+            high: {
+              show: false,
+              color: muted,
+              textOffset: 0,
+              textSize: 9,
+              textFamily: "Helvetica",
+              textWeight: "normal",
+            },
+            low: {
+              show: false,
+              color: muted,
+              textOffset: 0,
+              textSize: 9,
+              textFamily: "Helvetica",
+              textWeight: "normal",
+            },
+            last: {
+              show: false,
+              upColor: muted,
+              downColor: muted,
+              noChangeColor: muted,
+              line: {
+                show: false,
+                style: "dashed",
+                dashedValue: [3, 3],
+                size: 1,
+              },
+              text: {
+                show: false,
+                size: 9,
+                paddingLeft: 2,
+                paddingRight: 2,
+                paddingTop: 1,
+                paddingBottom: 1,
+                style: "fill",
+                color: "#fff",
+                borderColor: "transparent",
+                borderStyle: "solid",
+                borderSize: 0,
+                borderRadius: 2,
+                backgroundColor: muted,
+                family: "Helvetica",
+                weight: "normal",
+              },
+            },
           },
-          tooltip: { showRule: "none", showType: "standard",
-            text: { color: fg, size: 11, family: "Helvetica", weight: "normal", marginLeft: 8, marginTop: 4, marginRight: 8, marginBottom: 4 } },
+          tooltip: {
+            showRule: "none",
+            showType: "standard",
+            text: {
+              color: fg,
+              size: 11,
+              family: "Helvetica",
+              weight: "normal",
+              marginLeft: 8,
+              marginTop: 4,
+              marginRight: 8,
+              marginBottom: 4,
+            },
+          },
         },
         grid: {
           show: true,
-          horizontal: { show: true, color: border, style: "dashed", dashedValue: [2, 4], size: 1 },
-          vertical: { show: false, color: border, style: "dashed", dashedValue: [2, 4], size: 1 },
+          horizontal: {
+            show: true,
+            color: border,
+            style: "dashed",
+            dashedValue: [2, 4],
+            size: 1,
+          },
+          vertical: {
+            show: false,
+            color: border,
+            style: "dashed",
+            dashedValue: [2, 4],
+            size: 1,
+          },
         },
         indicator: {
           ohlc: { upColor: muted, downColor: muted, noChangeColor: muted },
-          bars: series.filter((s) => s.type === "bar").map((s) => ({
-            style: "fill", borderStyle: "solid", borderSize: 1, borderColor: s.color, color: s.color, noChangeColor: s.color,
-          })),
-          lines: series.filter((s) => s.type !== "bar").map((s) => ({
-            style: s.dashed ? "dashed" : "solid", smooth: false, size: 1.5, color: s.color,
-            dashedValue: s.dashed ? [4, 2] : [],
-          })),
-          tooltip: { showRule: "follow_cross", showType: "standard",
-            text: { color: fg, size: 11, family: "Helvetica", weight: "normal", marginLeft: 8, marginTop: 4, marginRight: 8, marginBottom: 4 } },
+          bars: series
+            .filter((s) => s.type === "bar")
+            .map((s) => ({
+              style: "fill",
+              borderStyle: "solid",
+              borderSize: 1,
+              borderColor: s.color,
+              color: s.color,
+              noChangeColor: s.color,
+            })),
+          lines: series
+            .filter((s) => s.type !== "bar")
+            .map((s) => ({
+              style: s.dashed ? "dashed" : "solid",
+              smooth: false,
+              size: 1.5,
+              color: s.color,
+              dashedValue: s.dashed ? [4, 2] : [],
+            })),
+          tooltip: {
+            showRule: "follow_cross",
+            showType: "standard",
+            text: {
+              color: fg,
+              size: 11,
+              family: "Helvetica",
+              weight: "normal",
+              marginLeft: 8,
+              marginTop: 4,
+              marginRight: 8,
+              marginBottom: 4,
+            },
+          },
           lastValueMark: { show: false },
         },
         xAxis: {
           show: showXAxis,
           axisLine: { show: false, color: border, size: 1 },
           tickLine: { show: false, color: border, size: 1, length: 3 },
-          tickText: { show: showXAxis, color: muted, family: "Helvetica", weight: "normal", size: 9, marginStart: 4, marginEnd: 4 },
+          tickText: {
+            show: showXAxis,
+            color: muted,
+            family: "Helvetica",
+            weight: "normal",
+            size: 9,
+            marginStart: 4,
+            marginEnd: 4,
+          },
         },
         yAxis: {
           show: showYAxis,
@@ -224,19 +336,80 @@ export default function KLineSeriesChart({
           size: showYAxis ? 48 : 0,
           axisLine: { show: false, color: border, size: 1 },
           tickLine: { show: false, color: border, size: 1, length: 3 },
-          tickText: { show: showYAxis, color: muted, family: "Helvetica", weight: "normal", size: 9, marginStart: 4, marginEnd: 4 },
+          tickText: {
+            show: showYAxis,
+            color: muted,
+            family: "Helvetica",
+            weight: "normal",
+            size: 9,
+            marginStart: 4,
+            marginEnd: 4,
+          },
         },
-        separator: { size: 0, color: border, fill: true, activeBackgroundColor: "transparent" },
+        separator: {
+          size: 0,
+          color: border,
+          fill: true,
+          activeBackgroundColor: "transparent",
+        },
         crosshair: {
           show: true,
-          horizontal: { show: false, line: { show: false, style: "dashed", dashedValue: [3, 3], size: 1, color: muted },
-            text: { show: false, style: "fill", color: "#fff", size: 9, family: "Helvetica", weight: "normal",
-              borderStyle: "solid", borderDashedValue: [], borderSize: 0, borderColor: "transparent", borderRadius: 2,
-              paddingLeft: 2, paddingRight: 2, paddingTop: 1, paddingBottom: 1, backgroundColor: muted } },
-          vertical:   { show: true,  line: { show: true,  style: "dashed", dashedValue: [3, 3], size: 1, color: muted },
-            text: { show: showXAxis, style: "fill", color: "#fff", size: 9, family: "Helvetica", weight: "normal",
-              borderStyle: "solid", borderDashedValue: [], borderSize: 0, borderColor: "transparent", borderRadius: 2,
-              paddingLeft: 3, paddingRight: 3, paddingTop: 2, paddingBottom: 2, backgroundColor: muted } },
+          horizontal: {
+            show: false,
+            line: {
+              show: false,
+              style: "dashed",
+              dashedValue: [3, 3],
+              size: 1,
+              color: muted,
+            },
+            text: {
+              show: false,
+              style: "fill",
+              color: "#fff",
+              size: 9,
+              family: "Helvetica",
+              weight: "normal",
+              borderStyle: "solid",
+              borderDashedValue: [],
+              borderSize: 0,
+              borderColor: "transparent",
+              borderRadius: 2,
+              paddingLeft: 2,
+              paddingRight: 2,
+              paddingTop: 1,
+              paddingBottom: 1,
+              backgroundColor: muted,
+            },
+          },
+          vertical: {
+            show: true,
+            line: {
+              show: true,
+              style: "dashed",
+              dashedValue: [3, 3],
+              size: 1,
+              color: muted,
+            },
+            text: {
+              show: showXAxis,
+              style: "fill",
+              color: "#fff",
+              size: 9,
+              family: "Helvetica",
+              weight: "normal",
+              borderStyle: "solid",
+              borderDashedValue: [],
+              borderSize: 0,
+              borderColor: "transparent",
+              borderRadius: 2,
+              paddingLeft: 3,
+              paddingRight: 3,
+              paddingTop: 2,
+              paddingBottom: 2,
+              backgroundColor: muted,
+            },
+          },
         },
       } as any,
     });
@@ -255,7 +428,9 @@ export default function KLineSeriesChart({
 
     // Mount the custom indicator on the main candle pane (stacked on top of
     // the hidden area). Series render in indicator order.
-    chart.createIndicator(indicatorNameRef.current, true, { id: "candle_pane" });
+    chart.createIndicator(indicatorNameRef.current, true, {
+      id: "candle_pane",
+    });
 
     if (zeroLine) {
       // Use an overlay to draw the zero reference line. We use the
@@ -276,7 +451,15 @@ export default function KLineSeriesChart({
     };
     // Re-init when visual/series config changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDark, series, showXAxis, showYAxis, valueFormatter, zeroLine, barLayout]);
+  }, [
+    isDark,
+    series,
+    showXAxis,
+    showYAxis,
+    valueFormatter,
+    zeroLine,
+    barLayout,
+  ]);
 
   // Push data updates without re-init.
   useEffect(() => {
@@ -305,7 +488,13 @@ export default function KLineSeriesChart({
           ))}
         </div>
       )}
-      <div ref={containerRef} style={{ height: series.length > 1 ? height - 16 : height, width: "100%" }} />
+      <div
+        ref={containerRef}
+        style={{
+          height: series.length > 1 ? height - 16 : height,
+          width: "100%",
+        }}
+      />
     </div>
   );
 }

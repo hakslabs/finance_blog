@@ -31,16 +31,28 @@ function moverToStock(m: MoverItem): Stock {
   };
 }
 
-export interface StocksResponse { items: Stock[] }
+export interface StocksResponse {
+  items: Stock[];
+}
 
 export const stocksService = {
   list: (market: "US" | "KR", limit = 100): Promise<StocksResponse> =>
-    apiGet<MoversResponse>(`/movers?market=${market}&limit=${limit}`)
-      .then((r) => ({ items: r.items.map(moverToStock) })),
-  get: (ticker: string) =>
-    apiGet<{ symbol: string; name: string; sector?: string }>(`/stocks/${encodeURIComponent(ticker)}/profile`),
-  bars: (ticker: string, days = 90) =>
-    apiGet<{ items: { date: string; open: number; high: number; low: number; close: number; volume: number }[] }>(
-      `/stocks/${encodeURIComponent(ticker)}/bars?days=${days}`,
+    apiGet<MoversResponse>(`/movers?market=${market}&limit=${limit}`).then(
+      (r) => ({ items: r.items.map(moverToStock) }),
     ),
+  get: (ticker: string) =>
+    apiGet<{ symbol: string; name: string; sector?: string }>(
+      `/stocks/${encodeURIComponent(ticker)}/profile`,
+    ),
+  bars: (ticker: string, days = 90) =>
+    apiGet<{
+      items: {
+        date: string;
+        open: number;
+        high: number;
+        low: number;
+        close: number;
+        volume: number;
+      }[];
+    }>(`/stocks/${encodeURIComponent(ticker)}/bars?days=${days}`),
 };

@@ -29,8 +29,13 @@ function adapt(b: BackendIndex): MarketIndex {
 }
 
 export const indicesService = {
-  list: async (): Promise<{ items: MarketIndex[]; updatedAt: string | null }> => {
-    const r = await apiGet<{ items: BackendIndex[]; updated_at?: string }>(`/market/indices`);
+  list: async (): Promise<{
+    items: MarketIndex[];
+    updatedAt: string | null;
+  }> => {
+    const r = await apiGet<{ items: BackendIndex[]; updated_at?: string }>(
+      `/market/indices`,
+    );
     return { items: r.items.map(adapt), updatedAt: r.updated_at ?? null };
   },
 };
@@ -41,11 +46,10 @@ export const indicesService = {
 // of flashing the MARKET_INDICES mock — the mock only appears as the
 // useAsync error fallback.
 export function useIndices() {
-  const r = useAsync(
-    () => indicesService.list(),
-    [],
-    { items: MARKET_INDICES as MarketIndex[], updatedAt: null as string | null },
-  );
+  const r = useAsync(() => indicesService.list(), [], {
+    items: MARKET_INDICES as MarketIndex[],
+    updatedAt: null as string | null,
+  });
   const data = r.data?.items ?? null;
   const updatedAt = r.data?.updatedAt ?? null;
   return { ...r, data, updatedAt };

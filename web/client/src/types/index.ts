@@ -37,16 +37,16 @@ export interface Stock {
 // ── 섹터 로테이션 ──────────────────────────────────────────────
 export interface SectorData {
   sector: string;
-  etf?: string;           // 미국: XLK, XLF 등
-  code?: string;          // 한국: 업종 코드
-  returnDay: number;      // 당일 수익률 %
-  returnWeek: number;     // 주간 수익률 %
-  returnMonth: number;    // 월간 수익률 %
-  returnQuarter: number;  // 분기 수익률 %
-  rankDay: number;        // 당일 순위
-  rankWeek: number;       // 주간 순위
-  rankMonth: number;      // 월간 순위
-  prevRankMonth: number;  // 전월 순위 (순위 변화 계산용)
+  etf?: string; // 미국: XLK, XLF 등
+  code?: string; // 한국: 업종 코드
+  returnDay: number; // 당일 수익률 %
+  returnWeek: number; // 주간 수익률 %
+  returnMonth: number; // 월간 수익률 %
+  returnQuarter: number; // 분기 수익률 %
+  rankDay: number; // 당일 순위
+  rankWeek: number; // 주간 순위
+  rankMonth: number; // 월간 순위
+  prevRankMonth: number; // 전월 순위 (순위 변화 계산용)
   moneyFlow: "inflow" | "outflow" | "neutral"; // 자금 흐름
   relativeStrength: number; // 시장 대비 상대강도 (1.0 = 시장과 동일)
 }
@@ -73,12 +73,12 @@ export interface MacroIndicator {
 export interface NewsItem {
   id: number;
   title: string;
-  summary: string;        // 요약 (2-3문장)
-  content?: string;       // 본문 (선택)
+  summary: string; // 요약 (2-3문장)
+  content?: string; // 본문 (선택)
   source: string;
   sourceUrl?: string;
-  time: string;           // "12분 전" 형식
-  publishedAt: string;    // ISO string
+  time: string; // "12분 전" 형식
+  publishedAt: string; // ISO string
   category: "매크로" | "한국" | "미국" | "섹터" | "종목";
   tickers: string[];
   impact?: string | null; // 내 포지션 영향
@@ -89,8 +89,8 @@ export interface NewsItem {
 // ── 캘린더 이벤트 ──────────────────────────────────────────────
 export interface CalendarEvent {
   id: string;
-  date: string;           // "YYYY-MM-DD"
-  day: string;            // "월화수목금토일"
+  date: string; // "YYYY-MM-DD"
+  day: string; // "월화수목금토일"
   title: string;
   type: "실적" | "배당" | "매크로" | "개인" | "IPO";
   country?: "US" | "KR" | "GLOBAL";
@@ -98,9 +98,9 @@ export interface CalendarEvent {
   holding?: string | null; // 보유 비중
   memo?: string;
   importance: "high" | "medium" | "low";
-  expectedValue?: string;  // 예상치
-  previousValue?: string;  // 이전치
-  actualValue?: string;    // 발표치 (발표 후)
+  expectedValue?: string; // 예상치
+  previousValue?: string; // 이전치
+  actualValue?: string; // 발표치 (발표 후)
   alertEnabled?: boolean;
 }
 
@@ -210,9 +210,9 @@ export interface Trade {
   date: string;
   fee?: number;
   note?: string;
-  reason?: string;        // 매수/매도 이유
-  targetPrice?: number;   // 목표가
-  stopLoss?: number;      // 손절가
+  reason?: string; // 매수/매도 이유
+  targetPrice?: number; // 목표가
+  stopLoss?: number; // 손절가
 }
 
 export interface Alert {
@@ -231,10 +231,10 @@ export interface Alert {
 // ── 공포탐욕지수 ──────────────────────────────────────────────
 export interface FearGreedData {
   market: "US" | "KR";
-  value: number;          // 0-100
+  value: number; // 0-100
   label: "극도의 공포" | "공포" | "중립" | "탐욕" | "극도의 탐욕";
-  vix?: number;           // 미국: VIX
-  adr?: number;           // 한국: ADR (등락비율)
+  vix?: number; // 미국: VIX
+  adr?: number; // 한국: ADR (등락비율)
   updatedAt: string;
   history: { date: string; value: number; vix?: number; adr?: number }[];
 }
@@ -246,7 +246,7 @@ export interface LearnGuide {
   description: string;
   category: "기초" | "기술적분석" | "가치투자" | "퀀트" | "매크로" | "심화";
   level: "입문" | "초급" | "중급" | "고급";
-  readTime: number;       // 분
+  readTime: number; // 분
   content?: string;
   tags: string[];
   isBookmarked?: boolean;

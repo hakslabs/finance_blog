@@ -4,7 +4,12 @@ import { useAsync } from "@/features/_shared/useAsync";
 import { CALENDAR_EVENTS } from "@/services/mockData";
 
 export const calendarService = {
-  list: (params?: { from?: string; to?: string; type?: string; ticker?: string }) => {
+  list: (params?: {
+    from?: string;
+    to?: string;
+    type?: string;
+    ticker?: string;
+  }) => {
     const q = new URLSearchParams();
     if (params?.from) q.set("from", params.from);
     if (params?.to) q.set("to", params.to);
@@ -14,12 +19,22 @@ export const calendarService = {
   },
 };
 
-export function useCalendarEvents(params?: { from?: string; to?: string; type?: string; ticker?: string }) {
+export function useCalendarEvents(params?: {
+  from?: string;
+  to?: string;
+  type?: string;
+  ticker?: string;
+}) {
   // No mock injection: callers see null during load, [] when empty,
   // [{...}] when populated. CALENDAR_EVENTS only on error.
   return useAsync(
     () => calendarService.list(params).then((r) => r.items),
-    [params?.from ?? "", params?.to ?? "", params?.type ?? "", params?.ticker ?? ""],
+    [
+      params?.from ?? "",
+      params?.to ?? "",
+      params?.type ?? "",
+      params?.ticker ?? "",
+    ],
     CALENDAR_EVENTS,
   );
 }
@@ -84,7 +99,14 @@ export function useUnifiedCalendar(p: UnifiedCalendarParams = {}) {
   const typesKey = (p.types ?? []).join(",");
   return useAsync(
     () => fetchUnifiedCalendar(p).then((r) => r.items),
-    [p.from ?? "", p.to ?? "", typesKey, symbolsKey, p.recommended ? "1" : "0", String(p.minImportance ?? "")],
+    [
+      p.from ?? "",
+      p.to ?? "",
+      typesKey,
+      symbolsKey,
+      p.recommended ? "1" : "0",
+      String(p.minImportance ?? ""),
+    ],
     [] as UnifiedCalendarItem[],
   );
 }

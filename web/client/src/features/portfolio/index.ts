@@ -4,11 +4,28 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { PortfolioHolding, Trade } from "@/types";
 
 export const portfolioService = {
-  holdings: () => apiGet<{ items: PortfolioHolding[] }>(`/me/portfolio/holdings`),
-  addHolding: (body: Pick<PortfolioHolding, "ticker" | "name" | "exchange" | "quantity" | "avgPrice" | "sector" | "country">) =>
-    apiPost<PortfolioHolding>(`/me/portfolio/holdings`, body),
-  updateHolding: (ticker: string, body: Partial<Pick<PortfolioHolding, "quantity" | "avgPrice">>) =>
-    apiPatch<PortfolioHolding>(`/me/portfolio/holdings/${encodeURIComponent(ticker)}`, body),
+  holdings: () =>
+    apiGet<{ items: PortfolioHolding[] }>(`/me/portfolio/holdings`),
+  addHolding: (
+    body: Pick<
+      PortfolioHolding,
+      | "ticker"
+      | "name"
+      | "exchange"
+      | "quantity"
+      | "avgPrice"
+      | "sector"
+      | "country"
+    >,
+  ) => apiPost<PortfolioHolding>(`/me/portfolio/holdings`, body),
+  updateHolding: (
+    ticker: string,
+    body: Partial<Pick<PortfolioHolding, "quantity" | "avgPrice">>,
+  ) =>
+    apiPatch<PortfolioHolding>(
+      `/me/portfolio/holdings/${encodeURIComponent(ticker)}`,
+      body,
+    ),
   removeHolding: (ticker: string) =>
     apiDelete<void>(`/me/portfolio/holdings/${encodeURIComponent(ticker)}`),
 
@@ -24,7 +41,10 @@ export const portfolioService = {
 export function useHoldings() {
   const { user } = useAuth();
   return useAsync(
-    () => (user ? portfolioService.holdings().then((r) => r.items) : Promise.resolve([])),
+    () =>
+      user
+        ? portfolioService.holdings().then((r) => r.items)
+        : Promise.resolve([]),
     [user?.id],
     [],
   );
@@ -33,7 +53,10 @@ export function useHoldings() {
 export function useTrades() {
   const { user } = useAuth();
   return useAsync(
-    () => (user ? portfolioService.trades().then((r) => r.items) : Promise.resolve([])),
+    () =>
+      user
+        ? portfolioService.trades().then((r) => r.items)
+        : Promise.resolve([]),
     [user?.id],
     [],
   );

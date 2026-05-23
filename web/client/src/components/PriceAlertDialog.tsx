@@ -4,11 +4,23 @@
  * Used by StockDetail "알림" button and MyPage Alerts tab.
  */
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { alertsService, type Alert } from "@/features/alerts";
 import { useAuth } from "@/contexts/AuthContext";
@@ -29,16 +41,30 @@ const TYPE_LABEL: Record<Alert["alert_type"], string> = {
   earnings: "실적 발표",
 };
 
-export function PriceAlertDialog({ open, onOpenChange, symbol = "", currentPrice, onCreated }: Props) {
+export function PriceAlertDialog({
+  open,
+  onOpenChange,
+  symbol = "",
+  currentPrice,
+  onCreated,
+}: Props) {
   const { user } = useAuth();
   const [ticker, setTicker] = useState(symbol);
   const [alertType, setAlertType] = useState<Alert["alert_type"]>("target");
-  const [target, setTarget] = useState(currentPrice ? String(currentPrice) : "");
+  const [target, setTarget] = useState(
+    currentPrice ? String(currentPrice) : "",
+  );
   const [submitting, setSubmitting] = useState(false);
 
   const submit = async () => {
-    if (!ticker || !target) { toast.error("티커와 목표값을 입력해주세요"); return; }
-    if (!user) { toast.error("로그인이 필요합니다"); return; }
+    if (!ticker || !target) {
+      toast.error("티커와 목표값을 입력해주세요");
+      return;
+    }
+    if (!user) {
+      toast.error("로그인이 필요합니다");
+      return;
+    }
     setSubmitting(true);
     try {
       const body = {
@@ -63,31 +89,59 @@ export function PriceAlertDialog({ open, onOpenChange, symbol = "", currentPrice
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>가격 알림 설정</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>가격 알림 설정</DialogTitle>
+        </DialogHeader>
         <div className="space-y-3 py-2">
           <div>
             <Label className="text-xs">티커</Label>
-            <Input value={ticker} onChange={(e) => setTicker(e.target.value)} disabled={!!symbol} />
+            <Input
+              value={ticker}
+              onChange={(e) => setTicker(e.target.value)}
+              disabled={!!symbol}
+            />
           </div>
           <div>
             <Label className="text-xs">알림 종류</Label>
-            <Select value={alertType} onValueChange={(v) => setAlertType(v as Alert["alert_type"])}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select
+              value={alertType}
+              onValueChange={(v) => setAlertType(v as Alert["alert_type"])}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 {Object.entries(TYPE_LABEL).map(([k, v]) => (
-                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                  <SelectItem key={k} value={k}>
+                    {v}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div>
-            <Label className="text-xs">목표값 {currentPrice ? `(현재 ${currentPrice})` : ""}</Label>
-            <Input type="number" step="any" value={target} onChange={(e) => setTarget(e.target.value)} />
+            <Label className="text-xs">
+              목표값 {currentPrice ? `(현재 ${currentPrice})` : ""}
+            </Label>
+            <Input
+              type="number"
+              step="any"
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+            />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>취소</Button>
-          <Button onClick={submit} disabled={submitting}>{submitting ? "저장 중…" : "알림 설정"}</Button>
+          <Button
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            disabled={submitting}
+          >
+            취소
+          </Button>
+          <Button onClick={submit} disabled={submitting}>
+            {submitting ? "저장 중…" : "알림 설정"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

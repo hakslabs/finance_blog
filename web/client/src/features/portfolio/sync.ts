@@ -58,7 +58,10 @@ export function useTradesBackendSync(
   const hydratedFor = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!user) { hydratedFor.current = null; return; }
+    if (!user) {
+      hydratedFor.current = null;
+      return;
+    }
     if (hydratedFor.current === user.id) return;
     hydratedFor.current = user.id;
     (async () => {
@@ -70,7 +73,9 @@ export function useTradesBackendSync(
           const localOnly = prev.filter((t) => !serverIds.has(t.id));
           return [...fromServer, ...localOnly];
         });
-      } catch { /* offline */ }
+      } catch {
+        /* offline */
+      }
     })();
   }, [user, setTrades]);
 
@@ -79,14 +84,22 @@ export function useTradesBackendSync(
     if (!user) return;
     try {
       const saved = await portfolioService.addTrade(localTradeToBackend(t));
-      setTrades((prev) => prev.map((x) => (x.id === t.id ? backendTradeToLocal(saved) : x)));
-    } catch { /* */ }
+      setTrades((prev) =>
+        prev.map((x) => (x.id === t.id ? backendTradeToLocal(saved) : x)),
+      );
+    } catch {
+      /* */
+    }
   };
 
   const remove = async (id: string) => {
     setTrades((prev) => prev.filter((t) => t.id !== id));
     if (!user) return;
-    try { await portfolioService.removeTrade(id); } catch { /* */ }
+    try {
+      await portfolioService.removeTrade(id);
+    } catch {
+      /* */
+    }
   };
 
   return { add, remove };

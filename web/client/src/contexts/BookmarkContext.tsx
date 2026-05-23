@@ -26,7 +26,15 @@
  *   - bookmarkedItems: BookmarkItem[]  (chronological flat list)
  *   - bookmarkedNewsIds / bookmarkedMasterIds / bookmarkedStockIds
  */
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { bookmarksService, type BookmarkKind } from "@/features/bookmarks";
 
@@ -56,7 +64,11 @@ interface BookmarkContextType {
   toggleStockBookmark: (ticker: string, meta?: BookmarkMeta) => void;
   // Generic
   isBookmarked: (type: BookmarkType | string, id: string | number) => boolean;
-  addBookmark: (type: BookmarkType | string, id: string | number, meta?: BookmarkMeta) => void;
+  addBookmark: (
+    type: BookmarkType | string,
+    id: string | number,
+    meta?: BookmarkMeta,
+  ) => void;
   removeBookmark: (type: BookmarkType | string, id: string | number) => void;
   // Read views
   bookmarkedItems: BookmarkItem[];
@@ -91,39 +103,64 @@ function loadFromStorage(): BookmarkItem[] {
     const legacy = localStorage.getItem(LEGACY_KEY);
     if (legacy) {
       const p = JSON.parse(legacy) as {
-        reports?: string[]; guides?: string[]; news?: number[]; stocks?: string[]; masters?: string[];
+        reports?: string[];
+        guides?: string[];
+        news?: number[];
+        stocks?: string[];
+        masters?: string[];
       };
       const now = Date.now();
       const out: BookmarkItem[] = [];
-      for (const id of p.reports ?? []) out.push({ type: "report", id, added_at: now });
-      for (const id of p.guides ?? []) out.push({ type: "guide", id, added_at: now });
-      for (const id of p.news ?? []) out.push({ type: "news", id: String(id), added_at: now });
-      for (const id of p.stocks ?? []) out.push({ type: "stock", id, added_at: now });
-      for (const id of p.masters ?? []) out.push({ type: "master", id, added_at: now });
+      for (const id of p.reports ?? [])
+        out.push({ type: "report", id, added_at: now });
+      for (const id of p.guides ?? [])
+        out.push({ type: "guide", id, added_at: now });
+      for (const id of p.news ?? [])
+        out.push({ type: "news", id: String(id), added_at: now });
+      for (const id of p.stocks ?? [])
+        out.push({ type: "stock", id, added_at: now });
+      for (const id of p.masters ?? [])
+        out.push({ type: "master", id, added_at: now });
       return out;
     }
-  } catch { /* fall through */ }
+  } catch {
+    /* fall through */
+  }
   return [];
 }
 
 function saveToStorage(items: BookmarkItem[]) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch {}
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  } catch {}
 }
 
 function normalizeType(t: BookmarkType | string): BookmarkType | null {
-  if (t === "news" || t === "report" || t === "guide" || t === "master" || t === "stock") return t;
+  if (
+    t === "news" ||
+    t === "report" ||
+    t === "guide" ||
+    t === "master" ||
+    t === "stock"
+  )
+    return t;
   return null;
 }
 
 export function BookmarkProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [items, setItems] = useState<BookmarkItem[]>(loadFromStorage);
-  useEffect(() => { saveToStorage(items); }, [items]);
+  useEffect(() => {
+    saveToStorage(items);
+  }, [items]);
 
   // Hydrate from server on login (merge: server unions onto local).
   const hydratedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (!user) { hydratedFor.current = null; return; }
+    if (!user) {
+      hydratedFor.current = null;
+      return;
+    }
     if (hydratedFor.current === user.id) return;
     hydratedFor.current = user.id;
     (async () => {
@@ -133,10 +170,15 @@ export function BookmarkProvider({ children }: { children: React.ReactNode }) {
           const next = [...prev];
           for (const it of res.items) {
             const type =
-              it.kind === "reports" ? "report" :
-              it.kind === "guides" ? "guide" :
-              it.kind === "news" ? "news" :
-              it.kind === "masters" ? "master" : null;
+              it.kind === "reports"
+                ? "report"
+                : it.kind === "guides"
+                  ? "guide"
+                  : it.kind === "news"
+                    ? "news"
+                    : it.kind === "masters"
+                      ? "master"
+                      : null;
             if (!type) continue;
             if (!next.some((x) => x.type === type && x.id === it.ref)) {
               next.push({ type, id: it.ref, added_at: Date.now() });
@@ -144,53 +186,75 @@ export function BookmarkProvider({ children }: { children: React.ReactNode }) {
           }
           return next;
         });
-      } catch { /* offline / unauthorized — keep local */ }
+      } catch {
+        /* offline / unauthorized — keep local */
+      }
     })();
   }, [user]);
 
-  const syncBackend = useCallback((type: BookmarkType, id: string, present: boolean) => {
-    if (!user) return;
-    const kind = BACKEND_KIND[type];
-    if (!kind) return;
-    (present ? bookmarksService.add(kind, id) : bookmarksService.remove(kind, id)).catch(() => {});
-  }, [user]);
+  const syncBackend = useCallback(
+    (type: BookmarkType, id: string, present: boolean) => {
+      if (!user) return;
+      const kind = BACKEND_KIND[type];
+      if (!kind) return;
+      (present
+        ? bookmarksService.add(kind, id)
+        : bookmarksService.remove(kind, id)
+      ).catch(() => {});
+    },
+    [user],
+  );
 
-  const has = useCallback((type: BookmarkType, id: string) =>
-    items.some((it) => it.type === type && it.id === id), [items]);
+  const has = useCallback(
+    (type: BookmarkType, id: string) =>
+      items.some((it) => it.type === type && it.id === id),
+    [items],
+  );
 
-  const toggle = useCallback((type: BookmarkType, rawId: string | number, meta?: BookmarkMeta) => {
-    const id = String(rawId);
-    setItems((prev) => {
-      const idx = prev.findIndex((it) => it.type === type && it.id === id);
-      if (idx >= 0) {
-        const next = [...prev]; next.splice(idx, 1);
+  const toggle = useCallback(
+    (type: BookmarkType, rawId: string | number, meta?: BookmarkMeta) => {
+      const id = String(rawId);
+      setItems((prev) => {
+        const idx = prev.findIndex((it) => it.type === type && it.id === id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next.splice(idx, 1);
+          syncBackend(type, id, false);
+          return next;
+        }
+        syncBackend(type, id, true);
+        return [...prev, { type, id, ...(meta ?? {}), added_at: Date.now() }];
+      });
+    },
+    [syncBackend],
+  );
+
+  const remove = useCallback(
+    (type: BookmarkType, rawId: string | number) => {
+      const id = String(rawId);
+      setItems((prev) => {
+        const idx = prev.findIndex((it) => it.type === type && it.id === id);
+        if (idx < 0) return prev;
+        const next = [...prev];
+        next.splice(idx, 1);
         syncBackend(type, id, false);
         return next;
-      }
-      syncBackend(type, id, true);
-      return [...prev, { type, id, ...(meta ?? {}), added_at: Date.now() }];
-    });
-  }, [syncBackend]);
+      });
+    },
+    [syncBackend],
+  );
 
-  const remove = useCallback((type: BookmarkType, rawId: string | number) => {
-    const id = String(rawId);
-    setItems((prev) => {
-      const idx = prev.findIndex((it) => it.type === type && it.id === id);
-      if (idx < 0) return prev;
-      const next = [...prev]; next.splice(idx, 1);
-      syncBackend(type, id, false);
-      return next;
-    });
-  }, [syncBackend]);
-
-  const add = useCallback((type: BookmarkType, rawId: string | number, meta?: BookmarkMeta) => {
-    const id = String(rawId);
-    setItems((prev) => {
-      if (prev.some((it) => it.type === type && it.id === id)) return prev;
-      syncBackend(type, id, true);
-      return [...prev, { type, id, ...(meta ?? {}), added_at: Date.now() }];
-    });
-  }, [syncBackend]);
+  const add = useCallback(
+    (type: BookmarkType, rawId: string | number, meta?: BookmarkMeta) => {
+      const id = String(rawId);
+      setItems((prev) => {
+        if (prev.some((it) => it.type === type && it.id === id)) return prev;
+        syncBackend(type, id, true);
+        return [...prev, { type, id, ...(meta ?? {}), added_at: Date.now() }];
+      });
+    },
+    [syncBackend],
+  );
 
   // Memoised derived views
   const bookmarkedItems = useMemo(
@@ -198,7 +262,13 @@ export function BookmarkProvider({ children }: { children: React.ReactNode }) {
     [items],
   );
   const idsByType = useMemo(() => {
-    const acc: Record<BookmarkType, string[]> = { news: [], report: [], guide: [], master: [], stock: [] };
+    const acc: Record<BookmarkType, string[]> = {
+      news: [],
+      report: [],
+      guide: [],
+      master: [],
+      stock: [],
+    };
     for (const it of items) acc[it.type].push(it.id);
     return acc;
   }, [items]);
@@ -233,7 +303,11 @@ export function BookmarkProvider({ children }: { children: React.ReactNode }) {
     totalBookmarks: items.length,
   };
 
-  return <BookmarkContext.Provider value={value}>{children}</BookmarkContext.Provider>;
+  return (
+    <BookmarkContext.Provider value={value}>
+      {children}
+    </BookmarkContext.Provider>
+  );
 }
 
 export function useBookmark() {

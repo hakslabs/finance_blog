@@ -21,15 +21,20 @@ export function useStocks(market: "US" | "KR") {
 
 export function useStock(ticker: string | undefined) {
   return useAsync(
-    () => (ticker ? stocksService.get(ticker) : Promise.reject(new Error("no ticker"))),
+    () =>
+      ticker
+        ? stocksService.get(ticker)
+        : Promise.reject(new Error("no ticker")),
     [ticker],
   );
 }
 
 export function useStockBars(ticker: string | undefined, days = 90) {
   return useAsync(
-    () => (ticker ? stocksService.bars(ticker, days).then((r) => r.items)
-                   : Promise.reject(new Error("no ticker"))),
+    () =>
+      ticker
+        ? stocksService.bars(ticker, days).then((r) => r.items)
+        : Promise.reject(new Error("no ticker")),
     [ticker, days],
   );
 }

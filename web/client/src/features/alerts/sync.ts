@@ -7,7 +7,11 @@ import { useEffect, useRef } from "react";
 import { alertsService, type Alert } from "@/features/alerts";
 import { useAuth } from "@/contexts/AuthContext";
 
-export type LocalAlertType = "목표가 도달" | "손절 라인" | "거래량 급증" | "뉴스 알림";
+export type LocalAlertType =
+  | "목표가 도달"
+  | "손절 라인"
+  | "거래량 급증"
+  | "뉴스 알림";
 export type LocalAlertStatus = "활성" | "완료" | "비활성";
 
 export interface LocalAlertItem {
@@ -43,7 +47,9 @@ function parseThreshold(condition: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-export function localAlertToBackend(item: LocalAlertItem): Parameters<typeof alertsService.create>[0] {
+export function localAlertToBackend(
+  item: LocalAlertItem,
+): Parameters<typeof alertsService.create>[0] {
   return {
     symbol: item.symbol.toUpperCase(),
     alert_type: TYPE_KR_TO_EN[item.type],
@@ -81,7 +87,10 @@ export function useAlertsBackendSync(
   const hydratedFor = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!user) { hydratedFor.current = null; return; }
+    if (!user) {
+      hydratedFor.current = null;
+      return;
+    }
     if (hydratedFor.current === user.id) return;
     hydratedFor.current = user.id;
     (async () => {
@@ -95,7 +104,9 @@ export function useAlertsBackendSync(
           const localOnly = prev.filter((a) => !serverIds.has(a.id));
           return [...fromServer, ...localOnly];
         });
-      } catch { /* offline */ }
+      } catch {
+        /* offline */
+      }
     })();
   }, [user, setAlerts]);
 
@@ -105,14 +116,22 @@ export function useAlertsBackendSync(
     try {
       const saved = await alertsService.create(localAlertToBackend(item));
       // replace synthetic local id with server id
-      setAlerts((prev) => prev.map((a) => (a.id === item.id ? backendAlertToLocal(saved) : a)));
-    } catch { /* keep local-only */ }
+      setAlerts((prev) =>
+        prev.map((a) => (a.id === item.id ? backendAlertToLocal(saved) : a)),
+      );
+    } catch {
+      /* keep local-only */
+    }
   };
 
   const remove = async (id: string) => {
     setAlerts((prev) => prev.filter((a) => a.id !== id));
     if (!user) return;
-    try { await alertsService.remove(id); } catch { /* */ }
+    try {
+      await alertsService.remove(id);
+    } catch {
+      /* */
+    }
   };
 
   return { add, remove };

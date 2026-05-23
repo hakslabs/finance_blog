@@ -12,10 +12,28 @@ import { apiGet } from "@/lib/http";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  Home, BarChart2, Newspaper, Users, FileText, BookOpen,
-  User, Sun, Moon, Menu, ChevronLeft, ChevronRight, Calendar, Search,
-  TrendingUp, TrendingDown, Activity, Bell, Shield,
-  LogOut, Settings, Bookmark
+  Home,
+  BarChart2,
+  Newspaper,
+  Users,
+  FileText,
+  BookOpen,
+  User,
+  Sun,
+  Moon,
+  Menu,
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
+  Search,
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  Bell,
+  Shield,
+  LogOut,
+  Settings,
+  Bookmark,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -28,7 +46,12 @@ const NAV_ITEMS = [
   { path: "/analysis", icon: BarChart2, label: "분석", sublabel: "Analysis" },
   { path: "/news", icon: Newspaper, label: "뉴스", sublabel: "News" },
   { path: "/calendar", icon: Calendar, label: "캘린더", sublabel: "Calendar" },
-  { path: "/masters", icon: Users, label: "고수 따라잡기", sublabel: "Masters" },
+  {
+    path: "/masters",
+    icon: Users,
+    label: "고수 따라잡기",
+    sublabel: "Masters",
+  },
   { path: "/reports", icon: FileText, label: "리포트", sublabel: "Reports" },
   { path: "/learn", icon: BookOpen, label: "학습", sublabel: "Learn" },
   { path: "/mypage", icon: User, label: "마이페이지", sublabel: "My Page" },
@@ -56,10 +79,20 @@ function TickerBar() {
     <div className="h-8 bg-card border-b border-border overflow-hidden flex items-center">
       <div className="flex items-center gap-0 ticker-scroll whitespace-nowrap">
         {doubled.map((item, i) => (
-          <span key={i} className="inline-flex items-center gap-1.5 px-4 text-xs">
-            <span className="text-muted-foreground font-mono">{item.symbol}</span>
+          <span
+            key={i}
+            className="inline-flex items-center gap-1.5 px-4 text-xs"
+          >
+            <span className="text-muted-foreground font-mono">
+              {item.symbol}
+            </span>
             <span className="font-mono font-medium">{item.value}</span>
-            <span className={cn("font-mono font-medium flex items-center gap-0.5", item.up ? "text-up" : "text-down")}>
+            <span
+              className={cn(
+                "font-mono font-medium flex items-center gap-0.5",
+                item.up ? "text-up" : "text-down",
+              )}
+            >
               {item.up ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
               {item.change}
             </span>
@@ -108,15 +141,25 @@ function UserMenu() {
         </Button>
         {open && (
           <div className="absolute right-0 top-10 w-52 bg-card border border-border rounded-xl shadow-xl z-50 p-2">
-            <p className="text-xs text-muted-foreground px-3 py-2">Google 계정으로 로그인</p>
+            <p className="text-xs text-muted-foreground px-3 py-2">
+              Google 계정으로 로그인
+            </p>
             <button
-              onClick={() => { login("user@example.com"); setOpen(false); toast.success("로그인 완료"); }}
+              onClick={() => {
+                login("user@example.com");
+                setOpen(false);
+                toast.success("로그인 완료");
+              }}
               className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-muted transition-colors"
             >
               일반 사용자로 로그인 (데모)
             </button>
             <button
-              onClick={() => { login("admin@financelab.pro"); setOpen(false); toast.success("관리자 로그인 완료"); }}
+              onClick={() => {
+                login("admin@financelab.pro");
+                setOpen(false);
+                toast.success("관리자 로그인 완료");
+              }}
               className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-muted transition-colors text-primary"
             >
               어드민으로 로그인 (데모)
@@ -136,7 +179,9 @@ function UserMenu() {
         className="flex items-center gap-2 h-8 px-2 rounded-lg hover:bg-accent transition-colors"
       >
         <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
-          <span className="text-[10px] font-bold text-primary">{user.name[0]}</span>
+          <span className="text-[10px] font-bold text-primary">
+            {user.name[0]}
+          </span>
         </div>
         <span className="text-xs font-medium hidden sm:block">{user.name}</span>
       </button>
@@ -154,14 +199,20 @@ function UserMenu() {
               )}
             </div>
             <button
-              onClick={() => { navigate("/mypage"); setOpen(false); }}
+              onClick={() => {
+                navigate("/mypage");
+                setOpen(false);
+              }}
               className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-muted transition-colors flex items-center gap-2"
             >
               <User size={13} className="text-muted-foreground" /> 마이페이지
             </button>
             {isAdmin && (
               <button
-                onClick={() => { navigate("/admin"); setOpen(false); }}
+                onClick={() => {
+                  navigate("/admin");
+                  setOpen(false);
+                }}
                 className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-muted transition-colors flex items-center gap-2 text-primary"
               >
                 <Shield size={13} /> 어드민
@@ -169,7 +220,11 @@ function UserMenu() {
             )}
             <div className="border-t border-border mt-1 pt-1">
               <button
-                onClick={() => { logout(); setOpen(false); toast.info("로그아웃 완료"); }}
+                onClick={() => {
+                  logout();
+                  setOpen(false);
+                  toast.info("로그아웃 완료");
+                }}
                 className="w-full text-left text-sm px-3 py-2 rounded-lg hover:bg-muted transition-colors flex items-center gap-2 text-muted-foreground"
               >
                 <LogOut size={13} /> 로그아웃
@@ -190,51 +245,79 @@ interface SidebarProps {
   onMobileClose: () => void;
 }
 
-function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
+function Sidebar({
+  collapsed,
+  onToggle,
+  mobileOpen,
+  onMobileClose,
+}: SidebarProps) {
   const [location] = useLocation();
   const { user } = useAuth();
   const isAdmin = user && ADMIN_EMAILS.includes(user.email);
 
   const navItems = [
     ...NAV_ITEMS,
-    ...(isAdmin ? [{ path: "/admin", icon: Shield, label: "어드민", sublabel: "Admin" }] : []),
+    ...(isAdmin
+      ? [{ path: "/admin", icon: Shield, label: "어드민", sublabel: "Admin" }]
+      : []),
   ];
 
   return (
     <>
       {mobileOpen && (
-        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={onMobileClose} />
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          onClick={onMobileClose}
+        />
       )}
-      <aside className={cn(
-        "fixed top-0 left-0 h-full z-50 flex flex-col",
-        "bg-sidebar border-r border-sidebar-border",
-        "transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]",
-        collapsed ? "w-16" : "w-64",
-        "lg:translate-x-0",
-        mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-      )}>
+      <aside
+        className={cn(
+          "fixed top-0 left-0 h-full z-50 flex flex-col",
+          "bg-sidebar border-r border-sidebar-border",
+          "transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]",
+          collapsed ? "w-16" : "w-64",
+          "lg:translate-x-0",
+          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+        )}
+      >
         {/* Logo */}
-        <div className={cn(
-          "flex items-center h-14 border-b border-sidebar-border px-3 gap-3",
-          collapsed ? "justify-center" : "justify-between"
-        )}>
+        <div
+          className={cn(
+            "flex items-center h-14 border-b border-sidebar-border px-3 gap-3",
+            collapsed ? "justify-center" : "justify-between",
+          )}
+        >
           {!collapsed && (
             <Link href="/" className="flex items-center gap-2 min-w-0">
               <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
                 <Activity size={14} className="text-primary-foreground" />
               </div>
               <div className="min-w-0">
-                <div className="font-bold text-sm leading-tight text-sidebar-foreground font-['Outfit']">FinanceLab</div>
-                <div className="text-[10px] text-muted-foreground leading-tight">Pro Workspace</div>
+                <div className="font-bold text-sm leading-tight text-sidebar-foreground font-['Outfit']">
+                  FinanceLab
+                </div>
+                <div className="text-[10px] text-muted-foreground leading-tight">
+                  Pro Workspace
+                </div>
               </div>
             </Link>
           )}
           {collapsed ? (
-            <Button variant="ghost" size="icon" onClick={onToggle} className="h-7 w-7 rounded-md text-muted-foreground hover:text-foreground">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggle}
+              className="h-7 w-7 rounded-md text-muted-foreground hover:text-foreground"
+            >
               <ChevronRight size={14} />
             </Button>
           ) : (
-            <Button variant="ghost" size="icon" onClick={onToggle} className="h-7 w-7 rounded-md text-muted-foreground hover:text-foreground flex-shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggle}
+              className="h-7 w-7 rounded-md text-muted-foreground hover:text-foreground flex-shrink-0"
+            >
               <ChevronLeft size={14} />
             </Button>
           )}
@@ -243,21 +326,29 @@ function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProp
         {/* Nav */}
         <nav className="flex-1 py-3 overflow-y-auto overflow-x-hidden">
           {navItems.map((item) => {
-            const isActive = location === item.path || (item.path !== "/" && location.startsWith(item.path));
+            const isActive =
+              location === item.path ||
+              (item.path !== "/" && location.startsWith(item.path));
             return (
               <Link key={item.path} href={item.path} onClick={onMobileClose}>
-                <div className={cn(
-                  "relative flex items-center gap-3 mx-2 my-0.5 rounded-lg transition-all duration-150",
-                  collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2.5",
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                )}>
+                <div
+                  className={cn(
+                    "relative flex items-center gap-3 mx-2 my-0.5 rounded-lg transition-all duration-150",
+                    collapsed ? "justify-center px-2 py-2.5" : "px-3 py-2.5",
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                  )}
+                >
                   <item.icon size={18} className="flex-shrink-0" />
                   {!collapsed && (
                     <div className="min-w-0">
-                      <div className="text-sm font-medium leading-tight">{item.label}</div>
-                      <div className="text-[10px] text-muted-foreground leading-tight">{item.sublabel}</div>
+                      <div className="text-sm font-medium leading-tight">
+                        {item.label}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground leading-tight">
+                        {item.sublabel}
+                      </div>
                     </div>
                   )}
                   {collapsed && isActive && (
@@ -284,19 +375,47 @@ function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProp
 
 // ── Notification Button ──────────────────────────────────────
 const MOCK_NOTIFICATIONS = [
-  { id: 1, type: "alert", title: "NVDA 목표가 도달", body: "NVDA가 설정한 목표가 $950에 도달했습니다.", time: "5분 전", read: false },
-  { id: 2, type: "report", title: "새 리포트 등록", body: "버크셔 Q1 2025 13F 보고서가 등록되었습니다.", time: "1시간 전", read: false },
-  { id: 3, type: "master", title: "워런 버핏 포트폴리오 변화", body: "AAPL 비중 추가 축소 감지 (Q1 2025)", time: "3시간 전", read: true },
-  { id: 4, type: "market", title: "한국장 개장", body: "KOSPI 오전 9시 정규장 개장", time: "오전 9:00", read: true },
+  {
+    id: 1,
+    type: "alert",
+    title: "NVDA 목표가 도달",
+    body: "NVDA가 설정한 목표가 $950에 도달했습니다.",
+    time: "5분 전",
+    read: false,
+  },
+  {
+    id: 2,
+    type: "report",
+    title: "새 리포트 등록",
+    body: "버크셔 Q1 2025 13F 보고서가 등록되었습니다.",
+    time: "1시간 전",
+    read: false,
+  },
+  {
+    id: 3,
+    type: "master",
+    title: "워런 버핏 포트폴리오 변화",
+    body: "AAPL 비중 추가 축소 감지 (Q1 2025)",
+    time: "3시간 전",
+    read: true,
+  },
+  {
+    id: 4,
+    type: "market",
+    title: "한국장 개장",
+    body: "KOSPI 오전 9시 정규장 개장",
+    time: "오전 9:00",
+    read: true,
+  },
 ];
 
 function NotificationButton() {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   const markAllRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     toast.success("모든 알림을 읽음 처리했습니다");
   };
 
@@ -323,43 +442,83 @@ function NotificationButton() {
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold">알림</span>
                 {unreadCount > 0 && (
-                  <span className="text-[10px] bg-destructive text-white rounded-full px-1.5 py-0.5 font-bold">{unreadCount}</span>
+                  <span className="text-[10px] bg-destructive text-white rounded-full px-1.5 py-0.5 font-bold">
+                    {unreadCount}
+                  </span>
                 )}
               </div>
-              <button onClick={markAllRead} className="text-xs text-primary hover:underline">모두 읽음</button>
+              <button
+                onClick={markAllRead}
+                className="text-xs text-primary hover:underline"
+              >
+                모두 읽음
+              </button>
             </div>
             <div className="max-h-80 overflow-y-auto">
               {notifications.length === 0 ? (
-                <div className="py-8 text-center text-sm text-muted-foreground">알림이 없습니다</div>
+                <div className="py-8 text-center text-sm text-muted-foreground">
+                  알림이 없습니다
+                </div>
               ) : (
-                notifications.map(n => (
+                notifications.map((n) => (
                   <div
                     key={n.id}
-                    onClick={() => setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x))}
+                    onClick={() =>
+                      setNotifications((prev) =>
+                        prev.map((x) =>
+                          x.id === n.id ? { ...x, read: true } : x,
+                        ),
+                      )
+                    }
                     className={cn(
                       "flex items-start gap-3 px-4 py-3 border-b border-border/50 last:border-0 cursor-pointer transition-colors hover:bg-muted/30",
-                      !n.read && "bg-primary/5"
+                      !n.read && "bg-primary/5",
                     )}
                   >
-                    <div className={cn(
-                      "w-2 h-2 rounded-full mt-1.5 flex-shrink-0",
-                      n.type === "alert" ? "bg-down" :
-                      n.type === "report" ? "bg-primary" :
-                      n.type === "master" ? "bg-gold" : "bg-up"
-                    )} />
+                    <div
+                      className={cn(
+                        "w-2 h-2 rounded-full mt-1.5 flex-shrink-0",
+                        n.type === "alert"
+                          ? "bg-down"
+                          : n.type === "report"
+                            ? "bg-primary"
+                            : n.type === "master"
+                              ? "bg-gold"
+                              : "bg-up",
+                      )}
+                    />
                     <div className="flex-1 min-w-0">
-                      <div className={cn("text-sm font-medium leading-tight", !n.read && "text-foreground", n.read && "text-muted-foreground")}>{n.title}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5 leading-snug">{n.body}</div>
-                      <div className="text-[10px] text-muted-foreground/60 mt-1">{n.time}</div>
+                      <div
+                        className={cn(
+                          "text-sm font-medium leading-tight",
+                          !n.read && "text-foreground",
+                          n.read && "text-muted-foreground",
+                        )}
+                      >
+                        {n.title}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                        {n.body}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground/60 mt-1">
+                        {n.time}
+                      </div>
                     </div>
-                    {!n.read && <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />}
+                    {!n.read && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                    )}
                   </div>
                 ))
               )}
             </div>
             <div className="px-4 py-2.5 border-t border-border">
               <button
-                onClick={() => { setOpen(false); toast.info("마이페이지 > 알람 탭에서 전체 알림을 관리할 수 있습니다"); }}
+                onClick={() => {
+                  setOpen(false);
+                  toast.info(
+                    "마이페이지 > 알람 탭에서 전체 알림을 관리할 수 있습니다",
+                  );
+                }}
                 className="w-full text-xs text-center text-primary hover:underline"
               >
                 전체 알림 보기 →
@@ -375,9 +534,26 @@ function NotificationButton() {
 // ── Header ────────────────────────────────────────────────────
 type SearchResults = {
   query: string;
-  symbols: { symbol: string; name: string; exchange?: string | null; country_code?: string | null; asset_type?: string | null }[];
-  masters: { slug: string; name: string; firm?: string | null; country_code?: string | null }[];
-  reports: { id: string; title: string; source: string; category?: string | null; published_at?: string | null }[];
+  symbols: {
+    symbol: string;
+    name: string;
+    exchange?: string | null;
+    country_code?: string | null;
+    asset_type?: string | null;
+  }[];
+  masters: {
+    slug: string;
+    name: string;
+    firm?: string | null;
+    country_code?: string | null;
+  }[];
+  reports: {
+    id: string;
+    title: string;
+    source: string;
+    category?: string | null;
+    published_at?: string | null;
+  }[];
 };
 
 // Quick-access bookmark button shown in the header when the user is
@@ -404,9 +580,14 @@ function Header({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
   const [location, navigate] = useLocation();
   const inputBoxRef = useRef<HTMLDivElement | null>(null);
 
-  const allNavItems = [...NAV_ITEMS, { path: "/admin", icon: Shield, label: "어드민", sublabel: "Admin" }];
-  const currentPage = allNavItems.find(item =>
-    item.path === location || (item.path !== "/" && location.startsWith(item.path))
+  const allNavItems = [
+    ...NAV_ITEMS,
+    { path: "/admin", icon: Shield, label: "어드민", sublabel: "Admin" },
+  ];
+  const currentPage = allNavItems.find(
+    (item) =>
+      item.path === location ||
+      (item.path !== "/" && location.startsWith(item.path)),
   );
 
   // Debounced search against /v1/search. We also stamp the request with
@@ -432,10 +613,13 @@ function Header({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
     const my = ++searchSeq.current;
     const t = setTimeout(async () => {
       try {
-        const data = await apiGet<SearchResults>(`/search?q=${encodeURIComponent(q)}&limit=6`);
+        const data = await apiGet<SearchResults>(
+          `/search?q=${encodeURIComponent(q)}&limit=6`,
+        );
         if (my === searchSeq.current) setResults(data);
       } catch {
-        if (my === searchSeq.current) setResults({ query: q, symbols: [], masters: [], reports: [] });
+        if (my === searchSeq.current)
+          setResults({ query: q, symbols: [], masters: [], reports: [] });
       } finally {
         if (my === searchSeq.current) setLoading(false);
       }
@@ -470,7 +654,8 @@ function Header({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
   useEffect(() => {
     if (!open) return;
     const update = () => {
-      if (inputBoxRef.current) setAnchorRect(inputBoxRef.current.getBoundingClientRect());
+      if (inputBoxRef.current)
+        setAnchorRect(inputBoxRef.current.getBoundingClientRect());
     };
     update();
     window.addEventListener("resize", update);
@@ -494,102 +679,140 @@ function Header({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
 
   return (
     <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center px-4 gap-3 sticky top-0 z-30">
-      <Button variant="ghost" size="icon" className="lg:hidden h-8 w-8" onClick={onMobileMenuOpen}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="lg:hidden h-8 w-8"
+        onClick={onMobileMenuOpen}
+      >
         <Menu size={18} />
       </Button>
 
       <div className="hidden sm:flex items-center gap-2 min-w-0">
         {currentPage && (
           <>
-            <span className="text-sm font-semibold text-foreground font-['Outfit']">{currentPage.label}</span>
-            <span className="text-xs text-muted-foreground">{currentPage.sublabel}</span>
+            <span className="text-sm font-semibold text-foreground font-['Outfit']">
+              {currentPage.label}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {currentPage.sublabel}
+            </span>
           </>
         )}
       </div>
 
       <div className="flex-1 max-w-md mx-auto">
         <div ref={inputBoxRef} className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Search
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+          />
           <input
             type="search"
             placeholder="종목 / 리포트 / 고수 검색…"
             value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setOpen(true); }}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setOpen(true);
+            }}
             onFocus={() => searchQuery && setOpen(true)}
             className="w-full h-8 pl-8 pr-3 text-sm bg-muted/50 border border-border rounded-lg
               focus:outline-none focus:ring-1 focus:ring-primary focus:bg-background
               placeholder:text-muted-foreground transition-all duration-150"
           />
-          {open && searchQuery.trim() && anchorRect && createPortal(
-            <div
-              className="bg-card border border-border rounded-xl shadow-2xl overflow-hidden"
-              style={{
-                position: "fixed",
-                top: anchorRect.bottom + 6,
-                left: anchorRect.left,
-                width: anchorRect.width,
-                zIndex: 60,
-              }}
-            >
-              {loading && (
-                <div className="px-3 py-2 text-xs text-muted-foreground">검색 중…</div>
-              )}
-              {!loading && results && totalHits === 0 && (
-                <div className="px-3 py-3 text-xs text-muted-foreground">
-                  "{results.query}"에 대한 결과가 없어요
-                </div>
-              )}
-              {!loading && results && (results.symbols.length > 0) && (
-                <div>
-                  <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">종목</div>
-                  {results.symbols.map(s => (
-                    <button
-                      key={s.symbol}
-                      onClick={() => go(`/stocks/${s.symbol}`)}
-                      className="w-full flex items-center justify-between gap-3 px-3 py-1.5 hover:bg-muted text-left"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-mono text-xs font-bold">{s.symbol}</span>
-                        <span className="text-xs text-muted-foreground truncate">{s.name}</span>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground shrink-0">{s.exchange ?? s.country_code ?? ""}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {!loading && results && (results.masters.length > 0) && (
-                <div className="border-t border-border">
-                  <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">고수</div>
-                  {results.masters.map(m => (
-                    <button
-                      key={m.slug}
-                      onClick={() => go(`/masters/${m.slug}`)}
-                      className="w-full flex items-center justify-between gap-3 px-3 py-1.5 hover:bg-muted text-left"
-                    >
-                      <span className="text-xs font-medium truncate">{m.name}</span>
-                      <span className="text-[10px] text-muted-foreground shrink-0 truncate">{m.firm ?? ""}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {!loading && results && (results.reports.length > 0) && (
-                <div className="border-t border-border">
-                  <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">리포트</div>
-                  {results.reports.map(r => (
-                    <button
-                      key={r.id}
-                      onClick={() => go(`/reports`)}
-                      className="w-full flex items-center justify-between gap-3 px-3 py-1.5 hover:bg-muted text-left"
-                    >
-                      <span className="text-xs truncate">{r.title}</span>
-                      <span className="text-[10px] text-muted-foreground shrink-0">{r.source}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>,
-            document.body,
-          )}
+          {open &&
+            searchQuery.trim() &&
+            anchorRect &&
+            createPortal(
+              <div
+                className="bg-card border border-border rounded-xl shadow-2xl overflow-hidden"
+                style={{
+                  position: "fixed",
+                  top: anchorRect.bottom + 6,
+                  left: anchorRect.left,
+                  width: anchorRect.width,
+                  zIndex: 60,
+                }}
+              >
+                {loading && (
+                  <div className="px-3 py-2 text-xs text-muted-foreground">
+                    검색 중…
+                  </div>
+                )}
+                {!loading && results && totalHits === 0 && (
+                  <div className="px-3 py-3 text-xs text-muted-foreground">
+                    "{results.query}"에 대한 결과가 없어요
+                  </div>
+                )}
+                {!loading && results && results.symbols.length > 0 && (
+                  <div>
+                    <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                      종목
+                    </div>
+                    {results.symbols.map((s) => (
+                      <button
+                        key={s.symbol}
+                        onClick={() => go(`/stocks/${s.symbol}`)}
+                        className="w-full flex items-center justify-between gap-3 px-3 py-1.5 hover:bg-muted text-left"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-mono text-xs font-bold">
+                            {s.symbol}
+                          </span>
+                          <span className="text-xs text-muted-foreground truncate">
+                            {s.name}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground shrink-0">
+                          {s.exchange ?? s.country_code ?? ""}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {!loading && results && results.masters.length > 0 && (
+                  <div className="border-t border-border">
+                    <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                      고수
+                    </div>
+                    {results.masters.map((m) => (
+                      <button
+                        key={m.slug}
+                        onClick={() => go(`/masters/${m.slug}`)}
+                        className="w-full flex items-center justify-between gap-3 px-3 py-1.5 hover:bg-muted text-left"
+                      >
+                        <span className="text-xs font-medium truncate">
+                          {m.name}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground shrink-0 truncate">
+                          {m.firm ?? ""}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {!loading && results && results.reports.length > 0 && (
+                  <div className="border-t border-border">
+                    <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                      리포트
+                    </div>
+                    {results.reports.map((r) => (
+                      <button
+                        key={r.id}
+                        onClick={() => go(`/reports`)}
+                        className="w-full flex items-center justify-between gap-3 px-3 py-1.5 hover:bg-muted text-left"
+                      >
+                        <span className="text-xs truncate">{r.title}</span>
+                        <span className="text-[10px] text-muted-foreground shrink-0">
+                          {r.source}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>,
+              document.body,
+            )}
         </div>
       </div>
 
@@ -620,16 +843,35 @@ function MobileBottomBar() {
     <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-card/95 backdrop-blur-md border-t border-border safe-area-bottom">
       <div className="flex items-stretch h-16">
         {MOBILE_TABS.map((item) => {
-          const isActive = location === item.path || (item.path !== "/" && location.startsWith(item.path));
+          const isActive =
+            location === item.path ||
+            (item.path !== "/" && location.startsWith(item.path));
           return (
             <Link key={item.path} href={item.path} className="flex-1">
-              <div className={cn(
-                "flex flex-col items-center justify-center h-full gap-1 transition-all duration-150",
-                isActive ? "text-primary" : "text-muted-foreground"
-              )}>
-                <item.icon size={20} className={cn("transition-transform duration-150", isActive && "scale-110")} />
-                <span className={cn("text-[10px] font-medium", isActive && "font-semibold")}>{item.label}</span>
-                {isActive && <span className="absolute bottom-0 w-8 h-0.5 bg-primary rounded-t-full" />}
+              <div
+                className={cn(
+                  "flex flex-col items-center justify-center h-full gap-1 transition-all duration-150",
+                  isActive ? "text-primary" : "text-muted-foreground",
+                )}
+              >
+                <item.icon
+                  size={20}
+                  className={cn(
+                    "transition-transform duration-150",
+                    isActive && "scale-110",
+                  )}
+                />
+                <span
+                  className={cn(
+                    "text-[10px] font-medium",
+                    isActive && "font-semibold",
+                  )}
+                >
+                  {item.label}
+                </span>
+                {isActive && (
+                  <span className="absolute bottom-0 w-8 h-0.5 bg-primary rounded-t-full" />
+                )}
               </div>
             </Link>
           );
@@ -657,16 +899,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
       />
-      <div className={cn(
-        "flex flex-col min-h-screen transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]",
-        "lg:ml-64",
-        collapsed && "lg:ml-16"
-      )}>
+      <div
+        className={cn(
+          "flex flex-col min-h-screen transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]",
+          "lg:ml-64",
+          collapsed && "lg:ml-16",
+        )}
+      >
         <TickerBar />
         <Header onMobileMenuOpen={() => setMobileOpen(true)} />
-        <main className="flex-1 p-4 lg:p-6 pb-20 lg:pb-6">
-          {children}
-        </main>
+        <main className="flex-1 p-4 lg:p-6 pb-20 lg:pb-6">{children}</main>
       </div>
       <MobileBottomBar />
     </div>

@@ -23,36 +23,71 @@ export type PeriodKey = "1W" | "1M" | "3M" | "6M" | "1Y" | "2Y" | "5Y";
 export type Timeframe = "D" | "W" | "M";
 
 const PERIOD_DAYS: Record<PeriodKey, number> = {
-  "1W": 7, "1M": 22, "3M": 66, "6M": 130, "1Y": 252, "2Y": 504, "5Y": 1300,
+  "1W": 7,
+  "1M": 22,
+  "3M": 66,
+  "6M": 130,
+  "1Y": 252,
+  "2Y": 504,
+  "5Y": 1300,
 };
 const PERIOD_ORDER: PeriodKey[] = ["1W", "1M", "3M", "6M", "1Y", "2Y", "5Y"];
-const TIMEFRAME_LABELS: Record<Timeframe, string> = { D: "일봉", W: "주봉", M: "월봉" };
+const TIMEFRAME_LABELS: Record<Timeframe, string> = {
+  D: "일봉",
+  W: "주봉",
+  M: "월봉",
+};
 
 // Default to the minimal brokerage-app baseline: candles + volume only.
 const DEFAULT_INDICATORS: IndicatorSet = {
-  ma: false, boll: false, vol: true, macd: false, rsi: false, kdj: false,
+  ma: false,
+  boll: false,
+  vol: true,
+  macd: false,
+  rsi: false,
+  kdj: false,
 };
 
 const OVERLAY_INDICATORS: IndicatorKey[] = ["ma", "boll"];
 const PANE_INDICATORS: IndicatorKey[] = ["vol", "macd", "rsi", "kdj"];
 
 const INDICATOR_LABEL: Record<IndicatorKey, string> = {
-  ma: "MA", boll: "BOLL", vol: "거래량", macd: "MACD", rsi: "RSI", kdj: "KDJ",
+  ma: "MA",
+  boll: "BOLL",
+  vol: "거래량",
+  macd: "MACD",
+  rsi: "RSI",
+  kdj: "KDJ",
 };
 
 // Map our keys to klinecharts' built-in indicator names (case-sensitive).
 const INDICATOR_NAME: Record<IndicatorKey, string> = {
-  ma: "MA", boll: "BOLL", vol: "VOL", macd: "MACD", rsi: "RSI", kdj: "KDJ",
+  ma: "MA",
+  boll: "BOLL",
+  vol: "VOL",
+  macd: "MACD",
+  rsi: "RSI",
+  kdj: "KDJ",
 };
 
-type DailyBar = { date: string; open: number; high: number; low: number; close: number; volume: number };
+type DailyBar = {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+};
 
 function aggregate(bars: DailyBar[], tf: Timeframe): DailyBar[] {
   if (tf === "D" || bars.length === 0) return bars;
   const keyOf = (d: string): string => {
     const dt = new Date(d);
-    if (tf === "M") return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}`;
-    const tmp = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()));
+    if (tf === "M")
+      return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}`;
+    const tmp = new Date(
+      Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()),
+    );
     const day = (tmp.getUTCDay() + 6) % 7; // 0 = Mon
     tmp.setUTCDate(tmp.getUTCDate() - day);
     return `${tmp.getUTCFullYear()}-${String(tmp.getUTCMonth() + 1).padStart(2, "0")}-${String(tmp.getUTCDate()).padStart(2, "0")}`;
@@ -94,7 +129,9 @@ function toKlineData(bars: DailyBar[]): KLineData[] {
 // Pull theme tokens from the live CSS so the chart matches the rest of the UI.
 function readToken(name: string, fallback: string): string {
   if (typeof window === "undefined") return fallback;
-  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const v = getComputedStyle(document.documentElement)
+    .getPropertyValue(name)
+    .trim();
   return v || fallback;
 }
 
@@ -109,27 +146,53 @@ function buildStyles(dark: boolean) {
   return {
     grid: {
       horizontal: { color: border, style: "dashed", dashedValue: [2, 4] },
-      vertical: { color: border, style: "dashed", dashedValue: [2, 4], show: false },
+      vertical: {
+        color: border,
+        style: "dashed",
+        dashedValue: [2, 4],
+        show: false,
+      },
     },
     candle: {
       type: "candle_solid",
       bar: {
-        upColor: up, downColor: down,
+        upColor: up,
+        downColor: down,
         noChangeColor: muted,
-        upBorderColor: up, downBorderColor: down,
-        upWickColor: up, downWickColor: down,
+        upBorderColor: up,
+        downBorderColor: down,
+        upWickColor: up,
+        downWickColor: down,
       },
       tooltip: {
         showRule: "follow_cross",
         showType: "standard",
-        text: { color: fg, size: 11, family: "Helvetica", weight: "normal", marginLeft: 8, marginTop: 4, marginRight: 8, marginBottom: 4 },
+        text: {
+          color: fg,
+          size: 11,
+          family: "Helvetica",
+          weight: "normal",
+          marginLeft: 8,
+          marginTop: 4,
+          marginRight: 8,
+          marginBottom: 4,
+        },
       },
       priceMark: {
         last: {
           show: true,
-          upColor: up, downColor: down, noChangeColor: muted,
+          upColor: up,
+          downColor: down,
+          noChangeColor: muted,
           line: { show: true, style: "dashed", dashedValue: [3, 3], size: 1 },
-          text: { show: true, size: 10, paddingLeft: 4, paddingRight: 4, paddingTop: 2, paddingBottom: 2 },
+          text: {
+            show: true,
+            size: 10,
+            paddingLeft: 4,
+            paddingRight: 4,
+            paddingTop: 2,
+            paddingBottom: 2,
+          },
         },
         high: { color: muted, textSize: 10 },
         low: { color: muted, textSize: 10 },
@@ -137,7 +200,16 @@ function buildStyles(dark: boolean) {
     },
     indicator: {
       ohlc: { upColor: up, downColor: down, noChangeColor: muted },
-      bars: [{ style: "fill", borderStyle: "solid", borderSize: 1, borderColor: up, color: up, noChangeColor: muted }],
+      bars: [
+        {
+          style: "fill",
+          borderStyle: "solid",
+          borderSize: 1,
+          borderColor: up,
+          color: up,
+          noChangeColor: muted,
+        },
+      ],
       lines: [
         { style: "solid", smooth: false, size: 1, color: "#FBBF24" },
         { style: "solid", smooth: false, size: 1, color: "#A78BFA" },
@@ -147,7 +219,16 @@ function buildStyles(dark: boolean) {
       tooltip: {
         showRule: "follow_cross",
         showType: "standard",
-        text: { color: fg, size: 11, family: "Helvetica", weight: "normal", marginLeft: 8, marginTop: 4, marginRight: 8, marginBottom: 4 },
+        text: {
+          color: fg,
+          size: 11,
+          family: "Helvetica",
+          weight: "normal",
+          marginLeft: 8,
+          marginTop: 4,
+          marginRight: 8,
+          marginBottom: 4,
+        },
       },
       lastValueMark: { show: false },
     },
@@ -163,16 +244,28 @@ function buildStyles(dark: boolean) {
       tickText: { color: muted, size: 10 },
     },
     crosshair: {
-      horizontal: { line: { color: muted, style: "dashed", dashedValue: [3, 3] }, text: { color: fg, backgroundColor: border } },
-      vertical:   { line: { color: muted, style: "dashed", dashedValue: [3, 3] }, text: { color: fg, backgroundColor: border } },
+      horizontal: {
+        line: { color: muted, style: "dashed", dashedValue: [3, 3] },
+        text: { color: fg, backgroundColor: border },
+      },
+      vertical: {
+        line: { color: muted, style: "dashed", dashedValue: [3, 3] },
+        text: { color: fg, backgroundColor: border },
+      },
     },
     separator: { color: border, size: 1 },
   } as const;
 }
 
 function Chip({
-  on, label, onClick,
-}: { on: boolean; label: string; onClick: () => void }) {
+  on,
+  label,
+  onClick,
+}: {
+  on: boolean;
+  label: string;
+  onClick: () => void;
+}) {
   return (
     <button
       onClick={onClick}
@@ -182,7 +275,9 @@ function Chip({
           ? "border-primary/40 bg-primary/10 text-primary"
           : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40",
       )}
-    >{label}</button>
+    >
+      {label}
+    </button>
   );
 }
 
@@ -197,7 +292,8 @@ export interface StockChartProps {
 }
 
 export default function StockChart({
-  ticker, currency,
+  ticker,
+  currency,
   initialPeriod = "3M",
   initialTimeframe = "D",
   initialIndicators,
@@ -206,7 +302,8 @@ export default function StockChart({
   const [period, setPeriod] = useState<PeriodKey>(initialPeriod);
   const [timeframe, setTimeframe] = useState<Timeframe>(initialTimeframe);
   const [indicators, setIndicators] = useState<IndicatorSet>({
-    ...DEFAULT_INDICATORS, ...(initialIndicators ?? {}),
+    ...DEFAULT_INDICATORS,
+    ...(initialIndicators ?? {}),
   });
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -220,8 +317,12 @@ export default function StockChart({
 
   const days = PERIOD_DAYS[period];
   // Weekly / monthly views need more raw daily bars to fill the same range.
-  const fetchDays = timeframe === "M" ? days * 22 : timeframe === "W" ? days * 5 : days;
-  const { data: barsData, loading } = useStockBars(ticker || undefined, fetchDays);
+  const fetchDays =
+    timeframe === "M" ? days * 22 : timeframe === "W" ? days * 5 : days;
+  const { data: barsData, loading } = useStockBars(
+    ticker || undefined,
+    fetchDays,
+  );
 
   const klineData = useMemo<KLineData[]>(() => {
     if (!barsData || barsData.length === 0) return [];
@@ -229,14 +330,17 @@ export default function StockChart({
     return toKlineData(agg);
   }, [barsData, timeframe]);
 
-  const inferredCurrency: "USD" | "KRW" = currency ?? (/^\d/.test(ticker) ? "KRW" : "USD");
+  const inferredCurrency: "USD" | "KRW" =
+    currency ?? (/^\d/.test(ticker) ? "KRW" : "USD");
   const pricePrecision = inferredCurrency === "KRW" ? 0 : 2;
 
   // Mount / unmount the chart instance. Theme changes recreate it so styles
   // re-resolve from CSS variables — cheap, and avoids stale color caches.
   useEffect(() => {
     if (!containerRef.current) return;
-    const chart = init(containerRef.current, { styles: buildStyles(isDark) as any });
+    const chart = init(containerRef.current, {
+      styles: buildStyles(isDark) as any,
+    });
     if (!chart) return;
     chartRef.current = chart;
     chart.setPriceVolumePrecision(pricePrecision, 0);
@@ -252,7 +356,10 @@ export default function StockChart({
     }
     for (const k of PANE_INDICATORS) {
       if (indicators[k]) {
-        chart.createIndicator(INDICATOR_NAME[k], false, { id: `pane_${k}`, height: k === "vol" ? 80 : 110 });
+        chart.createIndicator(INDICATOR_NAME[k], false, {
+          id: `pane_${k}`,
+          height: k === "vol" ? 80 : 110,
+        });
         mountedPanes.current.add(k);
       }
     }
@@ -309,7 +416,10 @@ export default function StockChart({
     for (const k of PANE_INDICATORS) {
       const have = mountedPanes.current.has(k);
       if (indicators[k] && !have) {
-        chart.createIndicator(INDICATOR_NAME[k], false, { id: `pane_${k}`, height: k === "vol" ? 80 : 110 });
+        chart.createIndicator(INDICATOR_NAME[k], false, {
+          id: `pane_${k}`,
+          height: k === "vol" ? 80 : 110,
+        });
         mountedPanes.current.add(k);
       } else if (!indicators[k] && have) {
         // Removing the only indicator on a pane removes the pane itself.
@@ -319,7 +429,8 @@ export default function StockChart({
     }
   }, [indicators]);
 
-  const toggle = (k: IndicatorKey) => setIndicators((p) => ({ ...p, [k]: !p[k] }));
+  const toggle = (k: IndicatorKey) =>
+    setIndicators((p) => ({ ...p, [k]: !p[k] }));
 
   // Total height = price pane + each active sub-pane (matches klinecharts layout).
   const subPanesHeight = PANE_INDICATORS.reduce(
@@ -335,29 +446,55 @@ export default function StockChart({
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center bg-muted/40 p-0.5 rounded-md">
             {(["D", "W", "M"] as Timeframe[]).map((t) => (
-              <button key={t} onClick={() => setTimeframe(t)}
-                className={cn("text-[11px] px-2 py-1 rounded transition-colors font-medium",
-                  timeframe === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
-              >{TIMEFRAME_LABELS[t]}</button>
+              <button
+                key={t}
+                onClick={() => setTimeframe(t)}
+                className={cn(
+                  "text-[11px] px-2 py-1 rounded transition-colors font-medium",
+                  timeframe === t
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {TIMEFRAME_LABELS[t]}
+              </button>
             ))}
           </div>
           <div className="flex items-center bg-muted/40 p-0.5 rounded-md">
             {PERIOD_ORDER.map((p) => (
-              <button key={p} onClick={() => setPeriod(p)}
-                className={cn("text-[11px] px-2 py-1 rounded transition-colors font-medium",
-                  period === p ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
-              >{p}</button>
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={cn(
+                  "text-[11px] px-2 py-1 rounded transition-colors font-medium",
+                  period === p
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {p}
+              </button>
             ))}
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-[10px] text-muted-foreground">오버레이</span>
           {OVERLAY_INDICATORS.map((k) => (
-            <Chip key={k} on={indicators[k]} label={INDICATOR_LABEL[k]} onClick={() => toggle(k)} />
+            <Chip
+              key={k}
+              on={indicators[k]}
+              label={INDICATOR_LABEL[k]}
+              onClick={() => toggle(k)}
+            />
           ))}
           <span className="text-[10px] text-muted-foreground ml-1.5">패널</span>
           {PANE_INDICATORS.map((k) => (
-            <Chip key={k} on={indicators[k]} label={INDICATOR_LABEL[k]} onClick={() => toggle(k)} />
+            <Chip
+              key={k}
+              on={indicators[k]}
+              label={INDICATOR_LABEL[k]}
+              onClick={() => toggle(k)}
+            />
           ))}
         </div>
       </div>
@@ -367,7 +504,9 @@ export default function StockChart({
         <div ref={containerRef} style={{ height: totalHeight }} />
         {klineData.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-xs pointer-events-none">
-            {loading ? "차트 데이터를 불러오는 중…" : "표시할 데이터가 없습니다"}
+            {loading
+              ? "차트 데이터를 불러오는 중…"
+              : "표시할 데이터가 없습니다"}
           </div>
         )}
       </div>

@@ -24,6 +24,9 @@ export const adminService = {
   updateUser: (id: string, role: "user" | "admin" | "superadmin") =>
     apiPatch<AdminUser>(`/admin/users/${id}`, { role }),
   broadcasts: () => apiGet<{ items: Broadcast[] }>(`/admin/broadcasts`),
-  createBroadcast: (body: Pick<Broadcast, "title" | "body" | "audience"> & { scheduled_at?: string }) =>
-    apiPost<Broadcast>(`/admin/broadcasts`, body),
+  createBroadcast: (
+    body: Pick<Broadcast, "title" | "body" | "audience"> & {
+      scheduled_at?: string;
+    },
+  ) => apiPost<Broadcast>(`/admin/broadcasts`, body),
 };

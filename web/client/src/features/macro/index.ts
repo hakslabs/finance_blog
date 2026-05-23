@@ -9,7 +9,10 @@ export const macroService = {
 
 export function useMacroIndicators() {
   return useAsync(
-    () => macroService.list().then((r) => (r.items.length ? r.items : MACRO_INDICATORS)),
+    () =>
+      macroService
+        .list()
+        .then((r) => (r.items.length ? r.items : MACRO_INDICATORS)),
     [],
     MACRO_INDICATORS,
   );

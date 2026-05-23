@@ -10,9 +10,18 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  ChevronLeft, ChevronRight, Plus, X, Star, Bell,
-  TrendingUp, Calendar as CalIcon, Bookmark, StickyNote,
-  SlidersHorizontal, RotateCcw
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  X,
+  Star,
+  Bell,
+  TrendingUp,
+  Calendar as CalIcon,
+  Bookmark,
+  StickyNote,
+  SlidersHorizontal,
+  RotateCcw,
 } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -20,7 +29,10 @@ import { EventMemoDialog } from "@/components/EventMemoDialog";
 import { PriceAlertDialog } from "@/components/PriceAlertDialog";
 import { useBookmark } from "@/contexts/BookmarkContext";
 import { useWatchlist } from "@/contexts/WatchlistContext";
-import { useUnifiedCalendar, type UnifiedCalendarItem } from "@/features/calendar";
+import {
+  useUnifiedCalendar,
+  type UnifiedCalendarItem,
+} from "@/features/calendar";
 import { useHoldings } from "@/features/portfolio";
 import { ModalPortal } from "@/components/ModalPortal";
 
@@ -65,15 +77,18 @@ function importanceToKo(n?: number | null): string {
 function unifiedToDisplay(item: UnifiedCalendarItem): DisplayEvent {
   const dt = new Date(item.scheduled_at);
   const type =
-    item.kind === "macro" ? "매크로" :
-    item.kind === "earnings" ? "실적" :
-    "배당";
+    item.kind === "macro"
+      ? "매크로"
+      : item.kind === "earnings"
+        ? "실적"
+        : "배당";
   const detailParts: string[] = [];
   if (item.actual_value) detailParts.push(`실제 ${item.actual_value}`);
   if (item.forecast_value) detailParts.push(`예상 ${item.forecast_value}`);
   if (item.previous_value) detailParts.push(`이전 ${item.previous_value}`);
   if (item.cash_amount != null) detailParts.push(`배당 ${item.cash_amount}`);
-  if (item.eps_estimate != null) detailParts.push(`EPS 예상 ${item.eps_estimate}`);
+  if (item.eps_estimate != null)
+    detailParts.push(`EPS 예상 ${item.eps_estimate}`);
   return {
     id: item.id,
     date: dt.getDate(),
@@ -100,35 +115,217 @@ function unifiedToDisplay(item: UnifiedCalendarItem): DisplayEvent {
 
 // ── Extended calendar events ──────────────────────────────────
 const EVENTS_DATA = [
-  { id: 1, date: 6, day: "화", month: 5, year: 2026, title: "미 무역수지", type: "매크로", holding: null, memo: 0, tickers: ["SPY", "DXY"], importance: "중", detail: "4월 미국 무역수지 발표. 예상: -$68.5B" },
-  { id: 2, date: 7, day: "수", month: 5, year: 2026, title: "NVDA 실적 (장마감 후)", type: "실적", holding: "12.4%", memo: 9, tickers: ["NVDA"], importance: "상", detail: "NVIDIA Q1 FY2026 실적 발표. EPS 예상: $5.58, 매출 예상: $24.6B" },
-  { id: 3, date: 8, day: "목", month: 5, year: 2026, title: "AAPL 분기 배당락", type: "배당", holding: "9.1%", memo: 4, tickers: ["AAPL"], importance: "중", detail: "Apple 분기 배당 $0.25/주. 배당락일." },
-  { id: 4, date: 8, day: "목", month: 5, year: 2026, title: "FOMC 회의록", type: "매크로", holding: null, memo: 0, tickers: ["SPY", "TLT"], importance: "상", detail: "5월 FOMC 회의록 공개. 금리 인하 시그널 주목." },
-  { id: 5, date: 13, day: "화", month: 5, year: 2026, title: "AAPL WWDC", type: "이벤트", holding: "9.1%", memo: 4, tickers: ["AAPL"], importance: "상", detail: "Apple WWDC 2026. iOS 20, AI 기능 대거 공개 예정." },
-  { id: 6, date: 15, day: "목", month: 5, year: 2026, title: "미 CPI (4월)", type: "매크로", holding: null, memo: 0, tickers: ["SPY", "TLT", "QQQ"], importance: "상", detail: "4월 미국 소비자물가지수 발표. 예상: 3.1% (YoY)" },
-  { id: 7, date: 16, day: "금", month: 5, year: 2026, title: "미 소매판매", type: "매크로", holding: null, memo: 0, tickers: ["XRT", "SPY"], importance: "중", detail: "4월 미국 소매판매 발표. 소비 동향 확인." },
-  { id: 8, date: 20, day: "화", month: 5, year: 2026, title: "삼성전자 배당락", type: "배당", holding: "18.2%", memo: 6, tickers: ["005930"], importance: "중", detail: "삼성전자 1분기 배당 ₩361/주 배당락일." },
-  { id: 9, date: 22, day: "목", month: 5, year: 2026, title: "005930 잠정실적", type: "실적", holding: "18.2%", memo: 6, tickers: ["005930"], importance: "상", detail: "삼성전자 2분기 잠정실적 발표. HBM 수율 개선 여부 주목." },
-  { id: 10, date: 22, day: "목", month: 5, year: 2026, title: "SK하이닉스 실적", type: "실적", holding: "7.6%", memo: 3, tickers: ["000660"], importance: "상", detail: "SK하이닉스 Q2 실적 발표. HBM3E 공급 현황 확인." },
-  { id: 11, date: 28, day: "수", month: 5, year: 2026, title: "미 GDP 수정치", type: "매크로", holding: null, memo: 0, tickers: ["SPY", "DXY"], importance: "중", detail: "1분기 미국 GDP 수정치 발표. 예상: +2.8% (연율)" },
-  { id: 12, date: 30, day: "금", month: 5, year: 2026, title: "미 PCE (4월)", type: "매크로", holding: null, memo: 0, tickers: ["SPY", "TLT"], importance: "상", detail: "연준 선호 물가지표 PCE 발표. 금리 인하 경로 영향." },
+  {
+    id: 1,
+    date: 6,
+    day: "화",
+    month: 5,
+    year: 2026,
+    title: "미 무역수지",
+    type: "매크로",
+    holding: null,
+    memo: 0,
+    tickers: ["SPY", "DXY"],
+    importance: "중",
+    detail: "4월 미국 무역수지 발표. 예상: -$68.5B",
+  },
+  {
+    id: 2,
+    date: 7,
+    day: "수",
+    month: 5,
+    year: 2026,
+    title: "NVDA 실적 (장마감 후)",
+    type: "실적",
+    holding: "12.4%",
+    memo: 9,
+    tickers: ["NVDA"],
+    importance: "상",
+    detail: "NVIDIA Q1 FY2026 실적 발표. EPS 예상: $5.58, 매출 예상: $24.6B",
+  },
+  {
+    id: 3,
+    date: 8,
+    day: "목",
+    month: 5,
+    year: 2026,
+    title: "AAPL 분기 배당락",
+    type: "배당",
+    holding: "9.1%",
+    memo: 4,
+    tickers: ["AAPL"],
+    importance: "중",
+    detail: "Apple 분기 배당 $0.25/주. 배당락일.",
+  },
+  {
+    id: 4,
+    date: 8,
+    day: "목",
+    month: 5,
+    year: 2026,
+    title: "FOMC 회의록",
+    type: "매크로",
+    holding: null,
+    memo: 0,
+    tickers: ["SPY", "TLT"],
+    importance: "상",
+    detail: "5월 FOMC 회의록 공개. 금리 인하 시그널 주목.",
+  },
+  {
+    id: 5,
+    date: 13,
+    day: "화",
+    month: 5,
+    year: 2026,
+    title: "AAPL WWDC",
+    type: "이벤트",
+    holding: "9.1%",
+    memo: 4,
+    tickers: ["AAPL"],
+    importance: "상",
+    detail: "Apple WWDC 2026. iOS 20, AI 기능 대거 공개 예정.",
+  },
+  {
+    id: 6,
+    date: 15,
+    day: "목",
+    month: 5,
+    year: 2026,
+    title: "미 CPI (4월)",
+    type: "매크로",
+    holding: null,
+    memo: 0,
+    tickers: ["SPY", "TLT", "QQQ"],
+    importance: "상",
+    detail: "4월 미국 소비자물가지수 발표. 예상: 3.1% (YoY)",
+  },
+  {
+    id: 7,
+    date: 16,
+    day: "금",
+    month: 5,
+    year: 2026,
+    title: "미 소매판매",
+    type: "매크로",
+    holding: null,
+    memo: 0,
+    tickers: ["XRT", "SPY"],
+    importance: "중",
+    detail: "4월 미국 소매판매 발표. 소비 동향 확인.",
+  },
+  {
+    id: 8,
+    date: 20,
+    day: "화",
+    month: 5,
+    year: 2026,
+    title: "삼성전자 배당락",
+    type: "배당",
+    holding: "18.2%",
+    memo: 6,
+    tickers: ["005930"],
+    importance: "중",
+    detail: "삼성전자 1분기 배당 ₩361/주 배당락일.",
+  },
+  {
+    id: 9,
+    date: 22,
+    day: "목",
+    month: 5,
+    year: 2026,
+    title: "005930 잠정실적",
+    type: "실적",
+    holding: "18.2%",
+    memo: 6,
+    tickers: ["005930"],
+    importance: "상",
+    detail: "삼성전자 2분기 잠정실적 발표. HBM 수율 개선 여부 주목.",
+  },
+  {
+    id: 10,
+    date: 22,
+    day: "목",
+    month: 5,
+    year: 2026,
+    title: "SK하이닉스 실적",
+    type: "실적",
+    holding: "7.6%",
+    memo: 3,
+    tickers: ["000660"],
+    importance: "상",
+    detail: "SK하이닉스 Q2 실적 발표. HBM3E 공급 현황 확인.",
+  },
+  {
+    id: 11,
+    date: 28,
+    day: "수",
+    month: 5,
+    year: 2026,
+    title: "미 GDP 수정치",
+    type: "매크로",
+    holding: null,
+    memo: 0,
+    tickers: ["SPY", "DXY"],
+    importance: "중",
+    detail: "1분기 미국 GDP 수정치 발표. 예상: +2.8% (연율)",
+  },
+  {
+    id: 12,
+    date: 30,
+    day: "금",
+    month: 5,
+    year: 2026,
+    title: "미 PCE (4월)",
+    type: "매크로",
+    holding: null,
+    memo: 0,
+    tickers: ["SPY", "TLT"],
+    importance: "상",
+    detail: "연준 선호 물가지표 PCE 발표. 금리 인하 경로 영향.",
+  },
   // 다음달
-  { id: 13, date: 4, day: "목", month: 6, year: 2026, title: "OPEC+ 회의", type: "이벤트", holding: null, memo: 0, tickers: ["XOM", "CVX"], importance: "중", detail: "OPEC+ 정례 회의. 감산 연장 여부 결정." },
-  { id: 14, date: 11, day: "목", month: 6, year: 2026, title: "미 CPI (5월)", type: "매크로", holding: null, memo: 0, tickers: ["SPY", "TLT"], importance: "상", detail: "5월 미국 소비자물가지수 발표." },
+  {
+    id: 13,
+    date: 4,
+    day: "목",
+    month: 6,
+    year: 2026,
+    title: "OPEC+ 회의",
+    type: "이벤트",
+    holding: null,
+    memo: 0,
+    tickers: ["XOM", "CVX"],
+    importance: "중",
+    detail: "OPEC+ 정례 회의. 감산 연장 여부 결정.",
+  },
+  {
+    id: 14,
+    date: 11,
+    day: "목",
+    month: 6,
+    year: 2026,
+    title: "미 CPI (5월)",
+    type: "매크로",
+    holding: null,
+    memo: 0,
+    tickers: ["SPY", "TLT"],
+    importance: "상",
+    detail: "5월 미국 소비자물가지수 발표.",
+  },
 ];
 
 const TYPE_COLORS: Record<string, string> = {
-  "실적": "border-primary text-primary bg-primary/10",
-  "배당": "border-gold text-gold bg-gold/10",
-  "매크로": "border-sky text-sky bg-sky/10",
-  "이벤트": "border-violet text-violet-accent bg-violet/10",
-  "개인": "border-muted-foreground text-muted-foreground bg-muted/30",
+  실적: "border-primary text-primary bg-primary/10",
+  배당: "border-gold text-gold bg-gold/10",
+  매크로: "border-sky text-sky bg-sky/10",
+  이벤트: "border-violet text-violet-accent bg-violet/10",
+  개인: "border-muted-foreground text-muted-foreground bg-muted/30",
 };
 
 const IMPORTANCE_DOT: Record<string, string> = {
-  "상": "bg-down",
-  "중": "bg-gold",
-  "하": "bg-up",
+  상: "bg-down",
+  중: "bg-gold",
+  하: "bg-up",
 };
 
 const DAYS_OF_WEEK = ["일", "월", "화", "수", "목", "금", "토"];
@@ -177,10 +374,20 @@ export default function CalendarPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<CalendarFilters>(() => loadFilters());
   useEffect(() => {
-    try { localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filters)); } catch { /* ignore */ }
+    try {
+      localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filters));
+    } catch {
+      /* ignore */
+    }
   }, [filters]);
-  const excludedSet = useMemo(() => new Set(filters.excludedMacroIds), [filters.excludedMacroIds]);
-  const includedSet = useMemo(() => new Set(filters.includedMacroIds), [filters.includedMacroIds]);
+  const excludedSet = useMemo(
+    () => new Set(filters.excludedMacroIds),
+    [filters.excludedMacroIds],
+  );
+  const includedSet = useMemo(
+    () => new Set(filters.includedMacroIds),
+    [filters.includedMacroIds],
+  );
 
   const { isBookmarked, addBookmark, removeBookmark } = useBookmark();
   const watchlist = useWatchlist();
@@ -214,7 +421,12 @@ export default function CalendarPage() {
     if (filters.sourceWatchlist) watchlistSymbols.forEach((s) => set.add(s));
     if (filters.sourceHoldings) holdingSymbols.forEach((s) => set.add(s));
     return Array.from(set);
-  }, [filters.sourceWatchlist, filters.sourceHoldings, watchlistSymbols, holdingSymbols]);
+  }, [
+    filters.sourceWatchlist,
+    filters.sourceHoldings,
+    watchlistSymbols,
+    holdingSymbols,
+  ]);
 
   // We fetch with min_importance=1 so all macro events for the month come
   // back; the per-event checkbox list needs the full set, and the
@@ -234,9 +446,16 @@ export default function CalendarPage() {
   // Mock fallback ONLY if we have no live data at all and the user hasn't
   // explicitly emptied their sources. Avoids the "no watchlist" empty
   // state being papered over by mock data.
-  const allSourcesOff = !filters.sourceWatchlist && !filters.sourceHoldings && !filters.sourceMacro;
-  const useLive = liveDisplayAll.length > 0 || allSourcesOff || stockSymbols.length > 0 || !filters.sourceMacro;
-  const rawSource: DisplayEvent[] = useLive ? liveDisplayAll : (EVENTS_DATA as DisplayEvent[]);
+  const allSourcesOff =
+    !filters.sourceWatchlist && !filters.sourceHoldings && !filters.sourceMacro;
+  const useLive =
+    liveDisplayAll.length > 0 ||
+    allSourcesOff ||
+    stockSymbols.length > 0 ||
+    !filters.sourceMacro;
+  const rawSource: DisplayEvent[] = useLive
+    ? liveDisplayAll
+    : (EVENTS_DATA as DisplayEvent[]);
 
   // Apply source toggles + importance threshold + per-event overrides.
   const isMacroVisible = (id: string, importance: string) => {
@@ -249,15 +468,18 @@ export default function CalendarPage() {
   const isStockVisible = (tickers: string[]) => {
     if (!filters.sourceWatchlist && !filters.sourceHoldings) return false;
     if (!useLive) return true; // mock data: always show in stock toggles' presence
-    return tickers.some((t) =>
-      (filters.sourceWatchlist && watchlistSymbols.includes(t.toUpperCase())) ||
-      (filters.sourceHoldings && holdingSymbols.includes(t.toUpperCase()))
+    return tickers.some(
+      (t) =>
+        (filters.sourceWatchlist &&
+          watchlistSymbols.includes(t.toUpperCase())) ||
+        (filters.sourceHoldings && holdingSymbols.includes(t.toUpperCase())),
     );
   };
 
   const dataSource: DisplayEvent[] = rawSource.filter((e) => {
     if (e.type === "매크로") return isMacroVisible(String(e.id), e.importance);
-    if (e.type === "실적" || e.type === "배당") return isStockVisible(e.tickers);
+    if (e.type === "실적" || e.type === "배당")
+      return isStockVisible(e.tickers);
     // 이벤트 / 개인 — treat as stock-tied if it has tickers, otherwise show.
     if (e.tickers && e.tickers.length) return isStockVisible(e.tickers);
     return true;
@@ -267,8 +489,12 @@ export default function CalendarPage() {
   // importance (high→low) then date. Drawn from the unfiltered live set so
   // the user can re-enable events they've hidden via the importance gate.
   const macroEventsForList: DisplayEvent[] = useMemo(() => {
-    const list = (useLive ? liveDisplayAll : (EVENTS_DATA as DisplayEvent[]))
-      .filter((e) => e.type === "매크로" && e.year === viewYear && e.month === viewMonth);
+    const list = (
+      useLive ? liveDisplayAll : (EVENTS_DATA as DisplayEvent[])
+    ).filter(
+      (e) =>
+        e.type === "매크로" && e.year === viewYear && e.month === viewMonth,
+    );
     const score = (imp: string) => (imp === "상" ? 3 : imp === "중" ? 2 : 1);
     return list.sort((a, b) => {
       const s = score(b.importance) - score(a.importance);
@@ -288,7 +514,8 @@ export default function CalendarPage() {
   const toggleMacroEvent = (id: string, importance: string) => {
     const score = importance === "상" ? 3 : importance === "중" ? 2 : 1;
     const defaultVisible = score >= filters.minImportance;
-    const currentlyVisible = includedSet.has(id) || (!excludedSet.has(id) && defaultVisible);
+    const currentlyVisible =
+      includedSet.has(id) || (!excludedSet.has(id) && defaultVisible);
     const nextVisible = !currentlyVisible;
     setFilters((prev) => {
       const inc = new Set(prev.includedMacroIds);
@@ -297,7 +524,11 @@ export default function CalendarPage() {
       exc.delete(id);
       if (nextVisible && !defaultVisible) inc.add(id);
       if (!nextVisible && defaultVisible) exc.add(id);
-      return { ...prev, includedMacroIds: Array.from(inc), excludedMacroIds: Array.from(exc) };
+      return {
+        ...prev,
+        includedMacroIds: Array.from(inc),
+        excludedMacroIds: Array.from(exc),
+      };
     });
   };
   const resetMacroOverrides = () =>
@@ -315,7 +546,10 @@ export default function CalendarPage() {
 
   const cells: { date: number; isCurrentMonth: boolean }[] = [];
   for (let i = 0; i < firstDay; i++) {
-    cells.push({ date: prevMonthDays - firstDay + 1 + i, isCurrentMonth: false });
+    cells.push({
+      date: prevMonthDays - firstDay + 1 + i,
+      isCurrentMonth: false,
+    });
   }
   for (let d = 1; d <= daysInMonth; d++) {
     cells.push({ date: d, isCurrentMonth: true });
@@ -326,12 +560,16 @@ export default function CalendarPage() {
   }
 
   const prevMonth = () => {
-    if (viewMonth === 1) { setViewYear(y => y - 1); setViewMonth(12); }
-    else setViewMonth(m => m - 1);
+    if (viewMonth === 1) {
+      setViewYear((y) => y - 1);
+      setViewMonth(12);
+    } else setViewMonth((m) => m - 1);
   };
   const nextMonth = () => {
-    if (viewMonth === 12) { setViewYear(y => y + 1); setViewMonth(1); }
-    else setViewMonth(m => m + 1);
+    if (viewMonth === 12) {
+      setViewYear((y) => y + 1);
+      setViewMonth(1);
+    } else setViewMonth((m) => m + 1);
   };
 
   return (
@@ -339,8 +577,12 @@ export default function CalendarPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold font-['Outfit'] text-foreground">내 캘린더</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">실적·배당·매크로 이벤트 통합 관리</p>
+          <h1 className="text-2xl font-bold font-['Outfit'] text-foreground">
+            내 캘린더
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            실적·배당·매크로 이벤트 통합 관리
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -360,7 +602,10 @@ export default function CalendarPage() {
           <Button
             variant="outline"
             size="sm"
-            className={cn("text-xs gap-1.5", !listView && "bg-primary text-primary-foreground border-primary")}
+            className={cn(
+              "text-xs gap-1.5",
+              !listView && "bg-primary text-primary-foreground border-primary",
+            )}
             onClick={() => setListView(false)}
           >
             <CalIcon size={13} /> 월간
@@ -368,7 +613,10 @@ export default function CalendarPage() {
           <Button
             variant="outline"
             size="sm"
-            className={cn("text-xs gap-1.5", listView && "bg-primary text-primary-foreground border-primary")}
+            className={cn(
+              "text-xs gap-1.5",
+              listView && "bg-primary text-primary-foreground border-primary",
+            )}
             onClick={() => setListView(true)}
           >
             리스트
@@ -376,7 +624,9 @@ export default function CalendarPage() {
           <Button
             size="sm"
             className="text-xs gap-1.5"
-            onClick={() => toast.info("이벤트 추가 기능은 로그인 후 사용 가능합니다")}
+            onClick={() =>
+              toast.info("이벤트 추가 기능은 로그인 후 사용 가능합니다")
+            }
           >
             <Plus size={13} /> 이벤트 추가
           </Button>
@@ -398,11 +648,19 @@ export default function CalendarPage() {
         )}
         {filters.sourceMacro && (
           <span className="px-2 py-0.5 rounded-md bg-sky/10 text-sky border border-sky/30">
-            경제 이벤트 ({filters.minImportance === 3 ? "상급" : filters.minImportance === 2 ? "중·상" : "전체"})
+            경제 이벤트 (
+            {filters.minImportance === 3
+              ? "상급"
+              : filters.minImportance === 2
+                ? "중·상"
+                : "전체"}
+            )
           </span>
         )}
         {activeSourceCount === 0 && (
-          <span className="text-muted-foreground">선택된 소스 없음 — 필터를 열어주세요</span>
+          <span className="text-muted-foreground">
+            선택된 소스 없음 — 필터를 열어주세요
+          </span>
         )}
       </div>
 
@@ -412,36 +670,63 @@ export default function CalendarPage() {
         <div className="bg-card border border-border rounded-xl p-4 space-y-4 animate-fade-in">
           {/* Sources */}
           <div>
-            <h3 className="text-xs font-semibold text-foreground mb-2">표시할 이벤트</h3>
+            <h3 className="text-xs font-semibold text-foreground mb-2">
+              표시할 이벤트
+            </h3>
             <div className="flex flex-wrap gap-2">
-              {([
-                { key: "sourceWatchlist" as const, label: "관심종목", count: watchlistSymbols.length, color: "primary" },
-                { key: "sourceHoldings" as const, label: "보유종목", count: holdingSymbols.length, color: "up" },
-                { key: "sourceMacro" as const, label: "경제 이벤트", count: null, color: "sky" },
-              ]).map((src) => {
+              {[
+                {
+                  key: "sourceWatchlist" as const,
+                  label: "관심종목",
+                  count: watchlistSymbols.length,
+                  color: "primary",
+                },
+                {
+                  key: "sourceHoldings" as const,
+                  label: "보유종목",
+                  count: holdingSymbols.length,
+                  color: "up",
+                },
+                {
+                  key: "sourceMacro" as const,
+                  label: "경제 이벤트",
+                  count: null,
+                  color: "sky",
+                },
+              ].map((src) => {
                 const on = filters[src.key];
                 return (
                   <button
                     key={src.key}
-                    onClick={() => setFilters((p) => ({ ...p, [src.key]: !p[src.key] }))}
+                    onClick={() =>
+                      setFilters((p) => ({ ...p, [src.key]: !p[src.key] }))
+                    }
                     className={cn(
                       "text-xs px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5",
                       on
-                        ? src.color === "primary" ? "bg-primary/10 text-primary border-primary/40"
-                        : src.color === "up" ? "bg-up/10 text-up border-up/40"
-                        : "bg-sky/10 text-sky border-sky/40"
-                        : "bg-card border-border text-muted-foreground hover:text-foreground"
+                        ? src.color === "primary"
+                          ? "bg-primary/10 text-primary border-primary/40"
+                          : src.color === "up"
+                            ? "bg-up/10 text-up border-up/40"
+                            : "bg-sky/10 text-sky border-sky/40"
+                        : "bg-card border-border text-muted-foreground hover:text-foreground",
                     )}
                   >
-                    <span className={cn(
-                      "w-3 h-3 rounded border flex items-center justify-center",
-                      on ? "border-current bg-current/20" : "border-border",
-                    )}>
-                      {on && <span className="w-1.5 h-1.5 rounded-sm bg-current" />}
+                    <span
+                      className={cn(
+                        "w-3 h-3 rounded border flex items-center justify-center",
+                        on ? "border-current bg-current/20" : "border-border",
+                      )}
+                    >
+                      {on && (
+                        <span className="w-1.5 h-1.5 rounded-sm bg-current" />
+                      )}
                     </span>
                     {src.label}
                     {src.count != null && (
-                      <span className="text-[10px] opacity-70">{src.count}</span>
+                      <span className="text-[10px] opacity-70">
+                        {src.count}
+                      </span>
                     )}
                   </button>
                 );
@@ -451,7 +736,9 @@ export default function CalendarPage() {
               <div className="mt-2 text-[11px] text-muted-foreground">
                 관심종목이 비어있어요.{" "}
                 <Link href="/mypage?tab=watchlist">
-                  <span className="text-primary cursor-pointer underline">관심종목 관리 →</span>
+                  <span className="text-primary cursor-pointer underline">
+                    관심종목 관리 →
+                  </span>
                 </Link>
               </div>
             )}
@@ -459,7 +746,9 @@ export default function CalendarPage() {
               <div className="mt-2 text-[11px] text-muted-foreground">
                 보유종목이 없습니다.{" "}
                 <Link href="/mypage?tab=portfolio">
-                  <span className="text-primary cursor-pointer underline">포트폴리오 추가 →</span>
+                  <span className="text-primary cursor-pointer underline">
+                    포트폴리오 추가 →
+                  </span>
                 </Link>
               </div>
             )}
@@ -468,23 +757,29 @@ export default function CalendarPage() {
           {/* Macro importance threshold */}
           {filters.sourceMacro && (
             <div>
-              <h3 className="text-xs font-semibold text-foreground mb-2">경제 이벤트 기본 중요도</h3>
+              <h3 className="text-xs font-semibold text-foreground mb-2">
+                경제 이벤트 기본 중요도
+              </h3>
               <div className="flex gap-1.5 flex-wrap items-center">
-                {([
-                  { label: "전체",   value: 1 as const },
-                  { label: "중·상",  value: 2 as const },
+                {[
+                  { label: "전체", value: 1 as const },
+                  { label: "중·상", value: 2 as const },
                   { label: "상급만", value: 3 as const },
-                ]).map((opt) => (
+                ].map((opt) => (
                   <button
                     key={opt.label}
-                    onClick={() => setFilters((p) => ({ ...p, minImportance: opt.value }))}
+                    onClick={() =>
+                      setFilters((p) => ({ ...p, minImportance: opt.value }))
+                    }
                     className={cn(
                       "text-[11px] px-2.5 py-1 rounded-md border transition-all",
                       filters.minImportance === opt.value
                         ? "bg-primary/10 text-primary border-primary/40"
-                        : "bg-card border-border/60 text-muted-foreground hover:text-foreground"
+                        : "bg-card border-border/60 text-muted-foreground hover:text-foreground",
                     )}
-                  >{opt.label}</button>
+                  >
+                    {opt.label}
+                  </button>
                 ))}
               </div>
             </div>
@@ -497,7 +792,8 @@ export default function CalendarPage() {
                 <h3 className="text-xs font-semibold text-foreground">
                   이번 달 경제 이벤트 ({macroEventsForList.length})
                 </h3>
-                {(filters.includedMacroIds.length > 0 || filters.excludedMacroIds.length > 0) && (
+                {(filters.includedMacroIds.length > 0 ||
+                  filters.excludedMacroIds.length > 0) && (
                   <button
                     onClick={resetMacroOverrides}
                     className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1"
@@ -509,10 +805,12 @@ export default function CalendarPage() {
               <div className="max-h-64 overflow-y-auto border border-border/50 rounded-lg divide-y divide-border/50">
                 {macroEventsForList.map((ev) => {
                   const id = String(ev.id);
-                  const score = ev.importance === "상" ? 3 : ev.importance === "중" ? 2 : 1;
+                  const score =
+                    ev.importance === "상" ? 3 : ev.importance === "중" ? 2 : 1;
                   const defaultVisible = score >= filters.minImportance;
                   const checked =
-                    includedSet.has(id) || (!excludedSet.has(id) && defaultVisible);
+                    includedSet.has(id) ||
+                    (!excludedSet.has(id) && defaultVisible);
                   return (
                     <label
                       key={id}
@@ -524,8 +822,15 @@ export default function CalendarPage() {
                         onChange={() => toggleMacroEvent(id, ev.importance)}
                         className="accent-primary w-3.5 h-3.5"
                       />
-                      <div className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", IMPORTANCE_DOT[ev.importance])} />
-                      <span className="text-xs text-foreground flex-1 truncate">{ev.title}</span>
+                      <div
+                        className={cn(
+                          "w-1.5 h-1.5 rounded-full flex-shrink-0",
+                          IMPORTANCE_DOT[ev.importance],
+                        )}
+                      />
+                      <span className="text-xs text-foreground flex-1 truncate">
+                        {ev.title}
+                      </span>
                       <span className="text-[10px] text-muted-foreground tabular-nums">
                         {ev.month}/{ev.date}
                       </span>
@@ -534,7 +839,8 @@ export default function CalendarPage() {
                 })}
               </div>
               <p className="text-[10px] text-muted-foreground mt-1.5">
-                체크박스로 개별 이벤트를 켜고 끌 수 있습니다. 중요도 기준값을 바꾸면 새 기본값이 적용됩니다.
+                체크박스로 개별 이벤트를 켜고 끌 수 있습니다. 중요도 기준값을
+                바꾸면 새 기본값이 적용됩니다.
               </p>
             </div>
           )}
@@ -543,13 +849,19 @@ export default function CalendarPage() {
 
       {/* Month nav */}
       <div className="flex items-center justify-between">
-        <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+        <button
+          onClick={prevMonth}
+          className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+        >
           <ChevronLeft size={18} />
         </button>
         <h2 className="text-lg font-bold font-['Outfit']">
           {viewYear}년 {viewMonth}월
         </h2>
-        <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+        <button
+          onClick={nextMonth}
+          className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+        >
           <ChevronRight size={18} />
         </button>
       </div>
@@ -560,23 +872,37 @@ export default function CalendarPage() {
           {/* Day headers */}
           <div className="grid grid-cols-7 border-b border-border">
             {DAYS_OF_WEEK.map((d, i) => (
-              <div key={d} className={cn(
-                "py-2 text-center text-xs font-semibold",
-                i === 0 ? "text-down" : i === 6 ? "text-primary" : "text-muted-foreground"
-              )}>{d}</div>
+              <div
+                key={d}
+                className={cn(
+                  "py-2 text-center text-xs font-semibold",
+                  i === 0
+                    ? "text-down"
+                    : i === 6
+                      ? "text-primary"
+                      : "text-muted-foreground",
+                )}
+              >
+                {d}
+              </div>
             ))}
           </div>
           {/* Date cells */}
           <div className="grid grid-cols-7">
             {cells.map((cell, idx) => {
               const cellEvents = cell.isCurrentMonth
-                ? dataSource.filter(e =>
-                    e.year === viewYear &&
-                    e.month === viewMonth &&
-                    e.date === cell.date
+                ? dataSource.filter(
+                    (e) =>
+                      e.year === viewYear &&
+                      e.month === viewMonth &&
+                      e.date === cell.date,
                   )
                 : [];
-              const isToday = cell.isCurrentMonth && cell.date === today.getDate() && viewYear === today.getFullYear() && viewMonth === today.getMonth() + 1;
+              const isToday =
+                cell.isCurrentMonth &&
+                cell.date === today.getDate() &&
+                viewYear === today.getFullYear() &&
+                viewMonth === today.getMonth() + 1;
               const colIdx = idx % 7;
               return (
                 <div
@@ -584,35 +910,50 @@ export default function CalendarPage() {
                   className={cn(
                     "min-h-[80px] p-1.5 border-b border-r border-border/50 last:border-r-0 transition-colors",
                     !cell.isCurrentMonth && "bg-muted/20",
-                    cell.isCurrentMonth && cellEvents.length > 0 && "hover:bg-muted/30 cursor-pointer",
+                    cell.isCurrentMonth &&
+                      cellEvents.length > 0 &&
+                      "hover:bg-muted/30 cursor-pointer",
                   )}
                 >
-                  <div className={cn(
-                    "w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium mb-1",
-                    isToday ? "bg-primary text-primary-foreground font-bold" :
-                    !cell.isCurrentMonth ? "text-muted-foreground/40" :
-                    colIdx === 0 ? "text-down" : colIdx === 6 ? "text-primary" : "text-foreground"
-                  )}>
+                  <div
+                    className={cn(
+                      "w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium mb-1",
+                      isToday
+                        ? "bg-primary text-primary-foreground font-bold"
+                        : !cell.isCurrentMonth
+                          ? "text-muted-foreground/40"
+                          : colIdx === 0
+                            ? "text-down"
+                            : colIdx === 6
+                              ? "text-primary"
+                              : "text-foreground",
+                    )}
+                  >
                     {cell.date}
                   </div>
                   <div className="space-y-0.5">
-                    {cellEvents.slice(0, 2).map(ev => (
+                    {cellEvents.slice(0, 2).map((ev) => (
                       <div
                         key={ev.id}
                         onClick={() => setSelectedEvent(ev)}
                         className={cn(
                           "text-[9px] px-1 py-0.5 rounded truncate cursor-pointer hover:opacity-80 transition-opacity leading-tight",
-                          ev.type === "실적" ? "bg-primary/15 text-primary" :
-                          ev.type === "배당" ? "bg-gold/15 text-gold" :
-                          ev.type === "매크로" ? "bg-sky/15 text-sky" :
-                          "bg-violet/15 text-violet-accent"
+                          ev.type === "실적"
+                            ? "bg-primary/15 text-primary"
+                            : ev.type === "배당"
+                              ? "bg-gold/15 text-gold"
+                              : ev.type === "매크로"
+                                ? "bg-sky/15 text-sky"
+                                : "bg-violet/15 text-violet-accent",
                         )}
                       >
                         {ev.title}
                       </div>
                     ))}
                     {cellEvents.length > 2 && (
-                      <div className="text-[9px] text-muted-foreground pl-1">+{cellEvents.length - 2}개</div>
+                      <div className="text-[9px] text-muted-foreground pl-1">
+                        +{cellEvents.length - 2}개
+                      </div>
                     )}
                   </div>
                 </div>
@@ -629,7 +970,7 @@ export default function CalendarPage() {
               <p className="text-sm">이번 달 이벤트가 없습니다</p>
             </div>
           ) : (
-            monthEvents.map(ev => (
+            monthEvents.map((ev) => (
               <div
                 key={ev.id}
                 onClick={() => setSelectedEvent(ev)}
@@ -637,25 +978,52 @@ export default function CalendarPage() {
               >
                 {/* Date */}
                 <div className="text-center min-w-[48px] flex-shrink-0">
-                  <div className="text-xs text-muted-foreground">{ev.day}요일</div>
-                  <div className="text-2xl font-bold font-mono text-foreground">{ev.date}</div>
-                  <div className="text-xs text-muted-foreground">{viewMonth}월</div>
+                  <div className="text-xs text-muted-foreground">
+                    {ev.day}요일
+                  </div>
+                  <div className="text-2xl font-bold font-mono text-foreground">
+                    {ev.date}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {viewMonth}월
+                  </div>
                 </div>
                 <div className="w-px self-stretch bg-border" />
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0.5", TYPE_COLORS[ev.type] || "")}>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-[10px] px-1.5 py-0.5",
+                        TYPE_COLORS[ev.type] || "",
+                      )}
+                    >
                       {ev.type}
                     </Badge>
-                    <div className={cn("w-1.5 h-1.5 rounded-full", IMPORTANCE_DOT[ev.importance])} />
-                    <span className="text-[10px] text-muted-foreground">중요도 {ev.importance}</span>
+                    <div
+                      className={cn(
+                        "w-1.5 h-1.5 rounded-full",
+                        IMPORTANCE_DOT[ev.importance],
+                      )}
+                    />
+                    <span className="text-[10px] text-muted-foreground">
+                      중요도 {ev.importance}
+                    </span>
                   </div>
-                  <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{ev.title}</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{ev.detail}</p>
+                  <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                    {ev.title}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                    {ev.detail}
+                  </p>
                   <div className="flex items-center gap-2 mt-2">
                     {ev.tickers.map((t, i) => (
-                      <Link key={t} href={`/analysis?ticker=${t}`} onClick={e => e.stopPropagation()}>
+                      <Link
+                        key={t}
+                        href={`/analysis?ticker=${t}`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <span className="text-[10px] px-1.5 py-0.5 bg-muted rounded text-muted-foreground hover:text-primary transition-colors">
                           {ev.tickerLabels?.[i] ?? t}
                         </span>
@@ -663,23 +1031,32 @@ export default function CalendarPage() {
                     ))}
                     {ev.holding && (
                       <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                        <TrendingUp size={9} className="text-up" /> 보유 {ev.holding}
+                        <TrendingUp size={9} className="text-up" /> 보유{" "}
+                        {ev.holding}
                       </span>
                     )}
                     {ev.memo > 0 && (
-                      <span className="text-[10px] text-muted-foreground">메모 {ev.memo}개</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        메모 {ev.memo}개
+                      </span>
                     )}
                   </div>
                 </div>
                 <div className="flex flex-col gap-1 flex-shrink-0">
                   <button
-                    onClick={e => { e.stopPropagation(); toast.success("알림이 설정되었습니다"); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toast.success("알림이 설정되었습니다");
+                    }}
                     className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-primary"
                   >
                     <Bell size={14} />
                   </button>
                   <button
-                    onClick={e => { e.stopPropagation(); toast.success("북마크되었습니다"); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toast.success("북마크되었습니다");
+                    }}
                     className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-primary"
                   >
                     <Bookmark size={14} />
@@ -695,14 +1072,21 @@ export default function CalendarPage() {
       <div className="flex items-center gap-4 flex-wrap">
         {Object.entries(TYPE_COLORS).map(([type, cls]) => (
           <div key={type} className="flex items-center gap-1.5">
-            <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0.5", cls)}>{type}</Badge>
+            <Badge
+              variant="outline"
+              className={cn("text-[10px] px-1.5 py-0.5", cls)}
+            >
+              {type}
+            </Badge>
           </div>
         ))}
         <div className="flex items-center gap-3 ml-auto">
           {Object.entries(IMPORTANCE_DOT).map(([imp, cls]) => (
             <div key={imp} className="flex items-center gap-1">
               <div className={cn("w-2 h-2 rounded-full", cls)} />
-              <span className="text-[10px] text-muted-foreground">중요도 {imp}</span>
+              <span className="text-[10px] text-muted-foreground">
+                중요도 {imp}
+              </span>
             </div>
           ))}
         </div>
@@ -711,136 +1095,203 @@ export default function CalendarPage() {
       {/* Event Detail Modal */}
       {selectedEvent && (
         <ModalPortal>
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedEvent(null)} />
-          <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md animate-scale-in">
-            <div className="p-5">
-              <div className="flex items-start justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0.5", TYPE_COLORS[selectedEvent.type] || "")}>
-                    {selectedEvent.type}
-                  </Badge>
-                  <div className={cn("w-2 h-2 rounded-full", IMPORTANCE_DOT[selectedEvent.importance])} />
-                  <span className="text-xs text-muted-foreground">중요도 {selectedEvent.importance}</span>
-                </div>
-                <button onClick={() => setSelectedEvent(null)} className="text-muted-foreground hover:text-foreground">
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div className="flex items-center gap-3 mb-3">
-                <div className="text-center min-w-[48px]">
-                  <div className="text-xs text-muted-foreground">{selectedEvent.day}요일</div>
-                  <div className="text-3xl font-bold font-mono text-foreground">{selectedEvent.date}</div>
-                  <div className="text-xs text-muted-foreground">{selectedEvent.month}월</div>
-                </div>
-                <div className="w-px self-stretch bg-border" />
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-base font-bold text-foreground font-['Outfit']">{selectedEvent.title}</h2>
-                  {selectedEvent.countryCode && (
-                    <span className="text-[10px] text-muted-foreground mt-0.5 inline-block">
-                      국가 {selectedEvent.countryCode}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setSelectedEvent(null)}
+            />
+            <div className="relative bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md animate-scale-in">
+              <div className="p-5">
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-[10px] px-1.5 py-0.5",
+                        TYPE_COLORS[selectedEvent.type] || "",
+                      )}
+                    >
+                      {selectedEvent.type}
+                    </Badge>
+                    <div
+                      className={cn(
+                        "w-2 h-2 rounded-full",
+                        IMPORTANCE_DOT[selectedEvent.importance],
+                      )}
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      중요도 {selectedEvent.importance}
                     </span>
-                  )}
+                  </div>
+                  <button
+                    onClick={() => setSelectedEvent(null)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X size={18} />
+                  </button>
                 </div>
-              </div>
 
-              {/* Actual / Forecast / Previous grid for macro events;
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="text-center min-w-[48px]">
+                    <div className="text-xs text-muted-foreground">
+                      {selectedEvent.day}요일
+                    </div>
+                    <div className="text-3xl font-bold font-mono text-foreground">
+                      {selectedEvent.date}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {selectedEvent.month}월
+                    </div>
+                  </div>
+                  <div className="w-px self-stretch bg-border" />
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-base font-bold text-foreground font-['Outfit']">
+                      {selectedEvent.title}
+                    </h2>
+                    {selectedEvent.countryCode && (
+                      <span className="text-[10px] text-muted-foreground mt-0.5 inline-block">
+                        국가 {selectedEvent.countryCode}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Actual / Forecast / Previous grid for macro events;
                   EPS / 매출 / 배당 for stock events. Only the columns
                   that have a value render so we don't waste space. */}
-              {(selectedEvent.actualValue || selectedEvent.forecastValue || selectedEvent.previousValue) && (
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                  <div className="bg-muted/30 rounded-lg p-2.5 text-center">
-                    <div className="text-[10px] text-muted-foreground mb-1">이전</div>
-                    <div className="text-sm font-mono font-semibold text-muted-foreground">
-                      {selectedEvent.previousValue ?? "—"}
+                {(selectedEvent.actualValue ||
+                  selectedEvent.forecastValue ||
+                  selectedEvent.previousValue) && (
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    <div className="bg-muted/30 rounded-lg p-2.5 text-center">
+                      <div className="text-[10px] text-muted-foreground mb-1">
+                        이전
+                      </div>
+                      <div className="text-sm font-mono font-semibold text-muted-foreground">
+                        {selectedEvent.previousValue ?? "—"}
+                      </div>
+                    </div>
+                    <div className="bg-muted/30 rounded-lg p-2.5 text-center">
+                      <div className="text-[10px] text-muted-foreground mb-1">
+                        예상
+                      </div>
+                      <div className="text-sm font-mono font-semibold">
+                        {selectedEvent.forecastValue ?? "—"}
+                      </div>
+                    </div>
+                    <div className="bg-muted/30 rounded-lg p-2.5 text-center border border-primary/30">
+                      <div className="text-[10px] text-primary mb-1">실제</div>
+                      <div className="text-sm font-mono font-semibold text-primary">
+                        {selectedEvent.actualValue ?? "발표 대기"}
+                      </div>
                     </div>
                   </div>
-                  <div className="bg-muted/30 rounded-lg p-2.5 text-center">
-                    <div className="text-[10px] text-muted-foreground mb-1">예상</div>
-                    <div className="text-sm font-mono font-semibold">
-                      {selectedEvent.forecastValue ?? "—"}
-                    </div>
+                )}
+                {(selectedEvent.cashAmount != null ||
+                  selectedEvent.epsEstimate != null ||
+                  selectedEvent.revenueEstimate != null) && (
+                  <div className="bg-muted/30 rounded-lg p-3 mb-4 space-y-1.5">
+                    {selectedEvent.cashAmount != null && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">주당 배당</span>
+                        <span className="font-mono font-semibold">
+                          {selectedEvent.cashAmount}
+                        </span>
+                      </div>
+                    )}
+                    {selectedEvent.epsEstimate != null && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">EPS 예상</span>
+                        <span className="font-mono font-semibold">
+                          {selectedEvent.epsEstimate}
+                        </span>
+                      </div>
+                    )}
+                    {selectedEvent.revenueEstimate != null && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">매출 예상</span>
+                        <span className="font-mono font-semibold">
+                          {Number(
+                            selectedEvent.revenueEstimate,
+                          ).toLocaleString()}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  <div className="bg-muted/30 rounded-lg p-2.5 text-center border border-primary/30">
-                    <div className="text-[10px] text-primary mb-1">실제</div>
-                    <div className="text-sm font-mono font-semibold text-primary">
-                      {selectedEvent.actualValue ?? "발표 대기"}
-                    </div>
-                  </div>
-                </div>
-              )}
-              {(selectedEvent.cashAmount != null || selectedEvent.epsEstimate != null || selectedEvent.revenueEstimate != null) && (
-                <div className="bg-muted/30 rounded-lg p-3 mb-4 space-y-1.5">
-                  {selectedEvent.cashAmount != null && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">주당 배당</span>
-                      <span className="font-mono font-semibold">{selectedEvent.cashAmount}</span>
-                    </div>
-                  )}
-                  {selectedEvent.epsEstimate != null && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">EPS 예상</span>
-                      <span className="font-mono font-semibold">{selectedEvent.epsEstimate}</span>
-                    </div>
-                  )}
-                  {selectedEvent.revenueEstimate != null && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">매출 예상</span>
-                      <span className="font-mono font-semibold">{Number(selectedEvent.revenueEstimate).toLocaleString()}</span>
-                    </div>
-                  )}
-                </div>
-              )}
+                )}
 
-              {selectedEvent.detail && (
-                <p className="text-sm text-muted-foreground leading-relaxed mb-4">{selectedEvent.detail}</p>
-              )}
+                {selectedEvent.detail && (
+                  <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                    {selectedEvent.detail}
+                  </p>
+                )}
 
-              {selectedEvent.holding && (
-                <div className="flex items-center gap-2 p-3 bg-up/10 border border-up/20 rounded-lg mb-4">
-                  <TrendingUp size={14} className="text-up" />
-                  <span className="text-xs font-medium">내 포트폴리오 보유</span>
-                  <span className="text-sm font-bold text-up ml-auto">{selectedEvent.holding}</span>
-                </div>
-              )}
-
-              <div className="flex gap-2 flex-wrap mb-4">
-                {selectedEvent.tickers.map((t, i) => (
-                  <Link key={t} href={`/analysis?ticker=${t}`} onClick={() => setSelectedEvent(null)}>
-                    <span className="text-xs px-2.5 py-1.5 bg-muted rounded-lg text-foreground hover:text-primary transition-colors font-semibold">
-                      {selectedEvent.tickerLabels?.[i] ?? t} →
+                {selectedEvent.holding && (
+                  <div className="flex items-center gap-2 p-3 bg-up/10 border border-up/20 rounded-lg mb-4">
+                    <TrendingUp size={14} className="text-up" />
+                    <span className="text-xs font-medium">
+                      내 포트폴리오 보유
                     </span>
-                  </Link>
-                ))}
-              </div>
+                    <span className="text-sm font-bold text-up ml-auto">
+                      {selectedEvent.holding}
+                    </span>
+                  </div>
+                )}
 
-              <div className="flex gap-2 pt-3 border-t border-border flex-wrap">
-                <Button variant="outline" size="sm" className="flex-1 gap-1.5 text-xs"
-                  onClick={() => setMemoOpen(true)}>
-                  <StickyNote size={13} /> 메모
-                </Button>
-                <Button variant="outline" size="sm" className="flex-1 gap-1.5 text-xs"
-                  onClick={() => setAlertOpen(true)}>
-                  <Bell size={13} /> 알림 설정
-                </Button>
-                <Button variant="outline" size="sm" className="flex-1 gap-1.5 text-xs"
-                  onClick={() => {
-                    const id = String(selectedEvent.id);
-                    if (isBookmarked("report" /* events reuse same set */, id)) {
-                      removeBookmark("report", id);
-                      toast.info("북마크 해제");
-                    } else {
-                      addBookmark("report", id);
-                      toast.success("북마크되었습니다");
-                    }
-                  }}>
-                  <Star size={13} /> 북마크
-                </Button>
+                <div className="flex gap-2 flex-wrap mb-4">
+                  {selectedEvent.tickers.map((t, i) => (
+                    <Link
+                      key={t}
+                      href={`/analysis?ticker=${t}`}
+                      onClick={() => setSelectedEvent(null)}
+                    >
+                      <span className="text-xs px-2.5 py-1.5 bg-muted rounded-lg text-foreground hover:text-primary transition-colors font-semibold">
+                        {selectedEvent.tickerLabels?.[i] ?? t} →
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+
+                <div className="flex gap-2 pt-3 border-t border-border flex-wrap">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 gap-1.5 text-xs"
+                    onClick={() => setMemoOpen(true)}
+                  >
+                    <StickyNote size={13} /> 메모
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 gap-1.5 text-xs"
+                    onClick={() => setAlertOpen(true)}
+                  >
+                    <Bell size={13} /> 알림 설정
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 gap-1.5 text-xs"
+                    onClick={() => {
+                      const id = String(selectedEvent.id);
+                      if (
+                        isBookmarked("report" /* events reuse same set */, id)
+                      ) {
+                        removeBookmark("report", id);
+                        toast.info("북마크 해제");
+                      } else {
+                        addBookmark("report", id);
+                        toast.success("북마크되었습니다");
+                      }
+                    }}
+                  >
+                    <Star size={13} /> 북마크
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
         </ModalPortal>
       )}
       {selectedEvent && (

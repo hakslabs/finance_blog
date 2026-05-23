@@ -16,18 +16,25 @@ export interface Alert {
 
 export const alertsService = {
   list: (symbol?: string) =>
-    apiGet<{ items: Alert[] }>(`/me/alerts${symbol ? `?symbol=${encodeURIComponent(symbol)}` : ""}`),
+    apiGet<{ items: Alert[] }>(
+      `/me/alerts${symbol ? `?symbol=${encodeURIComponent(symbol)}` : ""}`,
+    ),
   create: (body: Omit<Alert, "id" | "created_at" | "triggered_at">) =>
     apiPost<Alert>(`/me/alerts`, body),
-  update: (id: string, body: Partial<Pick<Alert, "condition" | "target_value" | "is_active">>) =>
-    apiPatch<Alert>(`/me/alerts/${id}`, body),
+  update: (
+    id: string,
+    body: Partial<Pick<Alert, "condition" | "target_value" | "is_active">>,
+  ) => apiPatch<Alert>(`/me/alerts/${id}`, body),
   remove: (id: string) => apiDelete<void>(`/me/alerts/${id}`),
 };
 
 export function useAlerts(symbol?: string) {
   const { user } = useAuth();
   return useAsync(
-    () => (user ? alertsService.list(symbol).then((r) => r.items) : Promise.resolve([])),
+    () =>
+      user
+        ? alertsService.list(symbol).then((r) => r.items)
+        : Promise.resolve([]),
     [user?.id, symbol ?? ""],
     [],
   );

@@ -10,5 +10,6 @@ export interface UserPreferences {
 
 export const preferencesService = {
   get: () => apiGet<UserPreferences>(`/me/preferences`),
-  patch: (body: Partial<UserPreferences>) => apiPatch<UserPreferences>(`/me/preferences`, body),
+  patch: (body: Partial<UserPreferences>) =>
+    apiPatch<UserPreferences>(`/me/preferences`, body),
 };

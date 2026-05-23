@@ -12,14 +12,18 @@ export interface Notification {
 }
 
 export const notificationsService = {
-  list: (limit = 30) => apiGet<{ items: Notification[] }>(`/me/notifications?limit=${limit}`),
+  list: (limit = 30) =>
+    apiGet<{ items: Notification[] }>(`/me/notifications?limit=${limit}`),
   markRead: (id: string) => apiPatch<void>(`/me/notifications/${id}/read`),
 };
 
 export function useNotifications(limit = 30) {
   const { user } = useAuth();
   return useAsync(
-    () => (user ? notificationsService.list(limit).then((r) => r.items) : Promise.resolve([])),
+    () =>
+      user
+        ? notificationsService.list(limit).then((r) => r.items)
+        : Promise.resolve([]),
     [user?.id, limit],
     [],
   );

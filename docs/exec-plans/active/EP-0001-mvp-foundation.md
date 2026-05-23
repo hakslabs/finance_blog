@@ -224,7 +224,7 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 
 ### PR-17 — Schema master plan (design only)
 
-> **Status note.** Wireframes are being revised at the time of writing. This section captures the *structure and decisions*, not finalized table/column shapes. Do **not** convert into migrations until wires settle and the affected screens stop moving. When that happens, split into migrations 0004–0011 per the order below.
+> **Status note.** Wireframes are being revised at the time of writing. This section captures the _structure and decisions_, not finalized table/column shapes. Do **not** convert into migrations until wires settle and the affected screens stop moving. When that happens, split into migrations 0004–0011 per the order below.
 
 - [x] Scope: Produce a complete, layered schema plan that covers (a) every entity the current UI renders from fixtures, (b) the raw market/macro data the ingestion pipeline will collect, and (c) how the two combine to drive charts and analysis. The plan must be sufficient to slice into migration-sized PRs once wires settle.
 - [x] Required Reading: `web/src/fixtures/*.ts`, `web/src/routes/*` route files, `docs/design-docs/data-sources.md`, `docs/design-docs/first-real-data.md`, `docs/design-docs/prices-ingestion-schema.md`, all existing migrations under `supabase/migrations/`.
@@ -251,9 +251,9 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 
 **Open decision points (answer before slicing into migrations):**
 
-1. Indices as `instruments` rows vs a separate `indices` table — leaning *separate* because constituent membership is index-specific.
-2. `financial_lines` shape — long with a line-code book vs wide columns. Leaning *long* to absorb KR/US accounting differences.
-3. `memos` polymorphism — single table with `(target_kind, target_id)` + check constraint vs one table per target. Leaning *single*.
+1. Indices as `instruments` rows vs a separate `indices` table — leaning _separate_ because constituent membership is index-specific.
+2. `financial_lines` shape — long with a line-code book vs wide columns. Leaning _long_ to absorb KR/US accounting differences.
+3. `memos` polymorphism — single table with `(target_kind, target_id)` + check constraint vs one table per target. Leaning _single_.
 4. Whether wireframe revisions invalidate any of these tiers (e.g., if reports/masters get cut, drop the matching tiers from migration scope).
 
 **Migration slicing (locked once plan is approved):**
@@ -297,7 +297,7 @@ Each migration ships with RLS policies, grants, indexes, and `updated_at` trigge
 - [x] Scope: Third migration slice from PR-17 — lock the TIER-2 raw-ingest surface so analysis/dashboard widgets can wire against stable identifiers without waiting on the actual data pipelines. **No row collection here**; the user explicitly capped this PR at schema-only because of free-tier storage budget. The S&P 500 / NASDAQ / KOSPI 200 bars themselves come in a later ingestion PR.
 - [x] Required Reading: `docs/design-docs/schema-master-plan.md` §2 (TIER-2 row), `docs/design-docs/prices-ingestion-schema.md`, `design/wires-v3/wire-home.jsx` (지수/매크로 strip), `design/wires-v3/wire-analysis.jsx` (시장 심리·금리 경로).
 - [x] Files: `supabase/migrations/0006_market_data_extend.sql`.
-- [x] Acceptance: Migration is idempotent and adds (1) `price_bars_daily.adj_c`, (2) `corporate_actions`, (3) `fx_rates_daily`, (4) `macro_series` + `macro_observations`, (5) `fear_greed_daily`, (6) `index_bars_daily`. All tables enable RLS with public-read + service-role-write. Includes a small `indices` catalog seed (KOSPI/KOSPI200/KOSDAQ/SPX/NDX/IXIC/DJI) — guarded with `on conflict (code) do nothing` so reruns are safe. Applies cleanly to local *and* remote Supabase via `db push`.
+- [x] Acceptance: Migration is idempotent and adds (1) `price_bars_daily.adj_c`, (2) `corporate_actions`, (3) `fx_rates_daily`, (4) `macro_series` + `macro_observations`, (5) `fear_greed_daily`, (6) `index_bars_daily`. All tables enable RLS with public-read + service-role-write. Includes a small `indices` catalog seed (KOSPI/KOSPI200/KOSDAQ/SPX/NDX/IXIC/DJI) — guarded with `on conflict (code) do nothing` so reruns are safe. Applies cleanly to local _and_ remote Supabase via `db push`.
 - [x] Out Of Scope: actual bar/observation row ingestion (later PR), adj_c recomputation job, KRX/Polygon vendor adapters, intraday bars.
 
 ### PR-21 — Migration 0007: fundamentals (schema only)
@@ -370,7 +370,7 @@ Each migration ships with RLS policies, grants, indexes, and `updated_at` trigge
 ### PR-28 — SEC 13F holdings ingestion + master detail wire
 
 - [x] Scope: Populate the empty `filings` / `filing_holdings` tables so `master_filings` view returns real data, then wire `MasterDetailPage` to render it.
-  - `api/app/sources/sec.py` — `list_filings_by_form`, `fetch_information_table` (parse 13F XML; strip xsi:* attrs and ns: prefixes so plain ElementTree works).
+  - `api/app/sources/sec.py` — `list_filings_by_form`, `fetch_information_table` (parse 13F XML; strip xsi:\* attrs and ns: prefixes so plain ElementTree works).
   - `api/app/jobs/ingest_13f.py` — orchestrator. Per master with `filer_cik`: pull latest 13F-HR, parse, resolve instruments by CUSIP via `instrument_aliases` (auto-create `CUSIP-XXXXXXXXX` placeholder instruments when unknown), upsert `filings` + `filing_holdings` with aggregated weights.
   - `/v1/internal/cron/ingest-13f` cron route.
   - `/v1/masters/{slug}/holdings` read endpoint — joins `master_filings` view with `instruments` for symbol/name enrichment, returns latest-filing rows sorted by weight.
@@ -428,13 +428,13 @@ Each migration ships with RLS policies, grants, indexes, and `updated_at` trigge
   - `api/app/jobs/ingest_13f.py` — collapse holdings dedup from `(instrument_id, position_kind)` to `instrument_id` only. The `filing_holdings` PK is `(filing_id, instrument_id)`, so an issuer that appears both as common stock and as options (Marks, Klarman) was triggering a `21000` cardinality violation. Surviving position label uses priority long > call > put; shares and market value are summed.
 - [x] Acceptance: All 8 masters now ingest cleanly against remote. Per-filing holdings counts: Marks 140–177, Pabrai 3–5, Klarman 22–36 (previously had 1 of 4 fail), Burry/Buffett/Ackman/Munger/Einhorn unchanged.
 
-### PR-36 — CUSIP-* placeholder backfill via OpenFIGI
+### PR-36 — CUSIP-\* placeholder backfill via OpenFIGI
 
 - [x] Scope: Resolve the `CUSIP-<digits>` placeholder instruments that `ingest_13f` created when a CUSIP had no alias yet, so master-detail holdings tables show real tickers/names instead of opaque CUSIP slugs.
-  - `scripts/backfill_cusip_placeholders.py` — pulls all CUSIP-* placeholders, batches CUSIPs through OpenFIGI (free, unauth: 10/req @ 25 req/min), picks the best US-exchange equity record, then for each match: gets-or-creates the real instrument, replaces the stale `cusip` alias, rewrites `filing_holdings.instrument_id` to the real id (merging shares + market value on PK collision), and drops the now-orphan placeholder.
+  - `scripts/backfill_cusip_placeholders.py` — pulls all CUSIP-\* placeholders, batches CUSIPs through OpenFIGI (free, unauth: 10/req @ 25 req/min), picks the best US-exchange equity record, then for each match: gets-or-creates the real instrument, replaces the stale `cusip` alias, rewrites `filing_holdings.instrument_id` to the real id (merging shares + market value on PK collision), and drops the now-orphan placeholder.
 - [x] Run against remote: 396/440 CUSIPs resolved by OpenFIGI (90%); of those, 207 mapped to a US exchange and were retired (505 holdings moved to real instruments). 189 OpenFIGI matches were foreign-only listings (LN/HK/etc — typically delisted/restructured names) and 44 returned no OpenFIGI hit at all; both groups are left in place as `CUSIP-*` for a future manual or paid-source pass.
 - [x] Acceptance: 233 placeholders remain (down from 440); script is idempotent (next 13F ingest reuses the new aliases instead of recreating placeholders).
-- [x] Follow-up — `scripts/backfill_cusip_by_name.py` runs a second pass that searches OpenFIGI by issuer *name* (scoped to `exchCode="US"`) and accepts only matches whose normalized name overlaps ≥60% with the placeholder. Caught the foreign issuers and bond-CUSIP-shaped entries the first pass missed: 170/233 retired (429 more holdings rewritten — 389 moved + 40 merged). 63 placeholders remain (delisted/restructured names like ConsolEnergy NEW, NEW YORK CMNTY BANCORP, IMMUNOCORE pre-merger; out of scope without a paid CUSIP-history source). Cumulative: **377/440 (86%) of original placeholders retired, 934 holdings now point at real instruments.**
+- [x] Follow-up — `scripts/backfill_cusip_by_name.py` runs a second pass that searches OpenFIGI by issuer _name_ (scoped to `exchCode="US"`) and accepts only matches whose normalized name overlaps ≥60% with the placeholder. Caught the foreign issuers and bond-CUSIP-shaped entries the first pass missed: 170/233 retired (429 more holdings rewritten — 389 moved + 40 merged). 63 placeholders remain (delisted/restructured names like ConsolEnergy NEW, NEW YORK CMNTY BANCORP, IMMUNOCORE pre-merger; out of scope without a paid CUSIP-history source). Cumulative: **377/440 (86%) of original placeholders retired, 934 holdings now point at real instruments.**
 
 ### PR-37 — Analyst price targets via Alpha Vantage OVERVIEW
 

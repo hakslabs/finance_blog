@@ -31,7 +31,9 @@ export interface StockMiniChartProps {
 
 function readToken(name: string, fallback: string): string {
   if (typeof window === "undefined") return fallback;
-  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const v = getComputedStyle(document.documentElement)
+    .getPropertyValue(name)
+    .trim();
   return v || fallback;
 }
 
@@ -67,19 +69,31 @@ export default function StockMiniChart({
       let ts = NaN;
       if (p.date != null) {
         const s = String(p.date);
-        const parsed = new Date(s + (/^\d{4}-\d{2}-\d{2}$/.test(s) ? "T00:00:00Z" : "")).getTime();
+        const parsed = new Date(
+          s + (/^\d{4}-\d{2}-\d{2}$/.test(s) ? "T00:00:00Z" : ""),
+        ).getTime();
         if (Number.isFinite(parsed)) ts = parsed;
       }
-      if (!Number.isFinite(ts)) ts = todayMs - (data.length - 1 - i) * 86_400_000;
+      if (!Number.isFinite(ts))
+        ts = todayMs - (data.length - 1 - i) * 86_400_000;
       // Area mode uses `close` only; open/high/low mirror it so candle metrics
       // stay valid if klinecharts ever needs them.
-      return { timestamp: ts, open: p.value, high: p.value, low: p.value, close: p.value };
+      return {
+        timestamp: ts,
+        open: p.value,
+        high: p.value,
+        low: p.value,
+        close: p.value,
+      };
     });
   }, [data]);
 
   useEffect(() => {
     if (!containerRef.current) return;
-    const muted = readToken("--muted-foreground", isDark ? "#9ca3af" : "#6b7280");
+    const muted = readToken(
+      "--muted-foreground",
+      isDark ? "#9ca3af" : "#6b7280",
+    );
     const border = readToken("--border", isDark ? "#1f2937" : "#e5e7eb");
 
     const chart = init(containerRef.current, {
@@ -101,49 +115,206 @@ export default function StockMiniChart({
                     { offset: 0, color: trendColor + "00" },
                     { offset: 1, color: trendColor + "00" },
                   ],
-            point: { show: false, color: trendColor, radius: 2, rippleRadius: 4, rippleColor: trendColor },
+            point: {
+              show: false,
+              color: trendColor,
+              radius: 2,
+              rippleRadius: 4,
+              rippleColor: trendColor,
+            },
           },
           priceMark: {
             show: false,
-            high: { show: false, color: muted, textOffset: 0, textSize: 9, textFamily: "Helvetica", textWeight: "normal" },
-            low:  { show: false, color: muted, textOffset: 0, textSize: 9, textFamily: "Helvetica", textWeight: "normal" },
-            last: { show: false, upColor: trendColor, downColor: trendColor, noChangeColor: muted,
-              line: { show: false, style: "dashed", dashedValue: [3, 3], size: 1 },
-              text: { show: false, size: 9, paddingLeft: 2, paddingRight: 2, paddingTop: 1, paddingBottom: 1,
-                style: "fill", color: "#fff", borderColor: "transparent", borderStyle: "solid", borderSize: 0, borderRadius: 2,
-                backgroundColor: trendColor, family: "Helvetica", weight: "normal" } },
+            high: {
+              show: false,
+              color: muted,
+              textOffset: 0,
+              textSize: 9,
+              textFamily: "Helvetica",
+              textWeight: "normal",
+            },
+            low: {
+              show: false,
+              color: muted,
+              textOffset: 0,
+              textSize: 9,
+              textFamily: "Helvetica",
+              textWeight: "normal",
+            },
+            last: {
+              show: false,
+              upColor: trendColor,
+              downColor: trendColor,
+              noChangeColor: muted,
+              line: {
+                show: false,
+                style: "dashed",
+                dashedValue: [3, 3],
+                size: 1,
+              },
+              text: {
+                show: false,
+                size: 9,
+                paddingLeft: 2,
+                paddingRight: 2,
+                paddingTop: 1,
+                paddingBottom: 1,
+                style: "fill",
+                color: "#fff",
+                borderColor: "transparent",
+                borderStyle: "solid",
+                borderSize: 0,
+                borderRadius: 2,
+                backgroundColor: trendColor,
+                family: "Helvetica",
+                weight: "normal",
+              },
+            },
           },
           tooltip: {
             showRule: interactive ? "follow_cross" : "none",
             showType: "standard",
-            offsetLeft: 4, offsetTop: 4, offsetRight: 4, offsetBottom: 4,
-            title: { show: false, color: muted, size: 10, weight: "normal", family: "Helvetica", marginLeft: 0, marginRight: 0, marginTop: 0, marginBottom: 2, template: "" },
-            legend: { color: muted, size: 10, weight: "normal", family: "Helvetica", marginLeft: 0, marginRight: 0, marginTop: 0, marginBottom: 0 },
+            offsetLeft: 4,
+            offsetTop: 4,
+            offsetRight: 4,
+            offsetBottom: 4,
+            title: {
+              show: false,
+              color: muted,
+              size: 10,
+              weight: "normal",
+              family: "Helvetica",
+              marginLeft: 0,
+              marginRight: 0,
+              marginTop: 0,
+              marginBottom: 2,
+              template: "",
+            },
+            legend: {
+              color: muted,
+              size: 10,
+              weight: "normal",
+              family: "Helvetica",
+              marginLeft: 0,
+              marginRight: 0,
+              marginTop: 0,
+              marginBottom: 0,
+            },
           },
         },
         grid: {
           show: false,
-          horizontal: { show: false, color: border, style: "dashed", dashedValue: [2, 4], size: 1 },
-          vertical:   { show: false, color: border, style: "dashed", dashedValue: [2, 4], size: 1 },
+          horizontal: {
+            show: false,
+            color: border,
+            style: "dashed",
+            dashedValue: [2, 4],
+            size: 1,
+          },
+          vertical: {
+            show: false,
+            color: border,
+            style: "dashed",
+            dashedValue: [2, 4],
+            size: 1,
+          },
         },
-        xAxis: { show: false, axisLine: { show: false, color: border, size: 1 },
-          tickLine: { show: false, color: border, size: 1, length: 3 },
-          tickText: { show: false, color: muted, family: "Helvetica", weight: "normal", size: 9, marginStart: 2, marginEnd: 2 } },
-        yAxis: { show: showAxis, position: "right", inside: false, reverse: false, size: showAxis ? 36 : 0,
+        xAxis: {
+          show: false,
           axisLine: { show: false, color: border, size: 1 },
           tickLine: { show: false, color: border, size: 1, length: 3 },
-          tickText: { show: showAxis, color: muted, family: "Helvetica", weight: "normal", size: 9, marginStart: 2, marginEnd: 2 } },
-        separator: { size: 0, color: border, fill: true, activeBackgroundColor: "transparent" },
+          tickText: {
+            show: false,
+            color: muted,
+            family: "Helvetica",
+            weight: "normal",
+            size: 9,
+            marginStart: 2,
+            marginEnd: 2,
+          },
+        },
+        yAxis: {
+          show: showAxis,
+          position: "right",
+          inside: false,
+          reverse: false,
+          size: showAxis ? 36 : 0,
+          axisLine: { show: false, color: border, size: 1 },
+          tickLine: { show: false, color: border, size: 1, length: 3 },
+          tickText: {
+            show: showAxis,
+            color: muted,
+            family: "Helvetica",
+            weight: "normal",
+            size: 9,
+            marginStart: 2,
+            marginEnd: 2,
+          },
+        },
+        separator: {
+          size: 0,
+          color: border,
+          fill: true,
+          activeBackgroundColor: "transparent",
+        },
         crosshair: {
           show: interactive,
-          horizontal: { show: false, line: { show: false, style: "dashed", dashedValue: [3, 3], size: 1, color: muted },
-            text: { show: false, style: "fill", color: "#fff", size: 9, family: "Helvetica", weight: "normal",
-              borderStyle: "solid", borderDashedValue: [], borderSize: 0, borderColor: "transparent", borderRadius: 2,
-              paddingLeft: 2, paddingRight: 2, paddingTop: 1, paddingBottom: 1, backgroundColor: muted } },
-          vertical: { show: interactive, line: { show: true, style: "dashed", dashedValue: [3, 3], size: 1, color: muted },
-            text: { show: false, style: "fill", color: "#fff", size: 9, family: "Helvetica", weight: "normal",
-              borderStyle: "solid", borderDashedValue: [], borderSize: 0, borderColor: "transparent", borderRadius: 2,
-              paddingLeft: 2, paddingRight: 2, paddingTop: 1, paddingBottom: 1, backgroundColor: muted } },
+          horizontal: {
+            show: false,
+            line: {
+              show: false,
+              style: "dashed",
+              dashedValue: [3, 3],
+              size: 1,
+              color: muted,
+            },
+            text: {
+              show: false,
+              style: "fill",
+              color: "#fff",
+              size: 9,
+              family: "Helvetica",
+              weight: "normal",
+              borderStyle: "solid",
+              borderDashedValue: [],
+              borderSize: 0,
+              borderColor: "transparent",
+              borderRadius: 2,
+              paddingLeft: 2,
+              paddingRight: 2,
+              paddingTop: 1,
+              paddingBottom: 1,
+              backgroundColor: muted,
+            },
+          },
+          vertical: {
+            show: interactive,
+            line: {
+              show: true,
+              style: "dashed",
+              dashedValue: [3, 3],
+              size: 1,
+              color: muted,
+            },
+            text: {
+              show: false,
+              style: "fill",
+              color: "#fff",
+              size: 9,
+              family: "Helvetica",
+              weight: "normal",
+              borderStyle: "solid",
+              borderDashedValue: [],
+              borderSize: 0,
+              borderColor: "transparent",
+              borderRadius: 2,
+              paddingLeft: 2,
+              paddingRight: 2,
+              paddingTop: 1,
+              paddingBottom: 1,
+              backgroundColor: muted,
+            },
+          },
         },
       } as any,
     });

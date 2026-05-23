@@ -8,7 +8,8 @@ export interface WatchlistItem {
 }
 
 export const watchlistsService = {
-  me: () => apiGet<{ id: string | null; items: WatchlistItem[] }>(`/watchlists/me`),
+  me: () =>
+    apiGet<{ id: string | null; items: WatchlistItem[] }>(`/watchlists/me`),
   add: (item: { symbol: string; exchange?: string; note?: string }) =>
     apiPost<WatchlistItem>(`/watchlists/me/items`, item),
   remove: (symbol: string) =>
