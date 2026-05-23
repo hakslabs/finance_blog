@@ -129,217 +129,17 @@ function buildBarsRows(bars: { date: string; open: number; high: number; low: nu
   });
 }
 
-function generatePriceData(days = 90, trend: "up" | "down" | "flat" = "up") {
-  const data: Array<{
-    day: number; label: string; date: string;
-    close: number; open: number; high: number; low: number;
-    candleBody: [number, number]; candleWick: [number, number]; isUp: boolean;
-    volume: number;
-    ma5: number; ma20: number; ma60: number;
-    bbUpper: number; bbMiddle: number; bbLower: number;
-    macdLine: number; signalLine: number; histogram: number;
-    rsi: number;
-    stochK: number; stochD: number;
-  }> = [];
-
-  let close = 100;
-  let prevRsi = 50;
-  let prevK = 50;
-
-  for (let i = 0; i < days; i++) {
-    const drift = trend === "up" ? 0.003 : trend === "down" ? -0.003 : 0;
-    const change = drift + (Math.random() - 0.5) * 0.04;
-    const open = close;
-    close = Math.max(50, close * (1 + change));
-    const high = Math.max(open, close) * (1 + Math.random() * 0.015);
-    const low = Math.min(open, close) * (1 - Math.random() * 0.015);
-    const volume = Math.floor(Math.random() * 80 + 20);
-
-    // Simple approximations for indicators
-    const ma5 = close * (1 + (Math.random() - 0.5) * 0.01);
-    const ma20 = close * (1 + (Math.random() - 0.5) * 0.025);
-    const ma60 = close * (1 + (Math.random() - 0.5) * 0.04);
-    const bbMiddle = ma20;
-    const bbStd = close * 0.025;
-    const bbUpper = bbMiddle + 2 * bbStd;
-    const bbLower = bbMiddle - 2 * bbStd;
-
-    // MACD approximation
-    const macdLine = (ma5 - ma20) / close * 100;
-    const signalLine = macdLine * 0.85 + (Math.random() - 0.5) * 0.3;
-    const histogram = macdLine - signalLine;
-
-    // RSI approximation (stays between 20-80)
-    const rsiChange = (Math.random() - 0.5) * 8;
-    const rsi = Math.max(20, Math.min(80, prevRsi + rsiChange));
-    prevRsi = rsi;
-
-    // Stochastic
-    const kChange = (Math.random() - 0.5) * 12;
-    const stochK = Math.max(5, Math.min(95, prevK + kChange));
-    const stochD = stochK * 0.9 + (Math.random() - 0.5) * 3;
-    prevK = stochK;
-
-    const date = new Date(2025, 0, 1);
-    date.setDate(date.getDate() + i);
-    const label = `${date.getMonth() + 1}/${date.getDate()}`;
-
-    const isUp = close >= open;
-    data.push({
-      day: i + 1, label, date: date.toISOString().slice(0, 10),
-      close, open, high, low,
-      candleBody: [open, close],
-      candleWick: [low, high],
-      isUp,
-      volume,
-      ma5, ma20, ma60,
-      bbUpper, bbMiddle, bbLower,
-      macdLine, signalLine, histogram,
-      rsi, stochK, stochD,
-    });
-  }
-  return data;
-}
-
-// ── Indicator config ───────────────────────────────────────────
-type IndicatorKey = "ma" | "bb" | "vol" | "macd" | "rsi" | "stoch";
-const INDICATOR_LABELS: Record<IndicatorKey, string> = {
-  ma: "MA", bb: "BB(20,2)", vol: "Vol", macd: "MACD", rsi: "RSI", stoch: "Stoch",
-};
-type IndicatorSet = Record<IndicatorKey, boolean>;
-const DEFAULT_INDICATORS: IndicatorSet = {
-  ma: true, bb: false, vol: true, macd: false, rsi: false, stoch: false,
-};
-
-type PeriodKey = "1W" | "1M" | "3M" | "6M" | "1Y" | "2Y" | "5Y";
-const PERIOD_DAYS: Record<PeriodKey, number> = {
-  "1W": 7, "1M": 22, "3M": 66, "6M": 130, "1Y": 252, "2Y": 504, "5Y": 1300,
-};
-const PERIOD_ORDER: PeriodKey[] = ["1W", "1M", "3M", "6M", "1Y", "2Y", "5Y"];
-
-const PALETTE = {
-  up: "#22c55e", down: "#ef4444",
-  ma5: "#FBBF24", ma20: "#A78BFA", ma60: "#F87171",
-  bb: "#38BDF8", macd: "#38BDF8", signal: "#F87171",
-  rsi: "#A78BFA", stochK: "#FBBF24", stochD: "#F87171",
-};
-
-// ── Candlestick renderer (Customized) ──────────────────────────
-// Recharts has no built-in candle. We render via <Customized>, which
-// receives the full chart state including the y-scale and the per-bar
-// x-positions from the price Bar series. Drawing rectangles + a thin
-// wick line per bar gives us the classic OHLC look without dragging
-// a heavy charting lib in.
-function Candles({ chartData }: { chartData: any[] }) {
-  return function CandleLayer(props: any) {
-    const xMap = props.xAxisMap as Record<string, any> | undefined;
-    const yMap = props.yAxisMap as Record<string, any> | undefined;
-    if (!xMap || !yMap) return null;
-    const xAxis = Object.values(xMap)[0] as any;
-    const yAxis = Object.values(yMap)[0] as any;
-    if (!xAxis?.scale || !yAxis?.scale) return null;
-    const slot = xAxis.bandSize ?? 8;
-    const bodyW = Math.max(1, Math.min(slot * 0.7, 8));
-    return (
-      <g>
-        {chartData.map((d, i) => {
-          const cx = xAxis.scale(d.label) + slot / 2;
-          if (cx == null || isNaN(cx)) return null;
-          const yHigh = yAxis.scale(d.high);
-          const yLow = yAxis.scale(d.low);
-          const yOpen = yAxis.scale(d.open);
-          const yClose = yAxis.scale(d.close);
-          const color = d.isUp ? PALETTE.up : PALETTE.down;
-          const top = Math.min(yOpen, yClose);
-          const h = Math.max(1, Math.abs(yClose - yOpen));
-          return (
-            <g key={i}>
-              <line x1={cx} x2={cx} y1={yHigh} y2={yLow} stroke={color} strokeWidth={1} />
-              <rect x={cx - bodyW / 2} y={top} width={bodyW} height={h} fill={color} />
-            </g>
-          );
-        })}
-      </g>
-    );
-  };
-}
-
-// ── Hover info strip ──────────────────────────────────────────
-// Compact OHLC + indicators row above the chart that updates as the
-// cursor moves across any synced pane. Mirrors TradingView's top-left
-// data legend so the user never has to mouse-hunt for a tooltip.
-function HoverInfo({
-  data, idx, indicators, currency,
-}: {
-  data: any[]; idx: number | null; indicators: IndicatorSet; currency: string;
-}) {
-  const d = idx != null && idx >= 0 && idx < data.length ? data[idx] : data[data.length - 1];
-  if (!d) return null;
-  const pctVsPrev = (() => {
-    const prevIdx = (idx ?? data.length - 1) - 1;
-    if (prevIdx < 0) return 0;
-    const prev = data[prevIdx];
-    return prev ? ((d.close - prev.close) / prev.close) * 100 : 0;
-  })();
-  const fmt = (v: number | undefined, digits = 2) =>
-    v == null || isNaN(v) ? "—" : v.toLocaleString(undefined, { maximumFractionDigits: digits, minimumFractionDigits: digits });
-  const items: { label: string; value: string; color?: string }[] = [
-    { label: "O", value: fmt(d.open), color: "text-muted-foreground" },
-    { label: "H", value: fmt(d.high), color: "text-up" },
-    { label: "L", value: fmt(d.low), color: "text-down" },
-    { label: "C", value: fmt(d.close), color: d.isUp ? "text-up" : "text-down" },
-    { label: "Δ", value: `${pctVsPrev >= 0 ? "+" : ""}${fmt(pctVsPrev)}%`, color: pctVsPrev >= 0 ? "text-up" : "text-down" },
-  ];
-  if (indicators.ma) {
-    items.push({ label: "MA5", value: fmt(d.ma5), color: "" });
-    items.push({ label: "MA20", value: fmt(d.ma20), color: "" });
-    items.push({ label: "MA60", value: fmt(d.ma60), color: "" });
-  }
-  if (indicators.bb) {
-    items.push({ label: "BB↑", value: fmt(d.bbUpper) });
-    items.push({ label: "BB↓", value: fmt(d.bbLower) });
-  }
-  if (indicators.rsi) items.push({ label: "RSI", value: fmt(d.rsi, 1) });
-  if (indicators.macd) items.push({ label: "MACD", value: fmt(d.macdLine, 3) });
-  return (
-    <div className="px-3 py-2 border-b border-border flex items-center gap-x-3 gap-y-1 text-[11px] flex-wrap bg-muted/10">
-      <span className="text-xs font-mono-num font-semibold text-foreground">{d.date || d.label}</span>
-      <span className="text-[10px] text-muted-foreground">{currency}</span>
-      {items.map((it) => (
-        <span key={it.label} className="flex items-center gap-1">
-          <span className="text-[10px] text-muted-foreground">{it.label}</span>
-          <span className={cn("font-mono-num font-medium", it.color)}>{it.value}</span>
-        </span>
-      ))}
-    </div>
-  );
-}
-
-// Single chip used in the indicator toolbar.
-function Chip({ on, label, onClick, color }: { on: boolean; label: string; onClick: () => void; color?: string }) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "text-[11px] px-2 py-0.5 rounded border transition-all font-medium",
-        on
-          ? "border-primary/40 bg-primary/10 text-primary"
-          : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40",
-      )}
-      style={on && color ? { color, borderColor: color + "66", background: color + "1a" } : undefined}
-    >{label}</button>
-  );
-}
+// Number of daily bars to load per chart period. StockChart owns its own
+// period UI; this only feeds the Tab 3 "Technical Signals" panel below,
+// which reads the latest computed indicators off the bars.
+const BARS_FOR_SIGNALS = 130; // ~6 months — enough for stable MA/RSI/MACD.
 
 // ── Main Component ─────────────────────────────────────────────
 export default function StockDetail() {
   const params = useParams<{ ticker: string }>();
   const ticker = params.ticker?.toUpperCase() ?? "";
 
-  const [chartPeriod, setChartPeriod] = useState<PeriodKey>("3M");
   const [activeTab, setActiveTab] = useState(0);
-  const [indicators, setIndicators] = useState<IndicatorSet>(DEFAULT_INDICATORS);
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [alertOpen, setAlertOpen] = useState(false);
   const { isWatched, toggleWatchlist } = useWatchlist();
 
@@ -377,12 +177,9 @@ export default function StockDetail() {
     !fromList && ticker ? ticker : undefined,
   );
 
-  const days = PERIOD_DAYS[chartPeriod] ?? 66;
-
-  // Real OHLCV from the bars endpoint. We always try to load real bars;
-  // fall back to the mock generator while loading or if the endpoint is
-  // empty, so the chart shape is always populated.
-  const { data: barsData } = useStockBars(ticker || undefined, days);
+  // Real OHLCV — the main chart manages its own period; we pull just
+  // enough bars here to power the header price/change and Tab 3 signals.
+  const { data: barsData } = useStockBars(ticker || undefined, BARS_FOR_SIGNALS);
   const isKrTicker = /^\d/.test(ticker);
   // For KR tickers Finnhub returns nothing, so when bars resolved we
   // still want a render — synthesize the Stock from the ticker alone.
@@ -430,24 +227,12 @@ export default function StockDetail() {
     : undefined;
 
   const up = stock ? stock.changePct >= 0 : true;
-  const chartData = useMemo(() => {
-    if (barsData && barsData.length > 5) return buildBarsRows(barsData);
-    return generatePriceData(days, up ? "up" : "down");
-  }, [barsData, days, up]);
-
-  const toggle = (k: IndicatorKey) =>
-    setIndicators((prev) => ({ ...prev, [k]: !prev[k] }));
-  const currency = stock?.country === "KR" ? "KRW" : "USD";
-
-  // Sync the active cursor across all panes. Recharts `syncId` shares
-  // the vertical crosshair across charts sharing the id; we also use
-  // local hover state to drive the data-legend strip above.
-  const SYNC_ID = `sd-${ticker}`;
-  const onMove = (e: any) => {
-    if (e?.activeTooltipIndex != null) setHoveredIdx(e.activeTooltipIndex);
-  };
-  const onLeave = () => setHoveredIdx(null);
-  const tickInterval = Math.max(0, Math.floor((chartData?.length ?? 0) / 8));
+  // Tab 3 "Technical Signals" reads the latest computed indicators from
+  // the bars. Empty until bars resolve — Tab 3 renders defensively.
+  const chartData = useMemo(
+    () => (barsData && barsData.length > 5 ? buildBarsRows(barsData) : []),
+    [barsData],
+  );
 
   if (!stock) {
     // Still resolving the profile? Render a skeleton instead of the
@@ -631,12 +416,12 @@ export default function StockDetail() {
       {activeTab === 3 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {[
-            { label: "RSI (14)", value: chartData[chartData.length - 1]?.rsi.toFixed(1) ?? "62.4", desc: "중립 구간 (30-70)", status: "중립" },
-            { label: "MACD", value: chartData[chartData.length - 1]?.macdLine.toFixed(3) ?? "+2.14", desc: "시그널 상향 돌파", status: "매수" },
+            { label: "RSI (14)", value: chartData[chartData.length - 1]?.rsi.toFixed(1) ?? "—", desc: "중립 구간 (30-70)", status: "중립" },
+            { label: "MACD", value: chartData[chartData.length - 1]?.macdLine.toFixed(3) ?? "—", desc: "시그널 상향 돌파", status: "매수" },
             { label: "볼린저밴드", value: "중간 밴드 위", desc: "상단 밴드 도달 전", status: "중립" },
             { label: "MA20 / MA60", value: "골든크로스", desc: "단기 추세 상향", status: "매수" },
             { label: "거래량", value: "+42%", desc: "20일 평균 대비", status: "주목" },
-            { label: "스토캐스틱", value: `${chartData[chartData.length - 1]?.stochK.toFixed(0) ?? 72} / ${chartData[chartData.length - 1]?.stochD.toFixed(0) ?? 68}`, desc: "과매수 근접", status: "주의" },
+            { label: "스토캐스틱", value: `${chartData[chartData.length - 1]?.stochK.toFixed(0) ?? "—"} / ${chartData[chartData.length - 1]?.stochD.toFixed(0) ?? "—"}`, desc: "과매수 근접", status: "주의" },
           ].map(item => (
             <div key={item.label} className="bg-card border border-border rounded-xl p-4 flex items-center gap-4">
               <div className={cn("w-1.5 h-10 rounded-full flex-shrink-0",
