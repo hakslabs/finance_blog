@@ -388,38 +388,42 @@ export default function StockChart({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDark]);
 
-  // Push data whenever it changes. After load:
-  //  - Set barSpace so the *visible* window matches the selected period
-  //    (1259 bars in 800px = 0.6px/bar — unusable on first paint without this)
-  //  - Anchor the right edge on the latest bar (scrollToRealTime)
-  //  - Give the chart some right-margin so the last bar isn't flush against
-  //    the axis labels
-  //  - Re-resize twice (now + next frame) so the X-axis labels re-lay out
+  // Push data whenever it changes.
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
     chart.setPriceVolumePrecision(pricePrecision, 0);
     chart.applyNewData(klineData);
+  }, [klineData, pricePrecision]);
 
-    if (klineData.length > 0) {
-      const targetBars = visibleBarsFor(period, timeframe);
+  // After data lands OR the period/timeframe changes, defer one frame so
+  // klinecharts has finished its internal layout, then set the per-bar
+  // pixel width to fit the selected window. Without this, 1300 bars
+  // (5Y) collapse to 0.6px each and any zoom/pan tears the layout.
+  //
+  // Doing this in a *separate* effect (rather than chaining inside the
+  // data effect) means the chart stays responsive while bars are still
+  // refetching — applyNewData updates the bars, this re-targets the zoom.
+  useEffect(() => {
+    if (klineData.length === 0) return;
+    const raf = requestAnimationFrame(() => {
+      const chart = chartRef.current;
       const el = containerRef.current;
-      const width = el?.clientWidth ?? 800;
-      // 48px = approximate right Y-axis width; leave headroom for the
-      // value labels so the price marks don't overlap candles.
-      const plotWidth = Math.max(120, width - 48);
-      const space = Math.max(1.5, Math.min(20, plotWidth / targetBars));
+      if (!chart || !el) return;
+      const plotWidth = Math.max(120, el.clientWidth - 56); // 56 ≈ y-axis width
+      const targetBars = visibleBarsFor(period, timeframe);
+      // No upper clamp — long periods need sub-pixel-ish bars (klinecharts
+      // handles this gracefully). Lower clamp 0.4 prevents division traps.
+      const space = Math.max(0.4, plotWidth / targetBars);
       chart.setBarSpace(space);
-      chart.setOffsetRightDistance(plotWidth * 0.04); // ~4% right padding
-      chart.setLeftMinVisibleBarCount(8);
-      chart.setRightMinVisibleBarCount(8);
+      chart.setOffsetRightDistance(24);
+      chart.setLeftMinVisibleBarCount(6);
+      chart.setRightMinVisibleBarCount(6);
       chart.scrollToRealTime();
-    }
-
-    chart.resize();
-    const raf = requestAnimationFrame(() => chart.resize());
+      chart.resize();
+    });
     return () => cancelAnimationFrame(raf);
-  }, [klineData, pricePrecision, period, timeframe]);
+  }, [klineData, period, timeframe]);
 
   // Window resize hook — ResizeObserver covers most cases but doesn't fire
   // for some viewport/zoom changes on Safari. Belt + suspenders.
