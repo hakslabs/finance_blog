@@ -121,10 +121,8 @@ function buildStyles(dark: boolean) {
       },
       tooltip: {
         showRule: "follow_cross",
-        showType: "rect",
-        title: { color: fg, size: 11 },
-        legend: { color: fg, size: 11 },
-        rect: { color: dark ? "rgba(17,24,39,0.92)" : "rgba(255,255,255,0.92)", borderColor: border },
+        showType: "standard",
+        text: { color: fg, size: 11, family: "Helvetica", weight: "normal", marginLeft: 8, marginTop: 4, marginRight: 8, marginBottom: 4 },
       },
       priceMark: {
         last: {
@@ -149,8 +147,7 @@ function buildStyles(dark: boolean) {
       tooltip: {
         showRule: "follow_cross",
         showType: "standard",
-        title: { color: fg, size: 11 },
-        legend: { color: fg, size: 11 },
+        text: { color: fg, size: 11, family: "Helvetica", weight: "normal", marginLeft: 8, marginTop: 4, marginRight: 8, marginBottom: 4 },
       },
       lastValueMark: { show: false },
     },
@@ -260,11 +257,12 @@ export default function StockChart({
       }
     }
 
+    const el = containerRef.current;
     const ro = new ResizeObserver(() => chart.resize());
-    ro.observe(containerRef.current);
+    ro.observe(el);
     return () => {
       ro.disconnect();
-      if (containerRef.current) dispose(containerRef.current);
+      if (el) dispose(el);
       chartRef.current = null;
     };
     // We intentionally only re-init on theme flip; indicator/data changes are handled below.
