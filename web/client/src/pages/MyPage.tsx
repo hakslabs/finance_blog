@@ -16,8 +16,9 @@ import { US_STOCKS, KR_STOCKS } from "@/services/mockData";
 import { MASTERS, REPORTS, LEARN_GUIDES } from "@/services/mockData";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
-  LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from "recharts";
+import KLineSeriesChart from "@/components/KLineSeriesChart";
 import {
   LayoutDashboard, Star, ClipboardList, BookOpen, Bell, Bookmark,
   Plus, X, ArrowUpRight, ArrowDownRight, Wallet, BarChart3, Search,
@@ -938,23 +939,20 @@ function TradesTab() {
             ))}
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={160}>
-          <LineChart data={profitData} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.4} />
-            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-            <YAxis tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} tickFormatter={v => v === 0 ? "0" : v > 0 ? `+$${(v/1000).toFixed(1)}K` : `-$${(Math.abs(v)/1000).toFixed(1)}K`} width={55} />
-            <Tooltip
-              contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
-              formatter={(value: number, name: string) => [
-                `${value >= 0 ? "+" : ""}$${value.toFixed(0)} (${value >= 0 ? "+" : ""}${fmtKRW(value * 1300)})`,
-                name === "cumPnl" ? "누적 실현손익" : "해당 기간 실현손익"
-              ]}
-              labelStyle={{ color: "var(--foreground)", fontWeight: 600 }}
-            />
-            <Line type="monotone" dataKey="cumPnl" stroke={totalRealizedPnl >= 0 ? "#10b981" : "#ef4444"} strokeWidth={2} dot={{ r: 3, fill: totalRealizedPnl >= 0 ? "#10b981" : "#ef4444" }} activeDot={{ r: 5 }} name="cumPnl" />
-            <Line type="monotone" dataKey="pnl" stroke="#6366f1" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="pnl" />
-          </LineChart>
-        </ResponsiveContainer>
+        <KLineSeriesChart
+          data={profitData.map((d: any, i: number) => {
+            const dt = new Date();
+            dt.setDate(dt.getDate() - (profitData.length - 1 - i));
+            return { date: dt.toISOString().slice(0, 10), cumPnl: d.cumPnl, pnl: d.pnl };
+          })}
+          series={[
+            { key: "cumPnl", label: "누적 실현손익", color: totalRealizedPnl >= 0 ? "#10b981" : "#ef4444", type: "line" },
+            { key: "pnl", label: "기간별 실현손익", color: "#6366f1", type: "line", dashed: true },
+          ]}
+          height={160}
+          valueFormatter={(v) => v === 0 ? "0" : v > 0 ? `+$${(v/1000).toFixed(1)}K` : `-$${(Math.abs(v)/1000).toFixed(1)}K`}
+          zeroLine
+        />
         <div className="flex items-center gap-4 mt-2 justify-end">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <div className="w-4 h-0.5 rounded" style={{ background: totalRealizedPnl >= 0 ? "#10b981" : "#ef4444" }} /> 누적 실현손익
