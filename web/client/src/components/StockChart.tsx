@@ -327,13 +327,14 @@ export default function StockChart({
   const mountedPanes = useRef<Set<IndicatorKey>>(new Set());
   const mountedOverlays = useRef<Set<IndicatorKey>>(new Set());
 
-  const days = PERIOD_DAYS[period];
-  // Weekly / monthly views need more raw daily bars to fill the same range.
-  const fetchDays =
-    timeframe === "M" ? days * 22 : timeframe === "W" ? days * 5 : days;
+  // Always pull the full available history (≤5y) up-front. Period buttons
+  // only re-target the visible zoom window; they don't refetch. Without
+  // this, mouse-wheel zoom-out would just compress the same N bars and
+  // leave the rest of the canvas empty — which is exactly what users hit.
+  const FULL_HISTORY_DAYS = 1825; // 5y of trading days
   const { data: barsData, loading } = useStockBars(
     ticker || undefined,
-    fetchDays,
+    FULL_HISTORY_DAYS,
   );
 
   const klineData = useMemo<KLineData[]>(() => {
