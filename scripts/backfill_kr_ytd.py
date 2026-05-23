@@ -8,13 +8,13 @@ seeded `instruments` (country_code='KR'), and upserts into
 `price_bars_daily`. Idempotent.
 
 KRX OpenAPI is gentler than Polygon — small sleep (1.5s) between
-calls is plenty.
+calls is plenty. 5y × 252 trading days × 1.5s ≈ 30 minutes.
 
-Run (1-year default):
+Run (5-year default — full chart history):
     PYTHONPATH=api python scripts/backfill_kr_ytd.py
 
 Custom range:
-    PYTHONPATH=api python scripts/backfill_kr_ytd.py --start 2025-05-21
+    PYTHONPATH=api python scripts/backfill_kr_ytd.py --start 2026-04-21
 """
 
 from __future__ import annotations
@@ -52,13 +52,13 @@ SLEEP_BETWEEN_CALLS_S = 1.5
 
 
 def _resolve_start_date() -> date:
-    """`--start YYYY-MM-DD` if provided, else 365 days back from today."""
+    """`--start YYYY-MM-DD` if provided, else 5 years back from today."""
     for i, arg in enumerate(sys.argv):
         if arg == "--start" and i + 1 < len(sys.argv):
             return date.fromisoformat(sys.argv[i + 1])
         if arg.startswith("--start="):
             return date.fromisoformat(arg.split("=", 1)[1])
-    return (datetime.now(tz=timezone.utc) - timedelta(days=365)).date()
+    return (datetime.now(tz=timezone.utc) - timedelta(days=5 * 365)).date()
 
 
 def _trading_days(start: date, end: date):

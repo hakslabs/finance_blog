@@ -1,20 +1,21 @@
 """One-shot historical backfill of US daily bars.
 
-Loops through every trading day from `--start` (default: 365 days ago) up to
+Loops through every trading day from `--start` (default: 5 years ago) up to
 (yesterday US/Eastern) and calls api.app.jobs.refresh_us_daily.run() per
 date. Each call pulls Polygon's grouped-daily endpoint (1 call → ~12k US
 symbols), filters to the seeded `instruments` rows, and upserts into
 `price_bars_daily`. Idempotent via the composite PK so reruns are safe.
 
 Respects Polygon free-tier rate limit (~5 calls/min) by sleeping 13s between
-calls. On 429 it backs off 60s and retries once.
+calls. 5y × 252 trading days × 13s ≈ 4.5 hours. Run overnight.
+On 429 it backs off 60s and retries once.
 
-Run (1-year default):
+Run (5-year default — full chart history):
     cd <repo>
     PYTHONPATH=api python scripts/backfill_us_ytd.py
 
-Custom range:
-    PYTHONPATH=api python scripts/backfill_us_ytd.py --start 2025-05-21
+Custom range (e.g. fill only the last 30 days after a backfill gap):
+    PYTHONPATH=api python scripts/backfill_us_ytd.py --start 2026-04-21
 """
 
 from __future__ import annotations
@@ -54,13 +55,13 @@ RATE_LIMIT_BACKOFF_S = 60.0
 
 
 def _resolve_start_date() -> date:
-    """`--start YYYY-MM-DD` if provided, else 365 days back from today."""
+    """`--start YYYY-MM-DD` if provided, else 5 years back from today."""
     for i, arg in enumerate(sys.argv):
         if arg == "--start" and i + 1 < len(sys.argv):
             return date.fromisoformat(sys.argv[i + 1])
         if arg.startswith("--start="):
             return date.fromisoformat(arg.split("=", 1)[1])
-    return (datetime.now(tz=timezone.utc) - timedelta(days=365)).date()
+    return (datetime.now(tz=timezone.utc) - timedelta(days=5 * 365)).date()
 
 
 def _trading_days(start: date, end: date):

@@ -269,13 +269,28 @@ export default function StockChart({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDark]);
 
-  // Push data whenever it changes.
+  // Push data whenever it changes. Force a resize after the data lands so
+  // the X-axis re-lays out — without this, switching periods (or having the
+  // container width change underneath us) can leave the bottom-axis labels
+  // misaligned in klinecharts.
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
     chart.setPriceVolumePrecision(pricePrecision, 0);
     chart.applyNewData(klineData);
+    // Two-tick resize: once now, once after the browser settles a frame.
+    chart.resize();
+    const raf = requestAnimationFrame(() => chart.resize());
+    return () => cancelAnimationFrame(raf);
   }, [klineData, pricePrecision]);
+
+  // Window resize hook — ResizeObserver covers most cases but doesn't fire
+  // for some viewport/zoom changes on Safari. Belt + suspenders.
+  useEffect(() => {
+    const onResize = () => chartRef.current?.resize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   // Sync indicator toggles incrementally so the chart never flashes.
   useEffect(() => {
