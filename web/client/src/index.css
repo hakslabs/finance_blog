@@ -243,8 +243,15 @@
       transform: translateX(-50%);
     }
   }
+  .ticker-viewport {
+    contain: layout paint;
+    inline-size: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+  }
   .ticker-scroll {
     animation: ticker-scroll 40s linear infinite;
+    min-width: max-content;
   }
   .ticker-scroll:hover {
     animation-play-state: paused;

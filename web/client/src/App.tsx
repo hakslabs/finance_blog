@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Route, Router as WouterRouter, Switch, useLocation } from "wouter";
@@ -10,20 +10,23 @@ import { WatchlistProvider } from "./contexts/WatchlistContext";
 import { BookmarkProvider } from "./contexts/BookmarkContext";
 import { FollowProvider } from "./contexts/FollowContext";
 import Layout from "./components/Layout";
-import Home from "./pages/Home";
-import Analysis from "./pages/Analysis";
-import Stocks from "./pages/Stocks";
-import StockDetail from "./pages/StockDetail";
-import Masters from "./pages/Masters";
-import MasterDetail from "./pages/MasterDetail";
-import Reports from "./pages/Reports";
-import Learn from "./pages/Learn";
-import LearnDetail from "./pages/LearnDetail";
-import MyPage from "./pages/MyPage";
-import Admin from "./pages/Admin";
-import News from "./pages/News";
-import CalendarPage from "./pages/Calendar";
-import NotFound from "./pages/NotFound";
+import { ROUTE_LOADERS } from "./lib/route-prefetch";
+
+const Home = lazy(ROUTE_LOADERS.home);
+const Analysis = lazy(ROUTE_LOADERS.analysis);
+const Stocks = lazy(ROUTE_LOADERS.stocks);
+const StockDetail = lazy(ROUTE_LOADERS.stockDetail);
+const Masters = lazy(ROUTE_LOADERS.masters);
+const MasterDetail = lazy(ROUTE_LOADERS.masterDetail);
+const Reports = lazy(ROUTE_LOADERS.reports);
+const Learn = lazy(ROUTE_LOADERS.learn);
+const LearnDetail = lazy(ROUTE_LOADERS.learnDetail);
+const MyPage = lazy(ROUTE_LOADERS.mypage);
+const Portfolio = lazy(ROUTE_LOADERS.portfolio);
+const Admin = lazy(ROUTE_LOADERS.admin);
+const News = lazy(ROUTE_LOADERS.news);
+const CalendarPage = lazy(ROUTE_LOADERS.calendar);
+const NotFound = lazy(ROUTE_LOADERS.notFound);
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -33,26 +36,43 @@ function ScrollToTop() {
   return null;
 }
 
+function PageFallback() {
+  return (
+    <div className="space-y-4">
+      <div className="h-8 w-44 animate-pulse rounded bg-muted/30" />
+      <div className="h-40 animate-pulse rounded-xl border border-border bg-muted/10" />
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="h-24 animate-pulse rounded-xl border border-border bg-muted/10" />
+        <div className="h-24 animate-pulse rounded-xl border border-border bg-muted/10" />
+        <div className="h-24 animate-pulse rounded-xl border border-border bg-muted/10" />
+      </div>
+    </div>
+  );
+}
+
 function Router() {
   return (
     <Layout>
       <ScrollToTop />
-      <Switch>
-        <Route path="/" component={Home} />
-        <Route path="/analysis" component={Analysis} />
-        <Route path="/news" component={News} />
-        <Route path="/calendar" component={CalendarPage} />
-        <Route path="/masters" component={Masters} />
-        <Route path="/masters/:id" component={MasterDetail} />
-        <Route path="/stocks" component={Stocks} />
-        <Route path="/stocks/:ticker" component={StockDetail} />
-        <Route path="/reports" component={Reports} />
-        <Route path="/learn" component={Learn} />
-        <Route path="/learn/:id" component={LearnDetail} />
-        <Route path="/mypage" component={MyPage} />
-        <Route path="/admin" component={Admin} />
-        <Route component={NotFound} />
-      </Switch>
+      <Suspense fallback={<PageFallback />}>
+        <Switch>
+          <Route path="/" component={Home} />
+          <Route path="/analysis" component={Analysis} />
+          <Route path="/news" component={News} />
+          <Route path="/calendar" component={CalendarPage} />
+          <Route path="/masters" component={Masters} />
+          <Route path="/masters/:id" component={MasterDetail} />
+          <Route path="/stocks" component={Stocks} />
+          <Route path="/stocks/:ticker" component={StockDetail} />
+          <Route path="/reports" component={Reports} />
+          <Route path="/learn" component={Learn} />
+          <Route path="/learn/:id" component={LearnDetail} />
+          <Route path="/portfolio" component={Portfolio} />
+          <Route path="/mypage" component={MyPage} />
+          <Route path="/admin" component={Admin} />
+          <Route component={NotFound} />
+        </Switch>
+      </Suspense>
     </Layout>
   );
 }

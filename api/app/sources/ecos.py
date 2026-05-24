@@ -32,6 +32,28 @@ def _period_window(cycle: str) -> tuple[str, str]:
     return str(today.year - 5), str(today.year)
 
 
+def _history_period_window(cycle: str, limit: int) -> tuple[str, str]:
+    today = date.today()
+    if cycle == "D":
+        # Daily macro series include weekends/holidays inconsistently across
+        # providers. Ask for a wider calendar window so a 5Y chart has room
+        # to return the requested number of observed rows.
+        start = today - timedelta(days=max(30, int(limit * 1.6)))
+        return start.strftime("%Y%m%d"), today.strftime("%Y%m%d")
+    if cycle == "M":
+        months = max(12, limit)
+        month_index = today.year * 12 + (today.month - 1) - months
+        year = month_index // 12
+        month = (month_index % 12) + 1
+        return f"{year}{month:02d}", today.strftime("%Y%m")
+    if cycle == "Q":
+        quarters = max(8, limit)
+        start_year = today.year - ((quarters + 3) // 4)
+        return f"{start_year}Q1", f"{today.year}Q4"
+    years = max(5, limit)
+    return str(today.year - years), str(today.year)
+
+
 async def fetch_series_latest(
     stat_code: str,
     cycle: str,
@@ -99,3 +121,71 @@ async def fetch_series_latest(
         "unit": latest.get("UNIT_NAME"),
         "name": latest.get("STAT_NAME"),
     }
+
+
+async def fetch_series_history(
+    stat_code: str,
+    cycle: str,
+    api_key: str,
+    *,
+    item_code1: Optional[str] = None,
+    item_code2: Optional[str] = None,
+    limit: int = 120,
+) -> List[Dict[str, Any]]:
+    """Return ascending numeric observations for charting."""
+    start_p, end_p = _history_period_window(cycle, limit)
+    parts: List[str] = [
+        api_key,
+        "json",
+        "kr",
+        "1",
+        str(max(10, min(limit, 1825))),
+        stat_code,
+        cycle,
+        start_p,
+        end_p,
+    ]
+    if item_code1:
+        parts.append(item_code1)
+    if item_code2:
+        parts.append(item_code2)
+    url = f"{BASE_URL}/StatisticSearch/" + "/".join(parts)
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(url)
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=503, detail="upstream_unavailable") from exc
+    if resp.status_code >= 400:
+        raise HTTPException(status_code=503, detail="upstream_unavailable")
+    body = resp.json()
+    container = body.get("StatisticSearch") if isinstance(body, dict) else None
+    if not container:
+        return []
+    rows = sorted(container.get("row") or [], key=lambda r: r.get("TIME", ""))
+
+    def _num(s: Any) -> Optional[float]:
+        if s in (None, "", "-"):
+            return None
+        try:
+            return float(s)
+        except (TypeError, ValueError):
+            return None
+
+    out: List[Dict[str, Any]] = []
+    for row in rows:
+        value = _num(row.get("DATA_VALUE"))
+        if value is None:
+            continue
+        raw_time = str(row.get("TIME", ""))
+        if cycle == "D" and len(raw_time) == 8:
+            date_value = f"{raw_time[:4]}-{raw_time[4:6]}-{raw_time[6:8]}"
+        elif cycle == "M" and len(raw_time) == 6:
+            date_value = f"{raw_time[:4]}-{raw_time[4:6]}-01"
+        elif cycle == "Q" and "Q" in raw_time:
+            year, quarter = raw_time.split("Q", 1)
+            month = {"1": "01", "2": "04", "3": "07", "4": "10"}.get(quarter, "01")
+            date_value = f"{year}-{month}-01"
+        else:
+            date_value = raw_time
+        out.append({"date": date_value, "value": value})
+    return out[-limit:]

@@ -21,6 +21,7 @@ class SectorData(BaseModel):
     returnWeek: float = 0.0
     returnMonth: float = 0.0
     returnQuarter: float = 0.0
+    returnYear: Optional[float] = None
     rankDay: int = 0
     rankWeek: int = 0
     rankMonth: int = 0
@@ -70,6 +71,7 @@ async def list_sectors(
             returnWeek=row.get("return_week") or 0.0,
             returnMonth=row.get("return_month") or 0.0,
             returnQuarter=row.get("return_quarter") or 0.0,
+            returnYear=row.get("return_year"),
             rankDay=row.get("rank_day") or 0,
             rankWeek=row.get("rank_week") or 0,
             rankMonth=row.get("rank_month") or 0,

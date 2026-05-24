@@ -25,6 +25,7 @@ from typing import Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.auth import CurrentUser, get_current_user_id
 from app.models.quotes import Quote, Range
 from app.repos.prices import PriceRepo, get_price_repo
 from app.settings import Settings, get_settings
@@ -84,9 +85,11 @@ async def get_quote(
     symbol: str,
     interval: str = Query("1d"),
     range_: Range = Query("6mo", alias="range"),
+    user: CurrentUser = Depends(get_current_user_id),
     settings: Settings = Depends(get_settings),
     price_repo: Optional[PriceRepo] = Depends(get_price_repo),
 ) -> Quote:
+    del user
     if interval != "1d":
         raise HTTPException(status_code=400, detail="bad_request")
     symbol = symbol.upper()

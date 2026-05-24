@@ -48,16 +48,6 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { ModalPortal } from "@/components/ModalPortal";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-
 const ADMIN_EMAILS = ["admin@financelab.pro", "superadmin@financelab.pro"];
 
 type UserPlan = "무료" | "프리미엄" | "어드민";
@@ -814,40 +804,45 @@ function DashboardTab() {
             <h3 className="text-sm font-semibold">주간 방문자 현황</h3>
             <span className="text-xs text-muted-foreground">최근 7일</span>
           </div>
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart
-              data={WEEKLY_VISITS}
-              margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis
-                dataKey="day"
-                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-              />
-              <YAxis tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} />
-              <Tooltip
-                contentStyle={{
-                  background: "var(--card)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 8,
-                  fontSize: 12,
-                }}
-              />
-              <Bar
-                dataKey="visits"
-                name="전체 방문"
-                fill="var(--primary)"
-                opacity={0.3}
-                radius={[3, 3, 0, 0]}
-              />
-              <Bar
-                dataKey="premium"
-                name="프리미엄"
-                fill="var(--primary)"
-                radius={[3, 3, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="space-y-2">
+            {(() => {
+              const maxVisits = Math.max(
+                ...WEEKLY_VISITS.map((d) => d.visits),
+                1,
+              );
+              return WEEKLY_VISITS.map((row) => (
+                <div
+                  key={row.day}
+                  className="grid grid-cols-[2.5rem_1fr_4rem] items-center gap-2"
+                >
+                  <span className="text-xs text-muted-foreground">
+                    {row.day}
+                  </span>
+                  <div className="space-y-1">
+                    <div className="h-2 rounded-full bg-muted/40 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-primary/40"
+                        style={{
+                          width: `${Math.max(2, (row.visits / maxVisits) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <div className="h-1.5 rounded-full bg-muted/30 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{
+                          width: `${Math.max(2, (row.premium / maxVisits) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <span className="text-right text-xs font-mono">
+                    {row.visits.toLocaleString()}
+                  </span>
+                </div>
+              ));
+            })()}
+          </div>
           <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-sm bg-primary/30 inline-block" />{" "}

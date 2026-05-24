@@ -1,7 +1,6 @@
 import { apiGet } from "@/lib/http";
 import type { MarketIndex } from "@/types";
 import { useAsync } from "@/features/_shared/useAsync";
-import { MARKET_INDICES } from "@/services/mockData";
 
 // Backend returns snake_case (`change_pct`) so the API type is kept
 // separate from the camelCase MarketIndex consumed by the UI.
@@ -12,7 +11,7 @@ type BackendIndex = {
   change: number;
   change_pct: number;
   market: MarketIndex["market"];
-  source: "live" | "mock";
+  source: "live" | "db";
 };
 
 function adapt(b: BackendIndex): MarketIndex {
@@ -42,14 +41,10 @@ export const indicesService = {
 
 // Single fetch returning {items, updatedAt}. Consumers access via
 // `.data` like the other hooks, plus `.updatedAt` for the freshness hint.
-// During loading `data` is null so pages can render a skeleton instead
-// of flashing the MARKET_INDICES mock — the mock only appears as the
-// useAsync error fallback.
+// During loading/error `data` is null so pages render skeleton/empty states
+// instead of silently mixing stale demo index numbers into market surfaces.
 export function useIndices() {
-  const r = useAsync(() => indicesService.list(), [], {
-    items: MARKET_INDICES as MarketIndex[],
-    updatedAt: null as string | null,
-  });
+  const r = useAsync(() => indicesService.list(), []);
   const data = r.data?.items ?? null;
   const updatedAt = r.data?.updatedAt ?? null;
   return { ...r, data, updatedAt };

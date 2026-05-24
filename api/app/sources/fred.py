@@ -67,3 +67,35 @@ async def fetch_series_latest(
         "previous_value": prev_value,
         "change": change,
     }
+
+
+async def fetch_series_history(
+    series_id: str, api_key: str, *, limit: int = 120
+) -> List[Dict[str, Any]]:
+    """Return ascending numeric observations for charting."""
+    data = await _get(
+        f"/series/observations",
+        {
+            "series_id": series_id,
+            "sort_order": "desc",
+            "limit": limit,
+        },
+        api_key,
+    )
+    obs: List[Dict[str, Any]] = data.get("observations") or []
+
+    def _num(s: str | None) -> Optional[float]:
+        if s in (None, ".", ""):
+            return None
+        try:
+            return float(s)
+        except ValueError:
+            return None
+
+    rows: List[Dict[str, Any]] = []
+    for row in reversed(obs):
+        value = _num(row.get("value"))
+        if value is None:
+            continue
+        rows.append({"date": row.get("date"), "value": value})
+    return rows

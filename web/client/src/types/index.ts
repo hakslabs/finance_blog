@@ -12,7 +12,7 @@ export interface MarketIndex {
   change: number;
   changePct: number;
   market: "KR" | "US" | "FX" | "COMM" | "VOL" | "CRYPTO";
-  source?: "live" | "mock";
+  source?: "live" | "db" | "mock";
   trend?: "up" | "down" | "flat";
 }
 
@@ -43,6 +43,7 @@ export interface SectorData {
   returnWeek: number; // 주간 수익률 %
   returnMonth: number; // 월간 수익률 %
   returnQuarter: number; // 분기 수익률 %
+  returnYear?: number | null; // 연간 수익률 %
   rankDay: number; // 당일 순위
   rankWeek: number; // 주간 순위
   rankMonth: number; // 월간 순위
@@ -140,6 +141,8 @@ export interface Master {
   cagr5y?: number | null;
   holdings?: number;
   lastFiling?: string;
+  holdingsPeriodEnd?: string | null;
+  holdingsFiledAt?: string | null;
   topHoldings: MasterHolding[];
   philosophy: string[];
   bio: string;

@@ -13,7 +13,7 @@ from __future__ import annotations
 import asyncio
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from app.settings import Settings, get_settings
@@ -56,6 +56,19 @@ class IndicatorsResponse(BaseModel):
     indicators: List[Indicator]
 
 
+class HistoryPoint(BaseModel):
+    date: str
+    value: float
+
+
+class IndicatorHistoryResponse(BaseModel):
+    series_id: str
+    label: str
+    unit: str
+    country_code: str
+    items: List[HistoryPoint]
+
+
 @router.get("/indicators", response_model=IndicatorsResponse)
 async def list_indicators(
     settings: Settings = Depends(get_settings),
@@ -93,3 +106,70 @@ async def list_indicators(
             *(_ecos(stat, cycle, lbl, unit, item1) for stat, cycle, lbl, unit, item1 in ECOS_SERIES),
         ))
     return IndicatorsResponse(indicators=results)
+
+
+@router.get("/indicators/{series_id}/history", response_model=IndicatorHistoryResponse)
+async def indicator_history(
+    series_id: str,
+    limit: int = Query(1825, ge=10, le=1825),
+    settings: Settings = Depends(get_settings),
+) -> IndicatorHistoryResponse:
+    """Chartable macro history for one known FRED/ECOS indicator.
+
+    Returns empty `items` when the relevant API key is unavailable or the
+    upstream fails, so the UI can show an honest empty state instead of
+    synthetic macro history.
+    """
+    fred_meta = next(
+        ((sid, label, unit, country) for sid, label, unit, country in KEY_SERIES if sid == series_id),
+        None,
+    )
+    if fred_meta:
+        sid, label, unit, country = fred_meta
+        rows: List[dict] = []
+        if settings.fred_api_key:
+            try:
+                rows = await fred.fetch_series_history(sid, settings.fred_api_key, limit=limit)
+            except HTTPException:
+                rows = []
+        return IndicatorHistoryResponse(
+            series_id=sid,
+            label=label,
+            unit=unit,
+            country_code=country,
+            items=[HistoryPoint(**row) for row in rows],
+        )
+
+    if series_id.startswith("ECOS:"):
+        stat_code = series_id.split(":", 1)[1]
+        ecos_meta = next(
+            (
+                (stat, cycle, label, unit, item1)
+                for stat, cycle, label, unit, item1 in ECOS_SERIES
+                if stat == stat_code
+            ),
+            None,
+        )
+        if ecos_meta:
+            stat, cycle, label, unit, item1 = ecos_meta
+            rows = []
+            if settings.ecos_api_key:
+                try:
+                    rows = await ecos.fetch_series_history(
+                        stat,
+                        cycle,
+                        settings.ecos_api_key,
+                        item_code1=item1,
+                        limit=limit,
+                    )
+                except HTTPException:
+                    rows = []
+            return IndicatorHistoryResponse(
+                series_id=series_id,
+                label=label,
+                unit=unit,
+                country_code="KR",
+                items=[HistoryPoint(**row) for row in rows],
+            )
+
+    raise HTTPException(status_code=404, detail="unknown_macro_series")

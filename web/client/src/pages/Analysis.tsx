@@ -7,27 +7,7 @@
  * - 퀀트+기술신호 통합 스크리너: 조건 설정 → 종목 추천
  * - 수익률 비교: 국채 / 관심종목 / 포트폴리오 사용자 선택
  */
-import { useState, useMemo, useCallback } from "react";
-import {
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  ReferenceLine,
-  ComposedChart,
-} from "recharts";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import {
   Search,
   Star,
@@ -59,23 +39,26 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { rebaseCompareRows, type CompareSeriesRow } from "@/lib/compare-series";
 import { toast } from "sonner";
 import { useWatchlist } from "@/contexts/WatchlistContext";
-import { useStocks } from "@/features/stocks";
-import StockChart from "@/components/StockChart";
-import StockMiniChart from "@/components/StockMiniChart";
-import { useSectors } from "@/features/sectors";
+import { useStockSearch, useStocks } from "@/features/stocks";
 import {
-  US_STOCKS,
-  KR_STOCKS,
-  US_SECTORS,
-  KR_SECTORS,
-  MACRO_INDICATORS,
-} from "@/services/mockData";
-import type { MacroIndicator } from "@/types";
+  stocksService,
+  type StockBarsCompareSeries,
+  type StockBarsCompareResponse,
+  type StockFinancialPeriod,
+  type StockSearchHit,
+} from "@/features/stocks/service";
+import { usePortfolioHistory } from "@/features/portfolio";
+import StockChart from "@/components/StockChart";
+import KLineSeriesChart from "@/components/KLineSeriesChart";
+import { useSectors } from "@/features/sectors";
+import { macroService, useMacroIndicators } from "@/features/macro";
+import type { MacroIndicator, Stock } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────
-type AllStock = (typeof US_STOCKS)[0];
+type AllStock = Stock;
 type MarketTab = "시장 개요" | "섹터 로테이션" | "스크리너" | "수익률 비교";
 type StockTab =
   | "차트"
@@ -84,83 +67,351 @@ type StockTab =
   | "기술적 신호"
   | "뉴스"
   | "AI 요약";
-type Period = "1D" | "1W" | "1M" | "3M" | "1Y";
+type Period = "1D" | "1W" | "1M" | "3M" | "1Y" | "2Y" | "5Y";
 type SectorPeriod = "당일" | "주간" | "월간" | "분기" | "연간";
+type ReturnChartRow = CompareSeriesRow;
+type CompareWindowMeta = Pick<
+  StockBarsCompareResponse,
+  | "compare_from_date"
+  | "compare_to_date"
+  | "compare_baseline_date"
+  | "compare_row_count"
+>;
+type AnalysisBar = {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+};
+type FinancialChartRow = {
+  year: string;
+  revenue: number | null;
+  netIncome: number | null;
+  eps: number | null;
+};
+type YieldHistoryRow = {
+  date: string;
+  value: number;
+};
+type ScreenerTechnical = {
+  rsi: number | null;
+  macd: number | null;
+  checks: Record<string, boolean>;
+};
 
-// ─── Helpers ──────────────────────────────────────────────────
-function generateOHLC(days: number, basePrice: number) {
-  const data = [];
-  let price = basePrice * 0.7;
-  for (let i = 0; i < days; i++) {
-    const change = (Math.random() - 0.47) * price * 0.025;
-    const open = price;
-    price = Math.max(price + change, basePrice * 0.3);
-    const high = Math.max(open, price) * (1 + Math.random() * 0.008);
-    const low = Math.min(open, price) * (1 - Math.random() * 0.008);
-    const vol = Math.floor(Math.random() * 80000000 + 10000000);
-    const date = new Date();
-    date.setDate(date.getDate() - (days - i));
-    data.push({
-      date: date.toLocaleDateString("ko-KR", {
-        month: "short",
-        day: "numeric",
-      }),
-      close: Math.round(price * 100) / 100,
-      open: Math.round(open * 100) / 100,
-      high: Math.round(high * 100) / 100,
-      low: Math.round(low * 100) / 100,
-      volume: vol,
-      ma5: 0,
-      ma20: 0,
-      ma60: 0,
-      bb_upper: 0,
-      bb_lower: 0,
-      bb_mid: 0,
-      macd: (Math.random() - 0.5) * 10,
-      signal: (Math.random() - 0.5) * 8,
-      rsi: 30 + Math.random() * 40,
-      stoch: 20 + Math.random() * 60,
+function normalizeAnalysisBars(
+  bars: Array<Partial<AnalysisBar> & { date?: string | null }>,
+): AnalysisBar[] {
+  const byDate = new Map<string, AnalysisBar>();
+
+  for (const bar of bars) {
+    const date = String(bar.date ?? "").slice(0, 10);
+    const open = Number(bar.open);
+    const high = Number(bar.high);
+    const low = Number(bar.low);
+    const close = Number(bar.close);
+    const volume = Number(bar.volume ?? 0);
+
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      !Number.isFinite(open) ||
+      !Number.isFinite(high) ||
+      !Number.isFinite(low) ||
+      !Number.isFinite(close) ||
+      open <= 0 ||
+      high <= 0 ||
+      low <= 0 ||
+      close <= 0 ||
+      high < Math.max(open, close) ||
+      low > Math.min(open, close)
+    ) {
+      continue;
+    }
+
+    byDate.set(date, {
+      date,
+      open,
+      high,
+      low,
+      close,
+      volume: Number.isFinite(volume) && volume > 0 ? volume : 0,
     });
   }
-  // calc MAs
-  for (let i = 0; i < data.length; i++) {
-    if (i >= 4)
-      data[i].ma5 =
-        data.slice(i - 4, i + 1).reduce((s, d) => s + d.close, 0) / 5;
-    if (i >= 19)
-      data[i].ma20 =
-        data.slice(i - 19, i + 1).reduce((s, d) => s + d.close, 0) / 20;
-    if (i >= 59)
-      data[i].ma60 =
-        data.slice(i - 59, i + 1).reduce((s, d) => s + d.close, 0) / 60;
-    if (i >= 19) {
-      const slice = data.slice(i - 19, i + 1).map((d) => d.close);
-      const mean = slice.reduce((s, v) => s + v, 0) / 20;
-      const std = Math.sqrt(
-        slice.reduce((s, v) => s + (v - mean) ** 2, 0) / 20,
-      );
-      data[i].bb_mid = mean;
-      data[i].bb_upper = mean + 2 * std;
-      data[i].bb_lower = mean - 2 * std;
-    }
-  }
-  return data;
+
+  return Array.from(byDate.values()).sort((a, b) =>
+    a.date.localeCompare(b.date),
+  );
 }
 
-function generateMacroHistory(baseValue: number, months = 24) {
-  const data = [];
-  let v = baseValue * 0.8;
-  for (let i = months; i >= 0; i--) {
-    v += (Math.random() - 0.48) * baseValue * 0.04;
-    v = Math.max(v, 0);
-    const d = new Date();
-    d.setMonth(d.getMonth() - i);
-    data.push({
-      date: d.toLocaleDateString("ko-KR", { year: "2-digit", month: "short" }),
-      value: Math.round(v * 100) / 100,
-    });
+function normalizeYieldHistory(
+  rows: Array<{ date?: string | null; value?: number | null }>,
+): YieldHistoryRow[] {
+  const byDate = new Map<string, YieldHistoryRow>();
+  for (const row of rows) {
+    const date = String(row.date ?? "").slice(0, 10);
+    const value = Number(row.value);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(value)) {
+      continue;
+    }
+    byDate.set(date, { date, value });
   }
-  return data;
+  return Array.from(byDate.values()).sort((a, b) =>
+    a.date.localeCompare(b.date),
+  );
+}
+
+function formatPortfolioChartValue(value: number, currency: string): string {
+  const locale = currency === "KRW" ? "ko-KR" : "en-US";
+  const compact = Math.abs(value) >= 1_000_000;
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    notation: compact ? "compact" : "standard",
+    maximumFractionDigits: currency === "KRW" || compact ? 0 : 2,
+  }).format(value);
+}
+
+async function hydrateSearchHit(
+  hit: StockSearchHit,
+  init?: RequestInit,
+): Promise<Stock> {
+  let price = 0;
+  let change = 0;
+  let changePct = 0;
+  let volume = 0;
+  try {
+    const bars = normalizeAnalysisBars(
+      (await stocksService.bars(hit.ticker, 30, init)).items,
+    );
+    const latest = bars.at(-1);
+    const prev = bars.at(-2);
+    if (latest) {
+      price = latest.close;
+      volume = latest.volume;
+    }
+    if (latest && prev) {
+      change = latest.close - prev.close;
+      changePct = prev.close > 0 ? (change / prev.close) * 100 : 0;
+    }
+  } catch {
+    if (init?.signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    /* The chart panel can still load bars independently; keep quote empty. */
+  }
+  return {
+    ticker: hit.ticker,
+    name: hit.name,
+    price,
+    change,
+    changePct,
+    volume,
+    marketCap: "",
+    sector: "—",
+    exchange:
+      hit.exchange === "KOSDAQ"
+        ? "KOSDAQ"
+        : hit.country === "KR"
+          ? "KOSPI"
+          : "NASDAQ",
+    country: hit.country,
+  };
+}
+
+function valueFromStatement(
+  rows: Record<string, unknown>[],
+  concepts: string[],
+): number | null {
+  const normalized = new Set(concepts.map((concept) => concept.toLowerCase()));
+  for (const row of rows) {
+    const concept = String(
+      row.concept ?? row.label ?? row.name ?? "",
+    ).toLowerCase();
+    if (!normalized.has(concept)) continue;
+    const raw = row.value ?? row.amount ?? row.v;
+    const value = typeof raw === "number" ? raw : Number(raw);
+    if (Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+function financialPeriodToRow(
+  period: StockFinancialPeriod,
+): FinancialChartRow | null {
+  const revenue = valueFromStatement(period.income_statement, [
+    "us-gaap_revenues",
+    "us-gaap_revenuefromcontractwithcustomerexcludingassessedtax",
+    "us-gaap_salesrevenuenet",
+    "ifrs-full_revenue",
+    "revenue",
+    "revenues",
+  ]);
+  const netIncome = valueFromStatement(period.income_statement, [
+    "us-gaap_netincomeloss",
+    "ifrs-full_profitloss",
+    "net income",
+    "netincomeloss",
+  ]);
+  const eps = valueFromStatement(period.income_statement, [
+    "us-gaap_earningspersharediluted",
+    "us-gaap_earningspersharebasic",
+    "ifrs-full_basicanddilutedearningslossespershare",
+    "eps",
+  ]);
+  if (revenue == null && netIncome == null && eps == null) return null;
+  const label =
+    period.year != null
+      ? String(period.year)
+      : period.period
+        ? period.period.slice(0, 4)
+        : "—";
+  return {
+    year: label,
+    revenue: revenue == null ? null : revenue / 1_000_000_000,
+    netIncome: netIncome == null ? null : netIncome / 1_000_000_000,
+    eps,
+  };
+}
+
+function mean(values: number[]): number | null {
+  if (values.length === 0) return null;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function sma(values: number[], length: number): number | null {
+  if (values.length < length) return null;
+  return mean(values.slice(-length));
+}
+
+function emaSeries(values: number[], length: number): number[] {
+  if (values.length === 0) return [];
+  const k = 2 / (length + 1);
+  const out: number[] = [values[0]];
+  for (let i = 1; i < values.length; i++) {
+    out.push(values[i] * k + out[i - 1] * (1 - k));
+  }
+  return out;
+}
+
+function calcRsi(closes: number[], length = 14): number | null {
+  if (closes.length <= length) return null;
+  let gains = 0;
+  let losses = 0;
+  const slice = closes.slice(-(length + 1));
+  for (let i = 1; i < slice.length; i++) {
+    const delta = slice[i] - slice[i - 1];
+    if (delta >= 0) gains += delta;
+    else losses -= delta;
+  }
+  if (losses === 0) return 100;
+  const rs = gains / losses;
+  return 100 - 100 / (1 + rs);
+}
+
+function calcTechnicalSignals(bars: AnalysisBar[]) {
+  const cleanBars = normalizeAnalysisBars(bars);
+  const closes = cleanBars.map((bar) => bar.close);
+  const volumes = cleanBars.map((bar) => bar.volume ?? 0);
+  const latest = cleanBars[cleanBars.length - 1];
+  const ma5 = sma(closes, 5);
+  const ma20 = sma(closes, 20);
+  const ma60 = sma(closes, 60);
+  const bbWindow = closes.slice(-20);
+  const bbMid = mean(bbWindow);
+  const bbStd =
+    bbMid == null
+      ? null
+      : Math.sqrt(
+          bbWindow.reduce((sum, close) => sum + (close - bbMid) ** 2, 0) /
+            bbWindow.length,
+        );
+  const bbUpper = bbMid != null && bbStd != null ? bbMid + 2 * bbStd : null;
+  const bbLower = bbMid != null && bbStd != null ? bbMid - 2 * bbStd : null;
+  const ema12 = emaSeries(closes, 12);
+  const ema26 = emaSeries(closes, 26);
+  const macdSeries = closes.map((_, i) => (ema12[i] ?? 0) - (ema26[i] ?? 0));
+  const signalSeries = emaSeries(macdSeries, 9);
+  const macd = macdSeries[macdSeries.length - 1] ?? null;
+  const signal = signalSeries[signalSeries.length - 1] ?? null;
+  const rsi = calcRsi(closes);
+  const recentVolume = mean(volumes.slice(-5));
+  const baseVolume = mean(volumes.slice(-25, -5));
+  const volumeTrend =
+    recentVolume != null && baseVolume
+      ? ((recentVolume - baseVolume) / baseVolume) * 100
+      : null;
+  const bandPosition =
+    latest && bbUpper != null && bbLower != null && bbUpper !== bbLower
+      ? ((latest.close - bbLower) / (bbUpper - bbLower)) * 100
+      : null;
+  const stochWindow = cleanBars.slice(-14);
+  const stochLow = stochWindow.length
+    ? Math.min(...stochWindow.map((bar) => bar.low))
+    : null;
+  const stochHigh = stochWindow.length
+    ? Math.max(...stochWindow.map((bar) => bar.high))
+    : null;
+  const stoch =
+    latest && stochLow != null && stochHigh != null && stochHigh !== stochLow
+      ? ((latest.close - stochLow) / (stochHigh - stochLow)) * 100
+      : null;
+  const bullishCount = [
+    ma5 != null && ma20 != null && ma5 > ma20,
+    ma20 != null && ma60 != null && ma20 > ma60,
+    macd != null && signal != null && macd > signal,
+    rsi != null && rsi >= 50 && rsi < 70,
+    volumeTrend != null && volumeTrend > 0,
+  ].filter(Boolean).length;
+
+  return {
+    ma5,
+    ma20,
+    ma60,
+    macd,
+    signal,
+    rsi,
+    bandPosition,
+    stoch,
+    volumeTrend,
+    bullishCount,
+  };
+}
+
+function calcScreenerTechnical(bars: AnalysisBar[]): ScreenerTechnical {
+  if (bars.length === 0) {
+    return {
+      rsi: null,
+      macd: null,
+      checks: {
+        rsi_oversold: false,
+        rsi_overbought: false,
+        golden_cross: false,
+        dead_cross: false,
+        bb_lower: false,
+        bb_upper: false,
+        macd_bullish: false,
+      },
+    };
+  }
+  const signals = calcTechnicalSignals(bars);
+  const ma5 = signals.ma5;
+  const ma20 = signals.ma20;
+  return {
+    rsi: signals.rsi,
+    macd: signals.macd,
+    checks: {
+      rsi_oversold: signals.rsi != null && signals.rsi < 35,
+      rsi_overbought: signals.rsi != null && signals.rsi > 65,
+      golden_cross: ma5 != null && ma20 != null && ma5 > ma20,
+      dead_cross: ma5 != null && ma20 != null && ma5 < ma20,
+      bb_lower: signals.bandPosition != null && signals.bandPosition < 20,
+      bb_upper: signals.bandPosition != null && signals.bandPosition > 80,
+      macd_bullish:
+        signals.macd != null &&
+        signals.signal != null &&
+        signals.macd > signals.signal,
+    },
+  };
 }
 
 const PERIOD_DAYS: Record<Period, number> = {
@@ -169,7 +420,35 @@ const PERIOD_DAYS: Record<Period, number> = {
   "1M": 30,
   "3M": 90,
   "1Y": 365,
+  "2Y": 730,
+  "5Y": 1825,
 };
+const COMPARE_BAR_LIMITS: Record<Period, number> = {
+  "1D": 2,
+  "1W": 7,
+  "1M": 31,
+  "3M": 92,
+  "1Y": 365,
+  "2Y": 730,
+  "5Y": 1825,
+};
+const COMPARE_SOURCE_DAYS = COMPARE_BAR_LIMITS["5Y"];
+const RETURN_SOURCE_DAYS = PERIOD_DAYS["5Y"];
+const SCREENER_TECHNICAL_HISTORY_DAYS = 365;
+const STOCK_SIGNAL_HISTORY_DAYS = 365;
+
+function rebaseCompareRowsForPeriod(
+  sourceRows: ReturnChartRow[],
+  tickers: string[],
+  period: Period,
+): { rows: ReturnChartRow[]; returns: Record<string, number> } {
+  const { rows, returns } = rebaseCompareRows(
+    sourceRows,
+    tickers,
+    COMPARE_BAR_LIMITS[period],
+  );
+  return { rows, returns };
+}
 
 function PctBadge({
   value,
@@ -272,15 +551,18 @@ function MacroCard({
   const [editVal, setEditVal] = useState(ind.value);
   const [editPrev, setEditPrev] = useState(ind.prev);
   const [currentInd, setCurrentInd] = useState(ind);
+  const [historyRows, setHistoryRows] = useState<
+    { date: string; value: number }[] | null
+  >(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [historyRetry, setHistoryRetry] = useState(0);
 
-  const historyData = useMemo(
-    () => generateMacroHistory(parseFloat(ind.value) || 3, 24),
-    [ind.id],
-  );
   const numVal = parseFloat(currentInd.value);
   const numPrev = parseFloat(currentInd.prev);
-  const diff = numVal - numPrev;
-  const up = diff >= 0;
+  const hasNumericChange = Number.isFinite(numVal) && Number.isFinite(numPrev);
+  const diff = hasNumericChange ? numVal - numPrev : null;
+  const up = (diff ?? 0) >= 0;
   const color = up ? "#22c55e" : "#ef4444";
 
   const handleSave = () => {
@@ -289,6 +571,47 @@ function MacroCard({
     toast.success(`${ind.name} 발표치 업데이트 완료`);
     onEdit(ind.id);
   };
+
+  useEffect(() => {
+    setCurrentInd(ind);
+    setEditVal(ind.value);
+    setEditPrev(ind.prev);
+    setHistoryRows(null);
+    setHistoryError(null);
+  }, [ind]);
+
+  useEffect(() => {
+    if (!expanded || historyRows !== null || historyLoading) return;
+    let cancelled = false;
+    const controller = new AbortController();
+    setHistoryLoading(true);
+    setHistoryError(null);
+    macroService
+      .history(currentInd.id, 1825, { signal: controller.signal })
+      .then((r) => {
+        if (cancelled) return;
+        setHistoryRows(r.items.filter((row) => Number.isFinite(row.value)));
+        setHistoryError(null);
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        if (!cancelled) {
+          setHistoryRows([]);
+          setHistoryError(
+            error instanceof Error
+              ? error.message
+              : "매크로 히스토리 API 요청이 실패했습니다",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setHistoryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [expanded, currentInd.id, historyRetry, historyRows, historyLoading]);
 
   const categoryColors: Record<string, string> = {
     금리: "text-sky bg-sky/10",
@@ -352,12 +675,16 @@ function MacroCard({
           <span
             className={cn(
               "text-xs font-mono-num font-medium",
-              up ? "text-up" : "text-down",
+              !hasNumericChange
+                ? "text-muted-foreground"
+                : up
+                  ? "text-up"
+                  : "text-down",
             )}
           >
-            {up ? "+" : ""}
-            {diff.toFixed(2)}
-            {currentInd.unit}
+            {hasNumericChange
+              ? `${up ? "+" : ""}${diff!.toFixed(2)}${currentInd.unit}`
+              : "—"}
           </span>
         </div>
         <div className="text-[10px] text-muted-foreground mt-0.5">
@@ -413,7 +740,7 @@ function MacroCard({
           )}
           <div className="p-3">
             <div className="text-[10px] text-muted-foreground mb-1.5 flex items-center gap-1">
-              <BarChart2 size={10} /> 24개월 추이
+              <BarChart2 size={10} /> 시계열 히스토리
               <span className="ml-auto">
                 {currentInd.source} ·{" "}
                 {currentInd.updateFrequency === "monthly"
@@ -424,15 +751,57 @@ function MacroCard({
               </span>
             </div>
             <div className="h-28">
-              <StockMiniChart
-                data={historyData.map((d: any) => ({
-                  date: d.date,
-                  value: Number(d.value),
-                }))}
-                color={color}
-                variant="area"
-                height={112}
-              />
+              {historyLoading ? (
+                <div className="h-full flex items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/10 text-center text-[11px] text-muted-foreground px-4">
+                  히스토리를 불러오는 중입니다
+                </div>
+              ) : historyRows && historyRows.length >= 2 ? (
+                <KLineSeriesChart
+                  data={historyRows}
+                  height={112}
+                  showToolbar={false}
+                  showYAxis
+                  valueFormatter={(v) =>
+                    `${v.toFixed(currentInd.unit === "₩" ? 0 : 2)}${currentInd.unit}`
+                  }
+                  sourceLabel="API"
+                  sourceTone="primary"
+                  sourceTitle={`${currentInd.source} 히스토리 API 기준`}
+                  series={[
+                    {
+                      key: "value",
+                      label: currentInd.name,
+                      color,
+                      type: "line",
+                    },
+                  ]}
+                />
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/10 text-center text-[11px] text-muted-foreground px-4">
+                  <span>
+                    {historyError
+                      ? "매크로 히스토리 API 요청이 실패했습니다"
+                      : "저장된 매크로 히스토리가 없습니다"}
+                  </span>
+                  {historyError && (
+                    <span className="mt-0.5 max-w-full truncate font-mono text-[10px] text-destructive">
+                      {historyError}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setHistoryRows(null);
+                      setHistoryRetry((value) => value + 1);
+                    }}
+                    className="mt-1 inline-flex items-center gap-1 rounded border border-border px-2 py-0.5 text-[10px] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
+                  >
+                    <RefreshCw size={10} />
+                    다시 불러오기
+                  </button>
+                </div>
+              )}
             </div>
             {AI_IMPACT[currentInd.name] && (
               <div className="mt-2 p-2 bg-primary/5 border border-primary/20 rounded-lg">
@@ -523,6 +892,13 @@ function MarketOverviewPanel({
   });
   const [localIndicators, setLocalIndicators] = useState(macroIndicators);
   const comment = DAILY_COMMENTS[0];
+
+  useEffect(() => {
+    setLocalIndicators((prev) => {
+      const custom = prev.filter((item) => item.id.startsWith("custom-"));
+      return [...macroIndicators, ...custom];
+    });
+  }, [macroIndicators]);
 
   const handleAddMacro = () => {
     if (!newMacro.name || !newMacro.value) {
@@ -766,18 +1142,11 @@ function SectorRotationPanel() {
   const [period, setPeriod] = useState<SectorPeriod>("월간");
   const [sortBy, setSortBy] = useState<"rank" | "return" | "flow">("rank");
 
-  // Live sectors overlay — same shape as the mock (sector/returnDay/etc.).
   const { data: liveSectors } = useSectors(market);
-  const sectors =
-    liveSectors && liveSectors.length > 0
-      ? (liveSectors as any)
-      : market === "US"
-        ? US_SECTORS
-        : KR_SECTORS;
+  const sectors = (liveSectors ?? []) as any[];
   const PERIODS: SectorPeriod[] = ["당일", "주간", "월간", "분기", "연간"];
 
   const getReturn = (s: (typeof sectors)[0]) => {
-    const annualMultiplier = 4.2;
     switch (period) {
       case "당일":
         return s.returnDay;
@@ -788,7 +1157,7 @@ function SectorRotationPanel() {
       case "분기":
         return s.returnQuarter;
       case "연간":
-        return s.returnQuarter * annualMultiplier;
+        return Number.isFinite(s.returnYear) ? s.returnYear : s.returnQuarter;
     }
   };
 
@@ -814,18 +1183,29 @@ function SectorRotationPanel() {
     return (flowOrder[a.moneyFlow] ?? 1) - (flowOrder[b.moneyFlow] ?? 1);
   });
 
-  const chartData = sorted.slice(0, 8).map((s) => ({
-    name: s.sector.length > 8 ? s.sector.slice(0, 8) + "…" : s.sector,
-    value: getReturn(s),
-    fill: getReturn(s) >= 0 ? "#22c55e" : "#ef4444",
-  }));
+  const chartData = sorted.slice(0, 8).map((s) => {
+    const value = getReturn(s);
+    return {
+      sector: s.sector,
+      name: s.sector.length > 8 ? s.sector.slice(0, 8) + "…" : s.sector,
+      value,
+      rank: getRank(s),
+      moneyFlow: s.moneyFlow,
+    };
+  });
+  const maxAbsReturn = Math.max(
+    1,
+    ...chartData.map((row) => Math.abs(row.value)),
+  );
 
   const periodComment: Record<SectorPeriod, string> = {
     당일: "당일 수익률 기준 섹터 순위입니다. 단기 모멘텀과 이벤트 반응을 확인하세요.",
     주간: "주간 수익률 기준입니다. 단기 트렌드 변화와 자금 흐름 방향을 파악하세요.",
     월간: "월간 수익률 기준입니다. 섹터 로테이션의 중기 추세를 가장 잘 반영합니다.",
     분기: "분기 수익률 기준입니다. 어닝 시즌 결과와 중장기 섹터 흐름을 확인하세요.",
-    연간: "연간 수익률 기준입니다. 구조적 성장 섹터와 소외 섹터를 구분하는 데 유용합니다.",
+    연간: sectors.some((s) => Number.isFinite(s.returnYear))
+      ? "DB 연간 수익률 기준입니다. 구조적 성장 섹터와 소외 섹터를 구분하는 데 유용합니다."
+      : "DB에 연간 수익률이 없어서 분기 수익률을 그대로 표시합니다. sector_metrics.return_year 적재 후 자동 전환됩니다.",
   };
 
   return (
@@ -888,48 +1268,68 @@ function SectorRotationPanel() {
         {periodComment[period]}
       </div>
 
-      {/* Bar chart */}
-      <div className="h-40">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={chartData}
-            margin={{ top: 4, right: 4, bottom: 0, left: -16 }}
-          >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="var(--border)"
-              opacity={0.3}
-            />
-            <XAxis
-              dataKey="name"
-              tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
-              tickLine={false}
-              axisLine={false}
-            />
-            <YAxis
-              tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(v) => `${v}%`}
-            />
-            <Tooltip
-              contentStyle={{
-                background: "var(--card)",
-                border: "1px solid var(--border)",
-                borderRadius: "8px",
-                fontSize: 10,
-              }}
-              formatter={(v: number) => [`${v.toFixed(2)}%`, "수익률"]}
-            />
-            <ReferenceLine y={0} stroke="var(--border)" strokeWidth={1} />
-            <Bar dataKey="value" radius={[3, 3, 0, 0]}>
-              {chartData.map((entry, i) => (
-                <rect key={i} fill={entry.fill} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      {/* Ranking bars */}
+      {chartData.length === 0 ? (
+        <div className="h-32 flex items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/10 text-xs text-muted-foreground">
+          섹터 로테이션 DB 데이터를 불러올 수 없습니다
+        </div>
+      ) : (
+        <div
+          className="space-y-2"
+          role="list"
+          aria-label={`${market === "US" ? "미국" : "한국"} 섹터 로테이션 ${period} 수익률 상위 ${chartData.length}개`}
+        >
+          {chartData.map((entry, i) => {
+            const pct = (Math.abs(entry.value) / maxAbsReturn) * 100;
+            const flowLabel =
+              entry.moneyFlow === "inflow"
+                ? "자금 유입"
+                : entry.moneyFlow === "outflow"
+                  ? "자금 유출"
+                  : "중립";
+            const rowTitle = `${entry.sector} · ${period} ${entry.value >= 0 ? "+" : ""}${entry.value.toFixed(2)}% · 순위 ${entry.rank} · ${flowLabel}`;
+            return (
+              <div
+                key={`${entry.sector}-${i}`}
+                className="grid grid-cols-[4.5rem_1fr_4rem] items-center gap-2 rounded-md outline-none transition-colors focus-visible:ring-1 focus-visible:ring-primary/50 sm:grid-cols-[5.5rem_1fr_4.25rem]"
+                role="listitem"
+                tabIndex={0}
+                title={rowTitle}
+                aria-label={rowTitle}
+              >
+                <div className="min-w-0 text-[11px] text-muted-foreground">
+                  <span className="mr-1 font-mono text-[10px] text-muted-foreground/70">
+                    #{entry.rank}
+                  </span>
+                  <span className="truncate align-bottom">{entry.name}</span>
+                </div>
+                <div className="relative h-4 overflow-hidden rounded-full bg-muted/40">
+                  <div className="absolute left-1/2 top-0 h-full w-px bg-border/80" />
+                  <div
+                    className={cn(
+                      "absolute top-0 h-full rounded-full transition-all duration-300",
+                      entry.value >= 0 ? "bg-up" : "bg-down",
+                    )}
+                    style={{
+                      width: `${Math.max(2, pct / 2)}%`,
+                      left: entry.value >= 0 ? "50%" : `${50 - pct / 2}%`,
+                    }}
+                  />
+                </div>
+                <div
+                  className={cn(
+                    "text-right text-xs font-mono",
+                    entry.value >= 0 ? "text-up" : "text-down",
+                  )}
+                >
+                  {entry.value >= 0 ? "+" : ""}
+                  {entry.value.toFixed(2)}%
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Table */}
       <div className="overflow-x-auto">
@@ -957,64 +1357,75 @@ function SectorRotationPanel() {
             </tr>
           </thead>
           <tbody>
-            {sorted.map((s, i) => {
-              const ret = getReturn(s);
-              const comment = SECTOR_COMMENTS[s.sector];
-              return (
-                <tr
-                  key={s.sector}
-                  className="border-b border-border/50 hover:bg-muted/20 transition-colors group"
+            {sorted.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={6}
+                  className="py-8 text-center text-xs text-muted-foreground"
                 >
-                  <td className="py-2 px-2">
-                    <span
-                      className={cn(
-                        "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold",
-                        i === 0
-                          ? "bg-yellow-400/20 text-yellow-500"
-                          : i === 1
-                            ? "bg-slate-400/20 text-slate-400"
-                            : i === 2
-                              ? "bg-orange-400/20 text-orange-400"
-                              : "text-muted-foreground",
+                  API에서 받은 섹터 데이터가 없습니다
+                </td>
+              </tr>
+            ) : (
+              sorted.map((s, i) => {
+                const ret = getReturn(s);
+                const comment = SECTOR_COMMENTS[s.sector];
+                return (
+                  <tr
+                    key={s.sector}
+                    className="border-b border-border/50 hover:bg-muted/20 transition-colors group"
+                  >
+                    <td className="py-2 px-2">
+                      <span
+                        className={cn(
+                          "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold",
+                          i === 0
+                            ? "bg-yellow-400/20 text-yellow-500"
+                            : i === 1
+                              ? "bg-slate-400/20 text-slate-400"
+                              : i === 2
+                                ? "bg-orange-400/20 text-orange-400"
+                                : "text-muted-foreground",
+                        )}
+                      >
+                        {i + 1}
+                      </span>
+                    </td>
+                    <td className="py-2 px-2">
+                      <div className="font-medium">{s.sector}</div>
+                      {(s as any).etf && (
+                        <div className="text-[10px] text-muted-foreground">
+                          {(s as any).etf}
+                        </div>
                       )}
-                    >
-                      {i + 1}
-                    </span>
-                  </td>
-                  <td className="py-2 px-2">
-                    <div className="font-medium">{s.sector}</div>
-                    {(s as any).etf && (
-                      <div className="text-[10px] text-muted-foreground">
-                        {(s as any).etf}
-                      </div>
-                    )}
-                    {comment && (
-                      <div className="text-[10px] text-muted-foreground/70 leading-tight max-w-xs hidden group-hover:block mt-0.5">
-                        {comment}
-                      </div>
-                    )}
-                  </td>
-                  <td className="py-2 px-2 text-right">
-                    <PctBadge value={ret} />
-                  </td>
-                  <td className="py-2 px-2 text-center">
-                    <RankChange curr={getRank(s)} prev={s.prevRankMonth} />
-                  </td>
-                  <td className="py-2 px-2 text-right font-mono-num">
-                    <span
-                      className={cn(
-                        s.relativeStrength >= 1 ? "text-up" : "text-down",
+                      {comment && (
+                        <div className="text-[10px] text-muted-foreground/70 leading-tight max-w-xs hidden group-hover:block mt-0.5">
+                          {comment}
+                        </div>
                       )}
-                    >
-                      {s.relativeStrength.toFixed(2)}x
-                    </span>
-                  </td>
-                  <td className="py-2 px-2 text-center">
-                    <MoneyFlowBadge flow={s.moneyFlow} />
-                  </td>
-                </tr>
-              );
-            })}
+                    </td>
+                    <td className="py-2 px-2 text-right">
+                      <PctBadge value={ret} />
+                    </td>
+                    <td className="py-2 px-2 text-center">
+                      <RankChange curr={getRank(s)} prev={s.prevRankMonth} />
+                    </td>
+                    <td className="py-2 px-2 text-right font-mono-num">
+                      <span
+                        className={cn(
+                          s.relativeStrength >= 1 ? "text-up" : "text-down",
+                        )}
+                      >
+                        {s.relativeStrength.toFixed(2)}x
+                      </span>
+                    </td>
+                    <td className="py-2 px-2 text-center">
+                      <MoneyFlowBadge flow={s.moneyFlow} />
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
@@ -1131,14 +1542,15 @@ function IntegratedScreenerPanel() {
   const [sortField, setSortField] = useState<
     "score" | "changePct" | "pe" | "roe"
   >("score");
+  const [technicalByTicker, setTechnicalByTicker] = useState<
+    Record<string, ScreenerTechnical>
+  >({});
+  const [technicalLoading, setTechnicalLoading] = useState(false);
 
-  // Live stock universe overlay. /v1/movers returns the same Stock
-  // shape (ticker/name/price/changePct/sector) as the mock arrays,
-  // so we can concat. Mock fallback fires when DB is empty (preview).
   const { data: liveUS } = useStocks("US");
   const { data: liveKR } = useStocks("KR");
-  const usPool = liveUS && liveUS.length > 0 ? liveUS : US_STOCKS;
-  const krPool = liveKR && liveKR.length > 0 ? liveKR : KR_STOCKS;
+  const usPool = liveUS ?? [];
+  const krPool = liveKR ?? [];
   const allStocks = useMemo(() => [...usPool, ...krPool], [usPool, krPool]);
 
   const filteredByMarket = useMemo(() => {
@@ -1151,21 +1563,71 @@ function IntegratedScreenerPanel() {
     return stocks;
   }, [market, useWatchlistOnly, watchlist, allStocks, usPool, krPool]);
 
+  const needsTechnicalData = selectedConditions.some((id) =>
+    [
+      "rsi_oversold",
+      "rsi_overbought",
+      "golden_cross",
+      "dead_cross",
+      "bb_lower",
+      "bb_upper",
+      "macd_bullish",
+    ].includes(id),
+  );
+
+  useEffect(() => {
+    if (!needsTechnicalData || filteredByMarket.length === 0) {
+      setTechnicalByTicker({});
+      setTechnicalLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+    setTechnicalLoading(true);
+    const tickers = Array.from(
+      new Set(filteredByMarket.slice(0, 40).map((s) => s.ticker)),
+    );
+    Promise.all(
+      tickers.map((ticker) =>
+        stocksService
+          .bars(ticker, SCREENER_TECHNICAL_HISTORY_DAYS, {
+            signal: controller.signal,
+          })
+          .then(
+            (r) =>
+              [
+                ticker,
+                calcScreenerTechnical(r.items as AnalysisBar[]),
+              ] as const,
+          )
+          .catch(() => [ticker, calcScreenerTechnical([])] as const),
+      ),
+    ).then((entries) => {
+      if (cancelled) return;
+      setTechnicalByTicker(Object.fromEntries(entries));
+      setTechnicalLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [needsTechnicalData, filteredByMarket.map((s) => s.ticker).join("|")]);
+
   const scoreStock = useCallback(
     (stock: AllStock) => {
       let score = 0;
-      const rsi = 30 + Math.random() * 40;
-      const macd = (Math.random() - 0.5) * 10;
-      const signal = (Math.random() - 0.5) * 8;
+      const technical = technicalByTicker[stock.ticker];
 
       const checks: Record<string, boolean> = {
-        rsi_oversold: rsi < 35,
-        rsi_overbought: rsi > 65,
-        golden_cross: Math.random() > 0.5,
-        dead_cross: Math.random() > 0.7,
-        bb_lower: Math.random() > 0.7,
-        bb_upper: Math.random() > 0.7,
-        macd_bullish: macd > signal,
+        rsi_oversold: technical?.checks.rsi_oversold ?? false,
+        rsi_overbought: technical?.checks.rsi_overbought ?? false,
+        golden_cross: technical?.checks.golden_cross ?? false,
+        dead_cross: technical?.checks.dead_cross ?? false,
+        bb_lower: technical?.checks.bb_lower ?? false,
+        bb_upper: technical?.checks.bb_upper ?? false,
+        macd_bullish: technical?.checks.macd_bullish ?? false,
         low_per: (stock.pe ?? 99) < 15,
         low_pbr: (stock.pbr ?? 99) < 1.5,
         high_roe: (stock.roe ?? 0) > 20,
@@ -1180,12 +1642,18 @@ function IntegratedScreenerPanel() {
       return {
         stock,
         score,
-        rsi: Math.round(rsi),
-        macd: Math.round(macd * 10) / 10,
+        rsi:
+          technical?.rsi == null || !Number.isFinite(technical.rsi)
+            ? null
+            : Math.round(technical.rsi),
+        macd:
+          technical?.macd == null || !Number.isFinite(technical.macd)
+            ? null
+            : Math.round(technical.macd * 10) / 10,
         checks,
       };
     },
-    [selectedConditions],
+    [selectedConditions, technicalByTicker],
   );
 
   const results = useMemo(() => {
@@ -1313,6 +1781,9 @@ function IntegratedScreenerPanel() {
                 {results.length}개
               </span>{" "}
               종목이 조건에 부합합니다
+              {technicalLoading && (
+                <span className="ml-2 text-primary">기술 조건 계산 중…</span>
+              )}
               {useWatchlistOnly && watchlist.length === 0 && (
                 <span className="ml-2 text-yellow-500">
                   관심종목을 먼저 추가하세요
@@ -1428,14 +1899,14 @@ function IntegratedScreenerPanel() {
                       <td className="py-2 px-2 text-right font-mono-num">
                         <span
                           className={cn(
-                            rsi < 35
+                            rsi != null && rsi < 35
                               ? "text-up font-semibold"
-                              : rsi > 65
+                              : rsi != null && rsi > 65
                                 ? "text-down font-semibold"
                                 : "",
                           )}
                         >
-                          {rsi}
+                          {rsi ?? "—"}
                         </span>
                       </td>
                       <td className="py-2 px-2 text-center">
@@ -1489,70 +1960,34 @@ function IntegratedScreenerPanel() {
 // ─── Return Comparison Panel ──────────────────────────────────
 type ReturnMode = "국채수익률" | "관심종목" | "포트폴리오";
 
-const YIELD_CURVE_US = [
-  { maturity: "1M", current: 5.28, prev3m: 5.38, prev1y: 4.82 },
-  { maturity: "3M", current: 5.24, prev3m: 5.32, prev1y: 4.78 },
-  { maturity: "6M", current: 5.18, prev3m: 5.24, prev1y: 4.72 },
-  { maturity: "1Y", current: 5.02, prev3m: 5.08, prev1y: 4.58 },
-  { maturity: "2Y", current: 4.84, prev3m: 4.92, prev1y: 4.42 },
-  { maturity: "5Y", current: 4.52, prev3m: 4.64, prev1y: 4.18 },
-  { maturity: "10Y", current: 4.42, prev3m: 4.58, prev1y: 3.98 },
-  { maturity: "20Y", current: 4.68, prev3m: 4.82, prev1y: 4.28 },
-  { maturity: "30Y", current: 4.58, prev3m: 4.72, prev1y: 4.18 },
-];
-
-const YIELD_CURVE_KR = [
-  { maturity: "1M", current: 3.58, prev3m: 3.62, prev1y: 3.82 },
-  { maturity: "3M", current: 3.52, prev3m: 3.58, prev1y: 3.74 },
-  { maturity: "6M", current: 3.48, prev3m: 3.54, prev1y: 3.68 },
-  { maturity: "1Y", current: 3.42, prev3m: 3.48, prev1y: 3.62 },
-  { maturity: "2Y", current: 3.38, prev3m: 3.44, prev1y: 3.58 },
-  { maturity: "5Y", current: 3.42, prev3m: 3.48, prev1y: 3.62 },
-  { maturity: "10Y", current: 3.52, prev3m: 3.58, prev1y: 3.72 },
-  { maturity: "20Y", current: 3.48, prev3m: 3.54, prev1y: 3.68 },
-  { maturity: "30Y", current: 3.44, prev3m: 3.5, prev1y: 3.64 },
-];
-
 function ReturnComparisonPanel() {
   const { watchlist } = useWatchlist();
   const [mode, setMode] = useState<ReturnMode>("국채수익률");
   const [yieldMarket, setYieldMarket] = useState<"US" | "KR">("US");
   const [selectedTickers, setSelectedTickers] = useState<string[]>([]);
   const [period, setPeriod] = useState<Period>("3M");
-
-  const yieldData = yieldMarket === "US" ? YIELD_CURVE_US : YIELD_CURVE_KR;
-  const isInverted =
-    yieldData[0].current > yieldData[yieldData.length - 1].current;
-
-  // Watchlist return chart data
-  const watchlistChartData = useMemo(() => {
-    const days = PERIOD_DAYS[period];
-    const data = [];
-    for (let i = days; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const entry: Record<string, number | string> = {
-        date: d.toLocaleDateString("ko-KR", { month: "short", day: "numeric" }),
-      };
-      const tickersToShow =
-        selectedTickers.length > 0
-          ? selectedTickers
-          : watchlist.slice(0, 5).map((w) => w.ticker);
-      tickersToShow.forEach((ticker) => {
-        const stock = [...US_STOCKS, ...KR_STOCKS].find(
-          (s) => s.ticker === ticker,
-        );
-        if (stock) {
-          const baseReturn =
-            ((days - i) / days) * stock.changePct * (days / 30);
-          entry[ticker] =
-            Math.round((baseReturn + (Math.random() - 0.48) * 2) * 100) / 100;
-        }
-      });
-      data.push(entry);
-    }
-    return data;
-  }, [watchlist, selectedTickers, period]);
+  const displayPeriodDays = PERIOD_DAYS[period];
+  const {
+    data: portfolioHistory,
+    loading: portfolioLoading,
+    error: portfolioError,
+    refetch: refetchPortfolioHistory,
+  } = usePortfolioHistory(RETURN_SOURCE_DAYS);
+  const [watchlistSourceRows, setWatchlistSourceRows] = useState<
+    ReturnChartRow[]
+  >([]);
+  const [watchlistCompareSeries, setWatchlistCompareSeries] = useState<
+    StockBarsCompareSeries[]
+  >([]);
+  const [watchlistCompareMeta, setWatchlistCompareMeta] =
+    useState<CompareWindowMeta | null>(null);
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
+  const [watchlistError, setWatchlistError] = useState<string | null>(null);
+  const [watchlistRetry, setWatchlistRetry] = useState(0);
+  const [yieldRows, setYieldRows] = useState<YieldHistoryRow[]>([]);
+  const [yieldLoading, setYieldLoading] = useState(false);
+  const [yieldError, setYieldError] = useState<string | null>(null);
+  const [yieldRetry, setYieldRetry] = useState(0);
 
   const COLORS = [
     "#38bdf8",
@@ -1566,6 +2001,129 @@ function ReturnComparisonPanel() {
     selectedTickers.length > 0
       ? selectedTickers
       : watchlist.slice(0, 5).map((w) => w.ticker);
+  const watchlistRebased = useMemo(
+    () =>
+      rebaseCompareRowsForPeriod(watchlistSourceRows, displayTickers, period),
+    [displayTickers.join("|"), period, watchlistSourceRows],
+  );
+  const watchlistChartData = watchlistRebased.rows;
+  const watchlistReturns = watchlistRebased.returns;
+  const portfolioRows = portfolioHistory?.rows ?? [];
+  const portfolioCurrency = portfolioHistory?.currency ?? "KRW";
+  const watchlistCompareWindow = useMemo(() => {
+    const rows = watchlistChartData.filter((row) =>
+      /^\d{4}-\d{2}-\d{2}$/.test(String(row.date ?? "")),
+    );
+    if (rows.length === 0) return null;
+    return {
+      from: String(rows[0].date),
+      to: String(rows[rows.length - 1].date),
+      baseline: String(rows[0].date),
+      rows: rows.length,
+      sourceFrom: watchlistCompareMeta?.compare_from_date ?? null,
+      sourceTo: watchlistCompareMeta?.compare_to_date ?? null,
+      sourceRows:
+        watchlistCompareMeta?.compare_row_count ?? watchlistSourceRows.length,
+    };
+  }, [watchlistChartData, watchlistCompareMeta, watchlistSourceRows.length]);
+  const watchlistSourceSummary = watchlistCompareWindow
+    ? `DB 일봉 ${watchlistCompareWindow.sourceFrom ?? watchlistCompareWindow.from} ~ ${
+        watchlistCompareWindow.sourceTo ?? watchlistCompareWindow.to
+      } · 표시 ${period} 기준 ${watchlistCompareWindow.baseline}`
+    : "DB 일봉 비교 데이터 대기";
+
+  useEffect(() => {
+    if (mode !== "국채수익률") {
+      setYieldLoading(false);
+      setYieldError(null);
+      return;
+    }
+    let cancelled = false;
+    const controller = new AbortController();
+    setYieldLoading(true);
+    setYieldError(null);
+    const seriesId = yieldMarket === "US" ? "DGS10" : "ECOS:722Y001";
+    macroService
+      .history(seriesId, RETURN_SOURCE_DAYS, { signal: controller.signal })
+      .then((r) => {
+        if (cancelled) return;
+        setYieldRows(normalizeYieldHistory(r.items));
+        setYieldError(null);
+        setYieldLoading(false);
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        if (cancelled) return;
+        setYieldRows([]);
+        setYieldError(
+          error instanceof Error
+            ? error.message
+            : "국채수익률 히스토리 API 요청이 실패했습니다",
+        );
+        setYieldLoading(false);
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [mode, yieldMarket, yieldRetry]);
+
+  useEffect(() => {
+    if (mode !== "관심종목") {
+      setWatchlistLoading(false);
+      setWatchlistError(null);
+      setWatchlistCompareMeta(null);
+      return;
+    }
+    if (displayTickers.length === 0) {
+      setWatchlistSourceRows([]);
+      setWatchlistCompareSeries([]);
+      setWatchlistCompareMeta(null);
+      setWatchlistLoading(false);
+      setWatchlistError(null);
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+    setWatchlistLoading(true);
+    setWatchlistError(null);
+    stocksService
+      .compareBars(displayTickers, COMPARE_SOURCE_DAYS, {
+        signal: controller.signal,
+      })
+      .then((response) => {
+        if (cancelled) return;
+        setWatchlistSourceRows(response.rows as ReturnChartRow[]);
+        setWatchlistCompareSeries(response.series);
+        setWatchlistCompareMeta({
+          compare_from_date: response.compare_from_date,
+          compare_to_date: response.compare_to_date,
+          compare_baseline_date: response.compare_baseline_date,
+          compare_row_count: response.compare_row_count,
+        });
+        setWatchlistError(null);
+        setWatchlistLoading(false);
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        if (cancelled) return;
+        setWatchlistSourceRows([]);
+        setWatchlistCompareSeries([]);
+        setWatchlistCompareMeta(null);
+        setWatchlistError(
+          error instanceof Error
+            ? error.message
+            : "관심종목 비교 API 요청이 실패했습니다",
+        );
+        setWatchlistLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [displayTickers.join("|"), mode, watchlistRetry]);
 
   return (
     <div className="space-y-4">
@@ -1607,143 +2165,120 @@ function ReturnComparisonPanel() {
             ))}
           </div>
         )}
-        {(mode === "관심종목" || mode === "포트폴리오") && (
-          <div className="flex rounded-lg border border-border overflow-hidden text-xs">
-            {(["1W", "1M", "3M", "1Y"] as Period[]).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={cn(
-                  "px-3 py-1.5 font-medium transition-colors",
-                  period === p
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted",
-                )}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
+        <div className="flex rounded-lg border border-border overflow-hidden text-xs">
+          {(["1W", "1M", "3M", "1Y", "2Y", "5Y"] as Period[]).map((p) => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={cn(
+                "px-3 py-1.5 font-medium transition-colors",
+                period === p
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted",
+              )}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+        {mode === "국채수익률" && (
+          <button
+            onClick={() => setYieldRetry((value) => value + 1)}
+            disabled={yieldLoading}
+            className={cn(
+              "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border transition-colors",
+              yieldLoading
+                ? "cursor-wait text-muted-foreground/45"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+            title="국채수익률 히스토리 다시 불러오기"
+            aria-label="국채수익률 히스토리 다시 불러오기"
+          >
+            <RefreshCw
+              size={13}
+              className={cn(yieldLoading && "animate-spin")}
+            />
+          </button>
         )}
       </div>
 
       {/* 국채 수익률 곡선 */}
       {mode === "국채수익률" && (
-        <div className="space-y-3">
-          <div
-            className={cn(
-              "flex items-center gap-2 p-2.5 rounded-lg text-xs font-medium",
-              isInverted
-                ? "bg-down/10 text-down border border-down/20"
-                : "bg-up/10 text-up border border-up/20",
-            )}
-          >
-            {isInverted ? (
-              <AlertTriangle size={13} />
-            ) : (
-              <CheckCircle2 size={13} />
-            )}
-            {isInverted
-              ? "수익률 곡선 역전 — 단기 금리 > 장기 금리. 역사적으로 경기침체 선행 신호."
-              : "정상 수익률 곡선 — 장기 금리 > 단기 금리. 경기 확장 국면."}
-          </div>
+        <div className="space-y-2">
           <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={yieldData}
-                margin={{ top: 4, right: 4, bottom: 0, left: -16 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="var(--border)"
-                  opacity={0.3}
-                />
-                <XAxis
-                  dataKey="maturity"
-                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v) => `${v}%`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--card)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "8px",
-                    fontSize: 10,
-                  }}
-                  formatter={(v: number) => [`${v.toFixed(2)}%`]}
-                />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Line
-                  type="monotone"
-                  dataKey="current"
-                  name="현재"
-                  stroke="#38bdf8"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="prev3m"
-                  name="3개월 전"
-                  stroke="#a855f7"
-                  strokeWidth={1.5}
-                  strokeDasharray="4 2"
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="prev1y"
-                  name="1년 전"
-                  stroke="#94a3b8"
-                  strokeWidth={1.5}
-                  strokeDasharray="2 2"
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="grid grid-cols-3 gap-3 text-xs">
-            {[
-              {
-                label: "2Y-10Y 스프레드",
-                value: `${(yieldData[6].current - yieldData[4].current).toFixed(2)}%`,
-                desc: "경기침체 지표",
-              },
-              {
-                label: "3M-10Y 스프레드",
-                value: `${(yieldData[6].current - yieldData[2].current).toFixed(2)}%`,
-                desc: "연준 선호 지표",
-              },
-              {
-                label: "10Y 실질금리",
-                value: `${(yieldData[6].current - 2.8).toFixed(2)}%`,
-                desc: "CPI 차감 추정",
-              },
-            ].map((item) => (
-              <div key={item.label} className="p-2.5 bg-muted/20 rounded-lg">
-                <div className="text-[10px] text-muted-foreground">
-                  {item.label}
+            {yieldLoading && yieldRows.length === 0 ? (
+              <div className="h-full w-full rounded-lg bg-muted/20 animate-pulse" />
+            ) : yieldRows.length < 2 ? (
+              <div className="h-full flex flex-col items-center justify-center rounded-lg border border-dashed border-border text-center text-sm text-muted-foreground">
+                <BarChart2 size={28} className="mb-2 opacity-30" />
+                {yieldError
+                  ? "국채수익률 히스토리 API 요청이 실패했습니다"
+                  : `${
+                      yieldMarket === "US"
+                        ? "미국 10년물 국채금리"
+                        : "한국 기준금리"
+                    } 히스토리 DB 데이터가 아직 없습니다`}
+                {yieldError && (
+                  <div className="mt-1 max-w-full truncate px-4 text-[10px] font-mono text-destructive">
+                    {yieldError}
+                  </div>
+                )}
+                <div className="text-xs mt-1">
+                  {yieldError
+                    ? "잠시 후 다시 시도하거나 API 상태를 확인하세요"
+                    : "매크로 API 키와 저장된 관측값을 확인하세요"}
                 </div>
-                <div
-                  className={cn(
-                    "text-base font-bold font-mono-num mt-0.5",
-                    parseFloat(item.value) < 0 ? "text-down" : "text-up",
-                  )}
+                <button
+                  onClick={() => setYieldRetry((value) => value + 1)}
+                  className="mt-2 inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
                 >
-                  {item.value}
-                </div>
-                <div className="text-[10px] text-muted-foreground">
-                  {item.desc}
-                </div>
+                  <RefreshCw size={12} />
+                  다시 불러오기
+                </button>
               </div>
-            ))}
+            ) : (
+              <KLineSeriesChart
+                data={yieldRows}
+                settingsScope={`analysis-yield-${yieldMarket}`}
+                height={220}
+                showYAxis
+                valueFormatter={(v) => `${v.toFixed(2)}%`}
+                showRangeControls={false}
+                allowValueTransform={false}
+                initialViewDays={displayPeriodDays}
+                sourceLabel="API"
+                sourceTone="primary"
+                sourceTitle={
+                  yieldMarket === "US"
+                    ? "FRED DGS10 API 5Y 히스토리 기준"
+                    : "한국은행 ECOS 기준금리 API 5Y 히스토리 기준"
+                }
+                series={[
+                  {
+                    key: "value",
+                    label:
+                      yieldMarket === "US"
+                        ? "미국 10년물 국채금리"
+                        : "한국 기준금리",
+                    color: yieldMarket === "US" ? "#38bdf8" : "#22c55e",
+                    type: "line",
+                  },
+                ]}
+              />
+            )}
+          </div>
+          <div className="text-[11px] text-muted-foreground flex items-center justify-between">
+            <span>
+              {yieldMarket === "US"
+                ? `FRED DGS10 / API 5Y 원본 · 표시 ${period}`
+                : `한국은행 ECOS 기준금리 / API 5Y 원본 · 표시 ${period}`}
+            </span>
+            {yieldRows.length > 0 && (
+              <span>
+                {yieldRows[0].date} ~ {yieldRows[yieldRows.length - 1].date} ·{" "}
+                {yieldRows.length.toLocaleString()} rows
+              </span>
+            )}
           </div>
         </div>
       )}
@@ -1795,69 +2330,116 @@ function ReturnComparisonPanel() {
                 ))}
               </div>
               <div className="h-52">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
+                {watchlistLoading && watchlistChartData.length === 0 ? (
+                  <div className="h-full w-full rounded-lg bg-muted/20 animate-pulse" />
+                ) : watchlistChartData.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center gap-1 text-center text-xs text-muted-foreground">
+                    <span>
+                      {watchlistError
+                        ? "관심종목 비교 API 요청이 실패했습니다"
+                        : "관심종목 비교 DB 일봉 데이터가 없습니다"}
+                    </span>
+                    {watchlistError && (
+                      <span className="max-w-full truncate font-mono text-[10px] text-destructive">
+                        {watchlistError}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => setWatchlistRetry((value) => value + 1)}
+                      className="mt-1 inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
+                    >
+                      <RefreshCw size={12} />
+                      다시 불러오기
+                    </button>
+                  </div>
+                ) : (
+                  <KLineSeriesChart
                     data={watchlistChartData}
-                    margin={{ top: 4, right: 4, bottom: 0, left: -16 }}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="var(--border)"
-                      opacity={0.3}
-                    />
-                    <XAxis
-                      dataKey="date"
-                      tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
-                      tickLine={false}
-                      axisLine={false}
-                      interval={Math.max(
-                        0,
-                        Math.floor(watchlistChartData.length / 6),
-                      )}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 9, fill: "var(--muted-foreground)" }}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(v) => `${v}%`}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: "var(--card)",
-                        border: "1px solid var(--border)",
-                        borderRadius: "8px",
-                        fontSize: 10,
-                      }}
-                      formatter={(v: number) => [`${v.toFixed(2)}%`]}
-                    />
-                    <ReferenceLine y={0} stroke="var(--border)" strokeWidth={1} />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    {displayTickers.map((ticker, i) => (
-                      <Line
-                        key={ticker}
-                        type="monotone"
-                        dataKey={ticker}
-                        stroke={COLORS[i % COLORS.length]}
-                        strokeWidth={1.5}
-                        dot={false}
-                      />
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer>
+                    settingsScope="analysis-watchlist-compare"
+                    height={220}
+                    valueFormatter={(v) =>
+                      `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`
+                    }
+                    zeroLine
+                    showRangeControls={false}
+                    allowValueTransform={false}
+                    initialViewDays={displayPeriodDays}
+                    fixedScaleLabel="%"
+                    fixedScaleDetail="공통 기준=0%"
+                    fixedScaleTitle="DB 일봉을 공통 기준일에 0%로 맞춘 관심종목 누적 수익률"
+                    sourceLabel="API"
+                    sourceTone="primary"
+                    sourceTitle="/stocks/bars/compare API 5Y 원본 기준"
+                    series={displayTickers.map((ticker, i) => ({
+                      key: ticker,
+                      label: ticker,
+                      color: COLORS[i % COLORS.length],
+                      type: "line",
+                    }))}
+                  />
+                )}
               </div>
+              {watchlistCompareWindow && (
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+                  <span>
+                    API 5Y 원본{" "}
+                    {watchlistCompareWindow.sourceRows.toLocaleString()}행
+                    {watchlistCompareWindow.sourceFrom &&
+                    watchlistCompareWindow.sourceTo
+                      ? ` · ${watchlistCompareWindow.sourceFrom} ~ ${watchlistCompareWindow.sourceTo}`
+                      : ""}{" "}
+                    · 표시 {period} 기준 {watchlistCompareWindow.baseline} ·{" "}
+                    {watchlistCompareWindow.rows.toLocaleString()}행 ·{" "}
+                    {watchlistCompareWindow.from} ~ {watchlistCompareWindow.to}
+                  </span>
+                  {watchlistLoading && <span>갱신 중</span>}
+                </div>
+              )}
+              {watchlistCompareSeries.length > 0 && (
+                <div
+                  className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground"
+                  role="list"
+                  aria-label={`관심종목별 DB 일봉 반환 행 수. ${watchlistSourceSummary}`}
+                >
+                  {watchlistCompareSeries.map((item) => (
+                    <span
+                      key={item.symbol}
+                      className="rounded border border-border/60 bg-muted/20 px-1.5 py-0.5 outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                      role="listitem"
+                      tabIndex={0}
+                      title={`${item.symbol} DB 일봉 ${item.from_date ?? "?"} ~ ${
+                        item.to_date ?? "?"
+                      } · ${item.returned_count.toLocaleString()}행`}
+                      aria-label={`${item.symbol} DB 일봉 ${item.from_date ?? "?"}부터 ${
+                        item.to_date ?? "?"
+                      }까지 ${item.returned_count.toLocaleString()}행`}
+                    >
+                      {item.symbol} {item.returned_count.toLocaleString()}행
+                    </span>
+                  ))}
+                </div>
+              )}
               {/* Return summary */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+              <div
+                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2"
+                role="list"
+                aria-label={`관심종목 ${period} 수익률 요약. ${watchlistSourceSummary}`}
+              >
                 {displayTickers.map((ticker, i) => {
-                  const stock = [...US_STOCKS, ...KR_STOCKS].find(
-                    (s) => s.ticker === ticker,
-                  );
-                  if (!stock) return null;
-                  const totalReturn =
-                    stock.changePct * (PERIOD_DAYS[period] / 30);
+                  const totalReturn = watchlistReturns[ticker];
+                  const rowLabel = `${ticker} ${period} 수익률 ${
+                    totalReturn == null
+                      ? "데이터 없음"
+                      : `${totalReturn >= 0 ? "+" : ""}${totalReturn.toFixed(2)}%`
+                  }. ${watchlistSourceSummary}`;
                   return (
                     <div
                       key={ticker}
-                      className="p-2 rounded-lg bg-muted/20 border border-border/50"
+                      className="p-2 rounded-lg bg-muted/20 border border-border/50 outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                      role="listitem"
+                      tabIndex={0}
+                      title={rowLabel}
+                      aria-label={rowLabel}
                     >
                       <div className="flex items-center gap-1.5 mb-1">
                         <span
@@ -1869,11 +2451,12 @@ function ReturnComparisonPanel() {
                       <div
                         className={cn(
                           "text-sm font-bold font-mono-num",
-                          totalReturn >= 0 ? "text-up" : "text-down",
+                          (totalReturn ?? 0) >= 0 ? "text-up" : "text-down",
                         )}
                       >
-                        {totalReturn >= 0 ? "+" : ""}
-                        {totalReturn.toFixed(2)}%
+                        {totalReturn == null
+                          ? "—"
+                          : `${totalReturn >= 0 ? "+" : ""}${totalReturn.toFixed(2)}%`}
                       </div>
                       <div className="text-[10px] text-muted-foreground">
                         {period} 수익률
@@ -1889,13 +2472,99 @@ function ReturnComparisonPanel() {
 
       {/* 포트폴리오 수익률 */}
       {mode === "포트폴리오" && (
-        <div className="py-12 text-center text-sm text-muted-foreground">
-          <BarChart2 size={28} className="mx-auto mb-2 opacity-30" />
-          포트폴리오 수익률은 마이페이지에서 종목을 추가하면 여기서 비교할 수
-          있습니다
-          <div className="text-xs mt-1 text-primary cursor-pointer hover:underline">
-            마이페이지 → 포트폴리오 탭으로 이동
+        <div className="space-y-3">
+          <div className="h-52">
+            {portfolioLoading && portfolioRows.length === 0 ? (
+              <div className="h-full w-full rounded-lg bg-muted/20 animate-pulse" />
+            ) : portfolioRows.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border text-center text-xs text-muted-foreground">
+                <BarChart2 size={28} className="mb-1 opacity-30" />
+                <span>
+                  {portfolioError
+                    ? "포트폴리오 히스토리 API 요청이 실패했습니다"
+                    : "포트폴리오 DB 가격 히스토리가 없습니다"}
+                </span>
+                {portfolioError && (
+                  <span className="max-w-full truncate font-mono text-[10px] text-destructive">
+                    {portfolioError.message}
+                  </span>
+                )}
+                <button
+                  onClick={refetchPortfolioHistory}
+                  className="mt-1 inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
+                >
+                  <RefreshCw size={12} />
+                  다시 불러오기
+                </button>
+              </div>
+            ) : (
+              <KLineSeriesChart
+                data={portfolioRows}
+                settingsScope="analysis-portfolio-value"
+                height={220}
+                valueFormatter={(value) =>
+                  formatPortfolioChartValue(value, portfolioCurrency)
+                }
+                showRangeControls={false}
+                initialViewDays={displayPeriodDays}
+                sourceLabel="API"
+                sourceTone="primary"
+                sourceTitle="/portfolios/me/history API 5Y 가격 히스토리 기준"
+                series={[
+                  {
+                    key: "portfolio",
+                    label: "평가금액",
+                    color: "var(--primary)",
+                    type: "area",
+                  },
+                  {
+                    key: "cost",
+                    label: "원금",
+                    color: "var(--muted-foreground)",
+                    type: "line",
+                    dashed: true,
+                  },
+                ]}
+              />
+            )}
           </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted-foreground">
+            <span>
+              API portfolio history 5Y 원본{" "}
+              {RETURN_SOURCE_DAYS.toLocaleString()}일 · 표시 {period}
+              {portfolioLoading && portfolioRows.length > 0 ? " · 갱신 중" : ""}
+            </span>
+            {portfolioRows.length > 0 && (
+              <span>
+                {portfolioRows[0]?.date} ~ {portfolioRows.at(-1)?.date} ·{" "}
+                {portfolioRows.length.toLocaleString()} 표시
+              </span>
+            )}
+          </div>
+          {(portfolioHistory?.holdings.length ?? 0) > 0 && (
+            <div
+              className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground"
+              role="list"
+              aria-label="포트폴리오 보유 종목별 DB 일봉 반환 행 수"
+            >
+              {portfolioHistory?.holdings.map((item) => (
+                <span
+                  key={item.symbol}
+                  className="rounded border border-border/60 bg-muted/20 px-1.5 py-0.5 outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  role="listitem"
+                  tabIndex={0}
+                  title={`${item.symbol} DB 일봉 ${item.from_date ?? "?"} ~ ${
+                    item.to_date ?? "?"
+                  } · ${item.returned_count.toLocaleString()}행`}
+                  aria-label={`${item.symbol} DB 일봉 ${item.from_date ?? "?"}부터 ${
+                    item.to_date ?? "?"
+                  }까지 ${item.returned_count.toLocaleString()}행`}
+                >
+                  {item.symbol} {item.returned_count.toLocaleString()}행
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -1931,40 +2600,213 @@ function StockAnalysisPanel({
   onClose: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<StockTab>("차트");
-  const [period, setPeriod] = useState<Period>("3M");
-  const [activeIndicators, setActiveIndicators] = useState<string[]>([
-    "ma5",
-    "ma20",
-    "volume",
-  ]);
+  const [signalBars, setSignalBars] = useState<AnalysisBar[]>([]);
+  const [signalBarsTicker, setSignalBarsTicker] = useState<string | null>(null);
+  const [signalsLoading, setSignalsLoading] = useState(false);
+  const [financialData, setFinancialData] = useState<FinancialChartRow[]>([]);
+  const [financialTicker, setFinancialTicker] = useState<string | null>(null);
+  const [financialLoading, setFinancialLoading] = useState(false);
   const { isWatched, addToWatchlist, removeFromWatchlist } = useWatchlist();
   const isWatchlisted = isWatched(stock.ticker);
 
-  const chartData = useMemo(() => {
-    const days = PERIOD_DAYS[period];
-    return generateOHLC(days, stock.price);
-  }, [stock.ticker, period]);
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    setSignalsLoading(true);
+    setSignalBars([]);
+    setSignalBarsTicker(stock.ticker);
+    stocksService
+      .bars(stock.ticker, STOCK_SIGNAL_HISTORY_DAYS, {
+        signal: controller.signal,
+      })
+      .then((r) => {
+        if (cancelled) return;
+        setSignalBars(normalizeAnalysisBars(r.items));
+        setSignalBarsTicker(stock.ticker);
+        setSignalsLoading(false);
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        if (cancelled) return;
+        setSignalBars([]);
+        setSignalBarsTicker(stock.ticker);
+        setSignalsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [stock.ticker]);
 
-  const toggleIndicator = (id: string) => {
-    setActiveIndicators((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
-    );
-  };
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    setFinancialLoading(true);
+    setFinancialData([]);
+    setFinancialTicker(stock.ticker);
+    stocksService
+      .financials(stock.ticker, "annual", { signal: controller.signal })
+      .then((r) => {
+        if (cancelled) return;
+        const rows = r.periods
+          .map(financialPeriodToRow)
+          .filter((row): row is FinancialChartRow => row != null)
+          .sort((a, b) => a.year.localeCompare(b.year))
+          .slice(-4);
+        setFinancialData(rows);
+        setFinancialTicker(stock.ticker);
+        setFinancialLoading(false);
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        if (cancelled) return;
+        setFinancialData([]);
+        setFinancialTicker(stock.ticker);
+        setFinancialLoading(false);
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [stock.ticker]);
 
-  const showMACD = activeIndicators.includes("macd");
-  const showRSI = activeIndicators.includes("rsi");
-  const showStoch = activeIndicators.includes("stoch");
-  const showVolume = activeIndicators.includes("volume");
-  const subPanelCount = [showMACD, showRSI, showStoch, showVolume].filter(
-    Boolean,
-  ).length;
+  const currentSignalBars = signalBarsTicker === stock.ticker ? signalBars : [];
+  const currentFinancialData =
+    financialTicker === stock.ticker ? financialData : [];
+  const technicalSignals = useMemo(
+    () => calcTechnicalSignals(currentSignalBars),
+    [currentSignalBars],
+  );
 
-  const financialData = [
-    { year: "2021", revenue: 365.8, netIncome: 94.7, eps: 5.61 },
-    { year: "2022", revenue: 394.3, netIncome: 99.8, eps: 6.11 },
-    { year: "2023", revenue: 383.3, netIncome: 97.0, eps: 6.13 },
-    { year: "2024E", revenue: 410.2, netIncome: 105.8, eps: 6.72 },
-  ];
+  const technicalSignalCards = useMemo(() => {
+    const fmt = (value: number | null, digits = 1) =>
+      value == null || !Number.isFinite(value) ? "—" : value.toFixed(digits);
+    const rsiSignal =
+      technicalSignals.rsi == null
+        ? "대기"
+        : technicalSignals.rsi >= 70
+          ? "과매수"
+          : technicalSignals.rsi <= 30
+            ? "과매도"
+            : technicalSignals.rsi >= 50
+              ? "강세"
+              : "약세";
+    const macdSignal =
+      technicalSignals.macd == null || technicalSignals.signal == null
+        ? "대기"
+        : technicalSignals.macd > technicalSignals.signal
+          ? "매수"
+          : "매도";
+    const bandSignal =
+      technicalSignals.bandPosition == null
+        ? "대기"
+        : technicalSignals.bandPosition > 80
+          ? "상단"
+          : technicalSignals.bandPosition < 20
+            ? "하단"
+            : "중단";
+    const maSignal =
+      technicalSignals.ma5 == null || technicalSignals.ma20 == null
+        ? "대기"
+        : technicalSignals.ma5 > technicalSignals.ma20
+          ? "매수"
+          : "매도";
+    const stochSignal =
+      technicalSignals.stoch == null
+        ? "대기"
+        : technicalSignals.stoch >= 80
+          ? "과매수"
+          : technicalSignals.stoch <= 20
+            ? "과매도"
+            : technicalSignals.stoch >= 50
+              ? "강세"
+              : "약세";
+    const volumeSignal =
+      technicalSignals.volumeTrend == null
+        ? "대기"
+        : technicalSignals.volumeTrend > 10
+          ? "강세"
+          : technicalSignals.volumeTrend < -10
+            ? "약세"
+            : "보통";
+    const totalSignal =
+      technicalSignals.bullishCount >= 4
+        ? "매수 우세"
+        : technicalSignals.bullishCount <= 1
+          ? "매도 우세"
+          : "중립";
+    const colorFor = (signal: string) =>
+      ["매수", "강세", "과매도", "매수 우세"].includes(signal)
+        ? "text-up"
+        : ["매도", "약세", "과매수", "매도 우세"].includes(signal)
+          ? "text-down"
+          : "text-muted-foreground";
+
+    return [
+      {
+        label: "RSI (14)",
+        value: fmt(technicalSignals.rsi),
+        signal: rsiSignal,
+        color: colorFor(rsiSignal),
+        desc: "최근 14봉 상대강도",
+      },
+      {
+        label: "MACD",
+        value: fmt(technicalSignals.macd, 2),
+        signal: macdSignal,
+        color: colorFor(macdSignal),
+        desc: "MACD vs 시그널선",
+      },
+      {
+        label: "볼린저밴드",
+        value: bandSignal,
+        signal: bandSignal,
+        color: colorFor(bandSignal),
+        desc: "20일 밴드 내 위치",
+      },
+      {
+        label: "이동평균",
+        value:
+          technicalSignals.ma5 != null && technicalSignals.ma20 != null
+            ? `MA5${technicalSignals.ma5 > technicalSignals.ma20 ? ">" : "<"}MA20`
+            : "—",
+        signal: maSignal,
+        color: colorFor(maSignal),
+        desc: "단기/중기 추세",
+      },
+      {
+        label: "스토캐스틱",
+        value: fmt(technicalSignals.stoch),
+        signal: stochSignal,
+        color: colorFor(stochSignal),
+        desc: "최근 고저가 내 위치",
+      },
+      {
+        label: "거래량 추세",
+        value:
+          technicalSignals.volumeTrend == null
+            ? "—"
+            : `${technicalSignals.volumeTrend >= 0 ? "+" : ""}${technicalSignals.volumeTrend.toFixed(0)}%`,
+        signal: volumeSignal,
+        color: colorFor(volumeSignal),
+        desc: "최근 5봉 vs 이전 20봉",
+      },
+      {
+        label: "MA20",
+        value: fmt(technicalSignals.ma20, stock.country === "KR" ? 0 : 2),
+        signal: "기준선",
+        color: "text-muted-foreground",
+        desc: "20봉 단순이평",
+      },
+      {
+        label: "종합 신호",
+        value: totalSignal,
+        signal: `${technicalSignals.bullishCount}/5`,
+        color: colorFor(totalSignal),
+        desc: "실제 가격 지표 종합",
+      },
+    ];
+  }, [stock.country, technicalSignals]);
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden mb-4">
@@ -2057,83 +2899,94 @@ function StockAnalysisPanel({
         {/* ── 재무제표 탭 ── */}
         {activeTab === "재무제표" && (
           <div className="space-y-4">
-            <div className="h-44">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={financialData}
-                  margin={{ top: 4, right: 4, bottom: 0, left: -16 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="var(--border)"
-                    opacity={0.3}
+            {financialLoading && currentFinancialData.length === 0 ? (
+              <div className="h-44 rounded-lg bg-muted/20 animate-pulse" />
+            ) : currentFinancialData.length === 0 ? (
+              <div className="h-44 flex items-center justify-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">
+                재무제표 DB 데이터가 아직 없습니다
+              </div>
+            ) : (
+              <>
+                <div className="h-44">
+                  <KLineSeriesChart
+                    data={currentFinancialData.map((row) => ({
+                      ...row,
+                      date: `${row.year}-01-01`,
+                    }))}
+                    settingsScope="analysis-financials"
+                    height={176}
+                    barLayout="group"
+                    showRangeControls={false}
+                    allowValueTransform={false}
+                    fixedScaleLabel="B"
+                    fixedScaleDetail="재무제표 원값"
+                    fixedScaleTitle="DB/API 재무제표의 billion 단위 값을 그대로 표시"
+                    sourceLabel="API"
+                    sourceTone="primary"
+                    sourceTitle="/stocks/{ticker}/financials API 재무제표 기준"
+                    valueFormatter={(v) => `${v.toFixed(2)}B`}
+                    series={[
+                      {
+                        key: "revenue",
+                        label: "매출액",
+                        color: "#38bdf8",
+                        type: "bar",
+                      },
+                      {
+                        key: "netIncome",
+                        label: "순이익",
+                        color: "#22c55e",
+                        type: "bar",
+                      },
+                    ]}
                   />
-                  <XAxis
-                    dataKey="year"
-                    tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: "var(--card)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "8px",
-                      fontSize: 10,
-                    }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar dataKey="revenue" name="매출액" fill="#38bdf8" opacity={0.8} radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="netIncome" name="순이익" fill="#22c55e" opacity={0.8} radius={[2, 2, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-2 px-2 text-muted-foreground font-medium">
-                    항목
-                  </th>
-                  {financialData.map((d) => (
-                    <th
-                      key={d.year}
-                      className="text-right py-2 px-2 text-muted-foreground font-medium"
-                    >
-                      {d.year}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  { label: "매출액 ($B)", key: "revenue" as const },
-                  { label: "순이익 ($B)", key: "netIncome" as const },
-                  { label: "EPS ($)", key: "eps" as const },
-                ].map((row) => (
-                  <tr
-                    key={row.label}
-                    className="border-b border-border/50 hover:bg-muted/20"
-                  >
-                    <td className="py-2 px-2 text-muted-foreground">
-                      {row.label}
-                    </td>
-                    {financialData.map((d) => (
-                      <td
-                        key={d.year}
-                        className="py-2 px-2 text-right font-mono-num font-medium"
+                </div>
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-2 px-2 text-muted-foreground font-medium">
+                        항목
+                      </th>
+                      {currentFinancialData.map((d) => (
+                        <th
+                          key={d.year}
+                          className="text-right py-2 px-2 text-muted-foreground font-medium"
+                        >
+                          {d.year}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { label: "매출액 ($B)", key: "revenue" as const },
+                      { label: "순이익 ($B)", key: "netIncome" as const },
+                      { label: "EPS ($)", key: "eps" as const },
+                    ].map((row) => (
+                      <tr
+                        key={row.label}
+                        className="border-b border-border/50 hover:bg-muted/20"
                       >
-                        {d[row.key].toFixed(1)}
-                      </td>
+                        <td className="py-2 px-2 text-muted-foreground">
+                          {row.label}
+                        </td>
+                        {currentFinancialData.map((d) => (
+                          <td
+                            key={d.year}
+                            className="py-2 px-2 text-right font-mono-num font-medium"
+                          >
+                            {(() => {
+                              const value = d[row.key];
+                              return value == null ? "—" : value.toFixed(1);
+                            })()}
+                          </td>
+                        ))}
+                      </tr>
                     ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                  </tbody>
+                </table>
+              </>
+            )}
           </div>
         )}
 
@@ -2223,90 +3076,57 @@ function StockAnalysisPanel({
         {/* ── 기술적 신호 탭 ── */}
         {activeTab === "기술적 신호" && (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {[
-                {
-                  label: "RSI (14)",
-                  value: "58.4",
-                  signal: "중립",
-                  color: "text-muted-foreground",
-                  desc: "과매수/과매도 아님",
-                },
-                {
-                  label: "MACD",
-                  value: "+2.84",
-                  signal: "매수",
-                  color: "text-up",
-                  desc: "MACD > 시그널선",
-                },
-                {
-                  label: "볼린저밴드",
-                  value: "중단",
-                  signal: "중립",
-                  color: "text-muted-foreground",
-                  desc: "밴드 중심 근처",
-                },
-                {
-                  label: "이동평균",
-                  value: "MA5>MA20",
-                  signal: "매수",
-                  color: "text-up",
-                  desc: "단기 골든크로스",
-                },
-                {
-                  label: "스토캐스틱",
-                  value: "64.2",
-                  signal: "중립",
-                  color: "text-muted-foreground",
-                  desc: "중립 구간",
-                },
-                {
-                  label: "거래량 추세",
-                  value: "+18%",
-                  signal: "강세",
-                  color: "text-up",
-                  desc: "평균 대비 증가",
-                },
-                {
-                  label: "ATR (14)",
-                  value: "12.4",
-                  signal: "보통",
-                  color: "text-muted-foreground",
-                  desc: "평균 변동성",
-                },
-                {
-                  label: "종합 신호",
-                  value: "매수 우세",
-                  signal: "매수",
-                  color: "text-up",
-                  desc: "5/8 지표 매수",
-                },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className="p-2.5 bg-muted/20 rounded-lg border border-border/50"
-                >
-                  <div className="text-[10px] text-muted-foreground">
-                    {item.label}
-                  </div>
+            {signalsLoading && currentSignalBars.length === 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {Array.from({ length: 8 }).map((_, i) => (
                   <div
-                    className={cn(
-                      "text-sm font-bold font-mono-num mt-0.5",
-                      item.color,
-                    )}
-                  >
-                    {item.value}
-                  </div>
+                    key={i}
+                    className="h-24 rounded-lg bg-muted/20 animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : currentSignalBars.length === 0 ? (
+              <div className="py-10 text-center text-xs text-muted-foreground">
+                기술적 신호를 계산할 가격 데이터가 없습니다
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {technicalSignalCards.map((item) => (
                   <div
-                    className={cn("text-[10px] font-medium mt-0.5", item.color)}
+                    key={item.label}
+                    className="p-2.5 bg-muted/20 rounded-lg border border-border/50"
                   >
-                    {item.signal}
+                    <div className="text-[10px] text-muted-foreground">
+                      {item.label}
+                    </div>
+                    <div
+                      className={cn(
+                        "text-sm font-bold font-mono-num mt-0.5",
+                        item.color,
+                      )}
+                    >
+                      {item.value}
+                    </div>
+                    <div
+                      className={cn(
+                        "text-[10px] font-medium mt-0.5",
+                        item.color,
+                      )}
+                    >
+                      {item.signal}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground/60">
+                      {item.desc}
+                    </div>
                   </div>
-                  <div className="text-[10px] text-muted-foreground/60">
-                    {item.desc}
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            )}
+            <div className="text-[10px] text-muted-foreground">
+              DB 일봉 {currentSignalBars.length.toLocaleString()}개 기준
+              {currentSignalBars.length > 0
+                ? ` · ${currentSignalBars[0].date} ~ ${currentSignalBars[currentSignalBars.length - 1].date}`
+                : ""}
             </div>
           </div>
         )}
@@ -2385,7 +3205,7 @@ function StockAnalysisPanel({
                   AI 종합 분석
                 </span>
                 <span className="text-[10px] text-muted-foreground ml-auto">
-                  목업 데이터 기반
+                  DB 일봉 {currentSignalBars.length.toLocaleString()}개 기반
                 </span>
               </div>
               <div className="space-y-3 text-xs text-muted-foreground leading-relaxed">
@@ -2410,10 +3230,16 @@ function StockAnalysisPanel({
                   보이고 있습니다.
                 </p>
                 <p>
-                  <strong className="text-foreground">기술적 분석:</strong> 단기
-                  이동평균선이 장기 이동평균선 위에 위치하며 상승 추세를
-                  유지하고 있습니다. RSI는 중립 구간으로 추가 상승 여력이
-                  있습니다.
+                  <strong className="text-foreground">기술적 분석:</strong>{" "}
+                  {currentSignalBars.length === 0
+                    ? "가격 데이터가 부족해 기술 지표를 계산할 수 없습니다."
+                    : `RSI ${technicalSignals.rsi?.toFixed(1) ?? "—"}, MACD ${technicalSignals.macd?.toFixed(2) ?? "—"}이며, 이동평균 신호는 ${
+                        technicalSignals.ma5 != null &&
+                        technicalSignals.ma20 != null &&
+                        technicalSignals.ma5 > technicalSignals.ma20
+                          ? "단기선 우위"
+                          : "단기선 열위"
+                      }입니다. 종합 신호는 ${technicalSignals.bullishCount}/5 매수 조건을 충족합니다.`}
                 </p>
                 <p>
                   <strong className="text-foreground">투자 의견:</strong>
@@ -2429,9 +3255,18 @@ function StockAnalysisPanel({
               {[
                 {
                   label: "단기 전망",
-                  value: stock.changePct > 0 ? "긍정적" : "중립",
+                  value:
+                    technicalSignals.bullishCount >= 4
+                      ? "긍정적"
+                      : technicalSignals.bullishCount <= 1
+                        ? "부정적"
+                        : "중립",
                   color:
-                    stock.changePct > 0 ? "text-up" : "text-muted-foreground",
+                    technicalSignals.bullishCount >= 4
+                      ? "text-up"
+                      : technicalSignals.bullishCount <= 1
+                        ? "text-down"
+                        : "text-muted-foreground",
                 },
                 {
                   label: "리스크 레벨",
@@ -2490,32 +3325,91 @@ const MARKET_TABS: MarketTab[] = [
 export default function Analysis() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStock, setSelectedStock] = useState<AllStock | null>(null);
+  const [selectingTicker, setSelectingTicker] = useState<string | null>(null);
+  const selectionControllerRef = useRef<AbortController | null>(null);
   const [activeMarketTab, setActiveMarketTab] =
     useState<MarketTab>("시장 개요");
   const [marketFilter, setMarketFilter] = useState<"ALL" | "US" | "KR">("ALL");
-  const [macroIndicators] = useState<MacroIndicator[]>(MACRO_INDICATORS);
+  const { data: macroIndicators } = useMacroIndicators();
   const { watchlist, isWatched, addToWatchlist, removeFromWatchlist } =
     useWatchlist();
+  const { data: liveUS } = useStocks("US");
+  const { data: liveKR } = useStocks("KR");
+  const { data: searchHits = [], loading: searchLoading } = useStockSearch(
+    searchQuery,
+    12,
+  );
 
-  const allStocks = useMemo(() => [...US_STOCKS, ...KR_STOCKS], []);
+  const allStocks = useMemo(
+    () => [...(liveUS ?? []), ...(liveKR ?? [])],
+    [liveUS, liveKR],
+  );
 
   const filteredStocks = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) return [];
-    const pool =
-      marketFilter === "US"
-        ? US_STOCKS
-        : marketFilter === "KR"
-          ? KR_STOCKS
-          : allStocks;
-    return pool
-      .filter(
-        (s) =>
-          s.ticker.toLowerCase().includes(q) ||
-          s.name.toLowerCase().includes(q),
-      )
-      .slice(0, 12);
-  }, [searchQuery, marketFilter, allStocks]);
+    const hits = searchHits ?? [];
+    return hits.filter(
+      (hit) => marketFilter === "ALL" || hit.country === marketFilter,
+    );
+  }, [marketFilter, searchHits]);
+
+  const selectSearchHit = useCallback(async (hit: StockSearchHit) => {
+    selectionControllerRef.current?.abort();
+    const controller = new AbortController();
+    selectionControllerRef.current = controller;
+    setSelectingTicker(hit.ticker);
+    try {
+      const stock = await hydrateSearchHit(hit, { signal: controller.signal });
+      if (controller.signal.aborted) return;
+      setSelectedStock(stock);
+      setSearchQuery("");
+    } catch (error) {
+      if (!controller.signal.aborted) throw error;
+    } finally {
+      if (selectionControllerRef.current === controller) {
+        selectionControllerRef.current = null;
+        setSelectingTicker(null);
+      }
+    }
+  }, []);
+
+  const addSearchHitToWatchlist = useCallback(
+    async (hit: StockSearchHit) => {
+      selectionControllerRef.current?.abort();
+      const controller = new AbortController();
+      selectionControllerRef.current = controller;
+      setSelectingTicker(hit.ticker);
+      try {
+        const stock = await hydrateSearchHit(hit, {
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+        addToWatchlist({
+          ticker: stock.ticker,
+          name: stock.name,
+          exchange: stock.exchange,
+          price: stock.price,
+          changePct: stock.changePct,
+          sector: stock.sector || "—",
+        });
+        toast.success("관심종목 추가");
+      } catch (error) {
+        if (!controller.signal.aborted) throw error;
+      } finally {
+        if (selectionControllerRef.current === controller) {
+          selectionControllerRef.current = null;
+          setSelectingTicker(null);
+        }
+      }
+    },
+    [addToWatchlist],
+  );
+
+  useEffect(
+    () => () => {
+      selectionControllerRef.current?.abort();
+    },
+    [],
+  );
 
   const handleEditMacro = useCallback((_id: string) => {}, []);
 
@@ -2559,17 +3453,27 @@ export default function Analysis() {
         </div>
 
         {/* Search results */}
+        {searchLoading && searchQuery.trim() && (
+          <div className="mt-3 rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+            DB 종목 검색 중...
+          </div>
+        )}
+        {!searchLoading &&
+          searchQuery.trim() &&
+          filteredStocks.length === 0 && (
+            <div className="mt-3 rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+              검색 결과가 없습니다
+            </div>
+          )}
         {filteredStocks.length > 0 && (
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
             {filteredStocks.map((s) => {
               const watched = isWatched(s.ticker);
+              const busy = selectingTicker === s.ticker;
               return (
                 <div
                   key={s.ticker}
-                  onClick={() => {
-                    setSelectedStock(s);
-                    setSearchQuery("");
-                  }}
+                  onClick={() => void selectSearchHit(s)}
                   className={cn(
                     "flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition-all hover:border-primary/40 hover:bg-muted/20",
                     selectedStock?.ticker === s.ticker
@@ -2582,9 +3486,16 @@ export default function Analysis() {
                     <div className="text-[10px] text-muted-foreground truncate">
                       {s.name}
                     </div>
+                    <div className="text-[10px] text-muted-foreground/80 truncate">
+                      {s.exchange} · {s.country}
+                    </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <PctBadge value={s.changePct} size="xs" />
+                    {busy ? (
+                      <span className="text-[10px] text-muted-foreground">
+                        로딩
+                      </span>
+                    ) : null}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -2592,15 +3503,7 @@ export default function Analysis() {
                           removeFromWatchlist(s.ticker);
                           toast.success("관심종목 해제");
                         } else {
-                          addToWatchlist({
-                            ticker: s.ticker,
-                            name: s.name,
-                            exchange: s.exchange,
-                            price: s.price,
-                            changePct: s.changePct,
-                            sector: s.sector || "기타",
-                          });
-                          toast.success("관심종목 추가");
+                          void addSearchHitToWatchlist(s);
                         }
                       }}
                       className={cn(
@@ -2677,7 +3580,7 @@ export default function Analysis() {
         <div className="p-4">
           {activeMarketTab === "시장 개요" && (
             <MarketOverviewPanel
-              macroIndicators={macroIndicators}
+              macroIndicators={macroIndicators ?? []}
               onEditMacro={handleEditMacro}
             />
           )}

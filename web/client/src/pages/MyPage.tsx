@@ -19,22 +19,7 @@ import {
 } from "react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
-import { US_STOCKS, KR_STOCKS } from "@/services/mockData";
 import { MASTERS, REPORTS, LEARN_GUIDES } from "@/services/mockData";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  BarChart,
-  Bar,
-} from "recharts";
 import {
   LayoutDashboard,
   Star,
@@ -71,15 +56,19 @@ import {
 import { FollowContext } from "@/contexts/FollowContext";
 import { useWatchlist } from "@/contexts/WatchlistContext";
 import { useAlertsBackendSync } from "@/features/alerts/sync";
+import { usePortfolioAnalytics } from "@/features/portfolio";
 import { useTradesBackendSync } from "@/features/portfolio/sync";
 import { useJournalsBackendSync } from "@/features/memos/sync";
+import { stocksService } from "@/features/stocks/service";
+import { useStockSearch, useStocks } from "@/features/stocks";
 import { ModalPortal } from "@/components/ModalPortal";
+import StockMiniChart from "@/components/StockMiniChart";
+import KLineSeriesChart from "@/components/KLineSeriesChart";
+import type { Stock } from "@/types";
 
 // ── Helpers ──────────────────────────────────────────────────
-const ALL_STOCKS = [...US_STOCKS, ...KR_STOCKS];
-
 function isKRTicker(ticker: string) {
-  return /^\d{6}$/.test(ticker);
+  return /^\d{6}(\.(KS|KQ))?$/.test(ticker.trim().toUpperCase());
 }
 function fmtKRW(n: number) {
   if (n >= 100_000_000) return `${(n / 100_000_000).toFixed(1)}억원`;
@@ -91,6 +80,9 @@ function fmtUSD(n: number) {
   if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
   return `$${n.toFixed(2)}`;
 }
+function fmtPct(n: number) {
+  return `${Number.isFinite(n) ? n.toFixed(2) : "0.00"}%`;
+}
 function fmtPrice(price: number, ticker: string) {
   return isKRTicker(ticker)
     ? `₩${price.toLocaleString()}`
@@ -98,6 +90,38 @@ function fmtPrice(price: number, ticker: string) {
 }
 function fmtValue(total: number, ticker: string) {
   return isKRTicker(ticker) ? fmtKRW(total) : fmtUSD(total);
+}
+
+async function fetchLatestBarQuote(
+  ticker: string,
+  init?: RequestInit,
+): Promise<{
+  price: number;
+  changePct: number;
+}> {
+  const bars = (await stocksService.bars(ticker, 30, init)).items;
+  const latest = bars.at(-1);
+  const prev = bars.at(-2);
+  const price = latest?.close ?? 0;
+  const changePct =
+    latest && prev && prev.close > 0
+      ? ((latest.close - prev.close) / prev.close) * 100
+      : 0;
+  return { price, changePct };
+}
+
+function useLiveStockUniverse() {
+  const { data: usStocks, loading: usLoading } = useStocks("US");
+  const { data: krStocks, loading: krLoading } = useStocks("KR");
+  const stocks = useMemo(
+    () => [...(usStocks ?? []), ...(krStocks ?? [])],
+    [usStocks, krStocks],
+  );
+  const byTicker = useMemo(
+    () => new Map(stocks.map((stock) => [stock.ticker, stock])),
+    [stocks],
+  );
+  return { stocks, byTicker, loading: usLoading || krLoading };
 }
 
 // ── localStorage hook ─────────────────────────────────────────
@@ -165,123 +189,6 @@ interface AlertItem {
 }
 
 // ── Initial Data ──────────────────────────────────────────────
-const INIT_HOLDINGS = [
-  {
-    symbol: "NVDA",
-    name: "엔비디아",
-    shares: 10,
-    avgPrice: 420.0,
-    currentPrice: 875.4,
-    sector: "반도체",
-  },
-  {
-    symbol: "AAPL",
-    name: "애플",
-    shares: 25,
-    avgPrice: 165.0,
-    currentPrice: 189.3,
-    sector: "기술",
-  },
-  {
-    symbol: "MSFT",
-    name: "마이크로소프트",
-    shares: 15,
-    avgPrice: 310.0,
-    currentPrice: 378.9,
-    sector: "기술",
-  },
-  {
-    symbol: "AMZN",
-    name: "아마존",
-    shares: 8,
-    avgPrice: 140.0,
-    currentPrice: 182.1,
-    sector: "소비재",
-  },
-  {
-    symbol: "005930",
-    name: "삼성전자",
-    shares: 100,
-    avgPrice: 68000,
-    currentPrice: 74500,
-    sector: "반도체",
-  },
-  {
-    symbol: "000660",
-    name: "SK하이닉스",
-    shares: 50,
-    avgPrice: 130000,
-    currentPrice: 168000,
-    sector: "반도체",
-  },
-];
-const INIT_TRADES: Trade[] = [
-  {
-    id: "t1",
-    date: "2026-05-15",
-    symbol: "NVDA",
-    name: "엔비디아",
-    type: "매수",
-    shares: 5,
-    price: 875.4,
-    total: 4377,
-    fee: 4.38,
-    note: "AI 수요 지속 성장 기대",
-    journalLinked: true,
-  },
-  {
-    id: "t2",
-    date: "2026-05-10",
-    symbol: "AAPL",
-    name: "애플",
-    type: "매수",
-    shares: 10,
-    price: 189.3,
-    total: 1893,
-    fee: 1.89,
-    note: "WWDC 기대감, 서비스 매출 성장",
-    journalLinked: true,
-  },
-  {
-    id: "t3",
-    date: "2026-04-28",
-    symbol: "TSLA",
-    name: "테슬라",
-    type: "매도",
-    shares: 20,
-    price: 248.5,
-    total: 4970,
-    fee: 4.97,
-    note: "목표가 도달, 차익 실현",
-    journalLinked: false,
-  },
-  {
-    id: "t4",
-    date: "2026-04-15",
-    symbol: "005930",
-    name: "삼성전자",
-    type: "매수",
-    shares: 50,
-    price: 74500,
-    total: 3725000,
-    fee: 3725,
-    note: "HBM 수요 증가, 반도체 사이클 상승",
-    journalLinked: true,
-  },
-  {
-    id: "t5",
-    date: "2026-03-20",
-    symbol: "MSFT",
-    name: "마이크로소프트",
-    type: "매수",
-    shares: 5,
-    price: 378.9,
-    total: 1894.5,
-    fee: 1.89,
-    note: "Azure AI 성장",
-    journalLinked: false,
-  },
-];
 const INIT_JOURNALS: Journal[] = [
   {
     id: "j1",
@@ -395,23 +302,67 @@ function StockDetailModal({
   onClose: () => void;
   onAddTrade?: (ticker: string) => void;
 }) {
-  const stock = ALL_STOCKS.find((s) => s.ticker === ticker);
-  if (!stock) return null;
+  const { byTicker } = useLiveStockUniverse();
+  const stock = byTicker.get(ticker);
+  const [miniBars, setMiniBars] = useState<{ date: string; close: number }[]>(
+    [],
+  );
+  const [miniLoading, setMiniLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    setMiniLoading(true);
+    setMiniBars([]);
+    stocksService
+      .bars(ticker, 30, { signal: controller.signal })
+      .then((r) => {
+        if (cancelled) return;
+        setMiniBars(
+          r.items.map((bar) => ({ date: bar.date, close: bar.close })),
+        );
+        setMiniLoading(false);
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        if (cancelled) return;
+        setMiniBars([]);
+        setMiniLoading(false);
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [ticker]);
   const isKR = isKRTicker(ticker);
-  const changeColor = stock.changePct >= 0 ? "text-up" : "text-down";
-  const chartPts = Array.from({ length: 30 }, (_, i) => ({
-    x: i,
-    y:
-      stock.price *
-      (0.95 + Math.sin(i * 0.4) * 0.04 + (i / 30) * 0.05 + (i % 3) * 0.01),
+  const latestClose = miniBars.at(-1)?.close ?? stock?.price ?? 0;
+  const prevClose = miniBars.at(-2)?.close ?? latestClose;
+  const liveChangePct =
+    prevClose > 0
+      ? ((latestClose - prevClose) / prevClose) * 100
+      : (stock?.changePct ?? 0);
+  const displayStock: Stock = {
+    ticker,
+    name: stock?.name ?? ticker,
+    price: latestClose,
+    change: latestClose - prevClose,
+    changePct: liveChangePct,
+    volume: stock?.volume ?? 0,
+    marketCap: stock?.marketCap ?? "",
+    sector: stock?.sector ?? "—",
+    exchange: stock?.exchange ?? (isKR ? "KOSPI" : "NASDAQ"),
+    country: stock?.country ?? (isKR ? "KR" : "US"),
+    pe: stock?.pe,
+    roe: stock?.roe,
+  };
+  const changeColor = displayStock.changePct >= 0 ? "text-up" : "text-down";
+  const strokeColor = displayStock.changePct >= 0 ? "#10b981" : "#ef4444";
+  const miniData = miniBars.map((bar) => ({
+    date: bar.date,
+    value: bar.close,
   }));
-  const minY = Math.min(...chartPts.map((p) => p.y));
-  const maxY = Math.max(...chartPts.map((p) => p.y));
-  const toSvgY = (y: number) => 60 - ((y - minY) / (maxY - minY)) * 55;
-  const pathD = chartPts
-    .map((p, i) => `${i === 0 ? "M" : "L"} ${(p.x / 29) * 280} ${toSvgY(p.y)}`)
-    .join(" ");
-  const strokeColor = stock.changePct >= 0 ? "#10b981" : "#ef4444";
+  const miniPriceData = miniData.filter(
+    (point) => Number.isFinite(point.value) && point.value > 0,
+  );
   return (
     <ModalPortal>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -428,15 +379,17 @@ function StockDetailModal({
                     {ticker}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {stock.exchange}
+                    {displayStock.exchange}
                   </span>
                 </div>
                 <h2 className="text-lg font-bold font-['Outfit']">
-                  {stock.name}
+                  {displayStock.name}
                 </h2>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-2xl font-bold font-mono">
-                    {fmtPrice(stock.price, ticker)}
+                    {displayStock.price > 0
+                      ? fmtPrice(displayStock.price, ticker)
+                      : "—"}
                   </span>
                   <span
                     className={cn(
@@ -444,12 +397,12 @@ function StockDetailModal({
                       changeColor,
                     )}
                   >
-                    {stock.changePct >= 0 ? (
+                    {displayStock.changePct >= 0 ? (
                       <ArrowUpRight size={14} />
                     ) : (
                       <ArrowDownRight size={14} />
                     )}
-                    {Math.abs(stock.changePct).toFixed(2)}%
+                    {Math.abs(displayStock.changePct).toFixed(2)}%
                   </span>
                 </div>
               </div>
@@ -462,31 +415,50 @@ function StockDetailModal({
             </div>
           </div>
           <div className="px-5 pt-4">
-            <svg width="100%" viewBox="0 0 280 65" className="overflow-visible">
-              <defs>
-                <linearGradient id={`cg-${ticker}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={strokeColor} stopOpacity="0.3" />
-                  <stop offset="100%" stopColor={strokeColor} stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <path
-                d={pathD + ` L 280 65 L 0 65 Z`}
-                fill={`url(#cg-${ticker})`}
-              />
-              <path
-                d={pathD}
-                fill="none"
-                stroke={strokeColor}
-                strokeWidth="1.5"
-              />
-            </svg>
+            <div className="h-[72px]">
+              {miniLoading ? (
+                <div className="h-full rounded-lg bg-muted/20 animate-pulse" />
+              ) : miniPriceData.length > 1 ? (
+                <StockMiniChart
+                  data={miniPriceData}
+                  height={72}
+                  color={strokeColor}
+                  interactive
+                  valueKind="price"
+                  valueFormatter={(value) =>
+                    fmtPrice(value, displayStock.ticker)
+                  }
+                  sourceLabel="DB"
+                  sourceTone="primary"
+                  sourceTitle={`DB 일봉 ${miniPriceData[0].date} ~ ${
+                    miniPriceData[miniPriceData.length - 1].date
+                  } · ${miniPriceData.length.toLocaleString()}행`}
+                />
+              ) : (
+                <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
+                  최근 가격 데이터를 불러올 수 없습니다
+                </div>
+              )}
+            </div>
+            {miniPriceData.length > 1 && (
+              <div className="mt-1 text-[10px] text-muted-foreground font-mono">
+                DB 일봉 {miniPriceData[0].date} ~{" "}
+                {miniPriceData[miniPriceData.length - 1].date}
+              </div>
+            )}
           </div>
           <div className="p-5 grid grid-cols-2 gap-3">
             {[
-              { label: "시가총액", value: stock.marketCap },
-              { label: "섹터", value: stock.sector },
-              { label: "PER", value: `${stock.pe}x` },
-              { label: "ROE", value: `${stock.roe}%` },
+              { label: "시가총액", value: displayStock.marketCap || "—" },
+              { label: "섹터", value: displayStock.sector },
+              {
+                label: "PER",
+                value: displayStock.pe != null ? `${displayStock.pe}x` : "—",
+              },
+              {
+                label: "ROE",
+                value: displayStock.roe != null ? `${displayStock.roe}%` : "—",
+              },
             ].map(({ label, value }) => (
               <div key={label} className="bg-muted/20 rounded-lg p-3">
                 <div className="text-xs text-muted-foreground mb-0.5">
@@ -560,6 +532,76 @@ function netSharesByTrade(trades: Trade[]): Record<string, number> {
   return out;
 }
 
+function buildHoldingsFromTrades(
+  trades: Trade[],
+  stockByTicker: Map<string, Stock>,
+) {
+  const bySymbol: Record<
+    string,
+    { shares: number; totalCost: number; name: string }
+  > = {};
+  for (const trade of [...trades].sort((a, b) =>
+    a.date.localeCompare(b.date),
+  )) {
+    const row =
+      bySymbol[trade.symbol] ??
+      (bySymbol[trade.symbol] = {
+        shares: 0,
+        totalCost: 0,
+        name: trade.name,
+      });
+    if (trade.type === "매수") {
+      row.shares += trade.shares;
+      row.totalCost += trade.price * trade.shares + trade.fee;
+    } else if (row.shares > 0) {
+      const sellShares = Math.min(row.shares, trade.shares);
+      const avgCost = row.totalCost / row.shares;
+      row.shares -= sellShares;
+      row.totalCost -= avgCost * sellShares;
+    }
+  }
+
+  return Object.entries(bySymbol)
+    .filter(([, row]) => row.shares > 0)
+    .map(([symbol, row]) => {
+      const stock = stockByTicker.get(symbol);
+      const currentPrice = stock?.price ?? row.totalCost / row.shares;
+      const avgPrice = row.totalCost / row.shares;
+      const isKR = isKRTicker(symbol);
+      const pnl = (currentPrice - avgPrice) * row.shares;
+      const pnlP =
+        avgPrice > 0 ? ((currentPrice - avgPrice) / avgPrice) * 100 : 0;
+      const marketValue = currentPrice * row.shares;
+      return {
+        symbol,
+        name: stock?.name ?? row.name,
+        shares: row.shares,
+        avgPrice,
+        currentPrice,
+        sector: stock?.sector ?? "기타",
+        isKR,
+        pnl,
+        pnlP,
+        marketValue,
+      };
+    });
+}
+
+function flowPeriodToApi(
+  period: "주" | "월" | "년",
+): "week" | "month" | "year" {
+  return period === "주" ? "week" : period === "년" ? "year" : "month";
+}
+
+function pnlPeriodToApi(
+  period: "일" | "주" | "월" | "년",
+): "day" | "week" | "month" | "year" {
+  if (period === "일") return "day";
+  if (period === "주") return "week";
+  if (period === "년") return "year";
+  return "month";
+}
+
 // ── Add Trade Modal ───────────────────────────────────────────
 function AddTradeModal({
   onClose,
@@ -579,9 +621,9 @@ function AddTradeModal({
   prefillSymbol?: string;
 }) {
   const todayIso = new Date().toISOString().slice(0, 10);
-  const prefillStock = prefillSymbol
-    ? ALL_STOCKS.find((s) => s.ticker === prefillSymbol)
-    : undefined;
+  const { byTicker } = useLiveStockUniverse();
+  const prefillStock = prefillSymbol ? byTicker.get(prefillSymbol) : undefined;
+  const [selectedName, setSelectedName] = useState(prefillStock?.name ?? "");
   const [form, setForm] = useState({
     date: todayIso,
     symbol: prefillStock?.ticker ?? "",
@@ -600,6 +642,12 @@ function AddTradeModal({
     prefillStock ? `${prefillStock.ticker} ${prefillStock.name}` : "",
   );
   const [showSearch, setShowSearch] = useState(false);
+  const { data: searchResults = [], loading: searchLoading } = useStockSearch(
+    showSearch && !form.symbol ? search : "",
+    8,
+  );
+  const tradeSearchResults = searchResults ?? [];
+  const quoteControllerRef = useRef<AbortController | null>(null);
   const [touched, setTouched] = useState({
     symbol: false,
     shares: false,
@@ -610,15 +658,12 @@ function AddTradeModal({
     target: false,
     stopLoss: false,
   });
-  const searchResults = useMemo(() => {
-    if (!search.trim() || form.symbol) return [];
-    const q = search.toLowerCase();
-    return ALL_STOCKS.filter(
-      (s) =>
-        s.ticker.toLowerCase().includes(q) || s.name.toLowerCase().includes(q),
-    ).slice(0, 6);
-  }, [search, form.symbol]);
-
+  useEffect(
+    () => () => {
+      quoteControllerRef.current?.abort();
+    },
+    [],
+  );
   // ── Validation ───────────────────────────────────────────────
   // Field-level rules. `error` is non-null when the field is invalid
   // (regardless of `touched`); the UI only paints the error red once
@@ -628,8 +673,7 @@ function AddTradeModal({
   const feeNum = form.fee.trim() === "" ? NaN : parseFloat(form.fee);
   const heldShares = form.symbol ? (currentHoldings[form.symbol] ?? 0) : 0;
   const stockIsKR = form.symbol ? isKRTicker(form.symbol) : false;
-  const isInUniverse =
-    !!form.symbol && ALL_STOCKS.some((s) => s.ticker === form.symbol);
+  const isInUniverse = !!form.symbol;
 
   const targetNum = form.target.trim() === "" ? NaN : parseFloat(form.target);
   const stopLossNum =
@@ -646,7 +690,6 @@ function AddTradeModal({
     stopLoss?: string;
   } = {};
   if (!form.symbol) errors.symbol = "검색 결과에서 종목을 선택해주세요";
-  else if (!isInUniverse) errors.symbol = "지원하지 않는 종목입니다";
 
   if (!form.shares) errors.shares = "수량을 입력해주세요";
   else if (!isFinite(sharesNum) || sharesNum <= 0)
@@ -718,13 +761,12 @@ function AddTradeModal({
       if (firstErr) toast.error(firstErr);
       return;
     }
-    const stock = ALL_STOCKS.find((s) => s.ticker === form.symbol);
     const tradeId = "t" + Date.now();
     onAdd({
       id: tradeId,
       date: form.date,
       symbol: form.symbol,
-      name: stock?.name ?? form.symbol,
+      name: selectedName || form.symbol,
       type: form.type,
       shares: sharesNum,
       price: priceNum,
@@ -738,7 +780,7 @@ function AddTradeModal({
         id: "j" + Date.now(),
         date: form.date,
         symbol: form.symbol,
-        name: stock?.name ?? form.symbol,
+        name: selectedName || form.symbol,
         type: form.type,
         reason: form.reason.trim(),
         target: targetNum,
@@ -786,7 +828,10 @@ function AddTradeModal({
                 <input
                   value={form.symbol || search}
                   onChange={(e) => {
-                    if (form.symbol) setForm((f) => ({ ...f, symbol: "" }));
+                    if (form.symbol) {
+                      setForm((f) => ({ ...f, symbol: "", price: "" }));
+                      setSelectedName("");
+                    }
                     setSearch(e.target.value);
                     setShowSearch(true);
                   }}
@@ -800,34 +845,75 @@ function AddTradeModal({
                       : "border-border focus:border-primary",
                   )}
                 />
-                {showSearch && searchResults.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-xl z-10 overflow-hidden">
-                    {searchResults.map((s) => (
-                      <button
-                        key={s.ticker}
-                        onClick={() => {
-                          setForm((f) => ({
-                            ...f,
-                            symbol: s.ticker,
-                            price: String(s.price),
-                          }));
-                          setSearch(s.ticker + " " + s.name);
-                          setShowSearch(false);
-                          setTouched((t) => ({ ...t, symbol: true }));
-                        }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors text-left border-b border-border/30 last:border-0"
-                      >
-                        <span className="text-xs font-mono bg-muted/50 px-1.5 py-0.5 rounded text-muted-foreground w-16 text-center">
-                          {s.ticker}
-                        </span>
-                        <span className="text-sm flex-1">{s.name}</span>
-                        <span className="text-xs text-muted-foreground font-mono">
-                          {fmtPrice(s.price, s.ticker)}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                {showSearch &&
+                  searchLoading &&
+                  search.trim() &&
+                  !form.symbol && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-xl z-10 px-3 py-2 text-xs text-muted-foreground">
+                      검색 중...
+                    </div>
+                  )}
+                {showSearch &&
+                  !searchLoading &&
+                  tradeSearchResults.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-xl z-10 overflow-hidden">
+                      {tradeSearchResults.map((s) => (
+                        <button
+                          key={s.ticker}
+                          onClick={async () => {
+                            quoteControllerRef.current?.abort();
+                            const controller = new AbortController();
+                            quoteControllerRef.current = controller;
+                            let price = "";
+                            try {
+                              const quote = await fetchLatestBarQuote(
+                                s.ticker,
+                                {
+                                  signal: controller.signal,
+                                },
+                              );
+                              if (controller.signal.aborted) return;
+                              if (quote.price > 0) price = String(quote.price);
+                            } catch {
+                              if (controller.signal.aborted) return;
+                              /* leave price blank; user can enter manually */
+                            } finally {
+                              if (quoteControllerRef.current === controller) {
+                                quoteControllerRef.current = null;
+                              }
+                            }
+                            setForm((f) => ({
+                              ...f,
+                              symbol: s.ticker,
+                              price,
+                            }));
+                            setSelectedName(s.name);
+                            setSearch(s.ticker + " " + s.name);
+                            setShowSearch(false);
+                            setTouched((t) => ({ ...t, symbol: true }));
+                          }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors text-left border-b border-border/30 last:border-0"
+                        >
+                          <span className="text-xs font-mono bg-muted/50 px-1.5 py-0.5 rounded text-muted-foreground w-16 text-center">
+                            {s.ticker}
+                          </span>
+                          <span className="text-sm flex-1">{s.name}</span>
+                          <span className="text-xs text-muted-foreground font-mono">
+                            {s.exchange}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                {showSearch &&
+                  search.trim() &&
+                  !form.symbol &&
+                  tradeSearchResults.length === 0 &&
+                  !searchLoading && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-xl z-10 px-3 py-2 text-xs text-muted-foreground">
+                      DB 검색 결과가 없습니다
+                    </div>
+                  )}
               </div>
               {showError("symbol") && (
                 <div className="text-[11px] text-down mt-1">
@@ -1147,13 +1233,12 @@ function AddTradeModal({
 function PortfolioTab() {
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [tradeForTicker, setTradeForTicker] = useState<string | null>(null);
-  const holdings = INIT_HOLDINGS.map((h) => {
-    const isKR = isKRTicker(h.symbol);
-    const pnl = (h.currentPrice - h.avgPrice) * h.shares;
-    const pnlP = ((h.currentPrice - h.avgPrice) / h.avgPrice) * 100;
-    const marketValue = h.currentPrice * h.shares;
-    return { ...h, isKR, pnl, pnlP, marketValue };
-  });
+  const [trades] = useLocalState<Trade[]>("financelab_trades", []);
+  const { byTicker } = useLiveStockUniverse();
+  const holdings = useMemo(
+    () => buildHoldingsFromTrades(trades, byTicker),
+    [trades, byTicker],
+  );
   const totalValueUSD = holdings.reduce(
     (s, h) => s + (h.isKR ? h.marketValue / 1300 : h.marketValue),
     0,
@@ -1162,47 +1247,36 @@ function PortfolioTab() {
     (s, h) => s + (h.isKR ? h.pnl / 1300 : h.pnl),
     0,
   );
-  const totalPnlP = (totalPnlUSD / (totalValueUSD - totalPnlUSD)) * 100;
+  const investedUSD = totalValueUSD - totalPnlUSD;
+  const totalPnlP = investedUSD > 0 ? (totalPnlUSD / investedUSD) * 100 : 0;
   const [chartPeriod, setChartPeriod] = useState<"주" | "월" | "년">("월");
+  const { data: flowAnalytics, loading: flowAnalyticsLoading } =
+    usePortfolioAnalytics(flowPeriodToApi(chartPeriod), "month");
   const sectorMap: Record<string, number> = {};
   holdings.forEach((h) => {
     sectorMap[h.sector] =
       (sectorMap[h.sector] ?? 0) +
       (h.isKR ? h.marketValue / 1300 : h.marketValue);
   });
-  const sectorData = Object.entries(sectorMap).map(([name, value]) => ({
-    name,
-    value,
-  }));
-  const now = new Date();
-  const portfolioChartData = (() => {
-    if (chartPeriod === "주") {
-      return Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(now);
-        d.setDate(d.getDate() - (6 - i));
-        const label = `${d.getMonth() + 1}/${d.getDate()}`;
-        const base = totalValueUSD * (0.88 + i * 0.018);
-        return { label, value: Math.round(base) };
-      });
-    } else if (chartPeriod === "월") {
-      return Array.from({ length: 30 }, (_, i) => {
-        const d = new Date(now);
-        d.setDate(d.getDate() - (29 - i));
-        const label = i % 5 === 0 ? `${d.getMonth() + 1}/${d.getDate()}` : "";
-        const base = totalValueUSD * (0.82 + i * 0.006);
-        return { label, value: Math.round(base) };
-      });
-    } else {
-      return Array.from({ length: 12 }, (_, i) => {
-        const d = new Date(now);
-        d.setMonth(d.getMonth() - (11 - i));
-        const label = `${d.getMonth() + 1}월`;
-        const base = totalValueUSD * (0.6 + i * 0.036);
-        return { label, value: Math.round(base) };
-      });
-    }
-  })();
-  const maxBar = Math.max(...portfolioChartData.map((d) => d.value));
+  const sectorData = Object.entries(sectorMap)
+    .map(([name, value]) => ({
+      name,
+      value,
+      pct: totalValueUSD > 0 ? (value / totalValueUSD) * 100 : 0,
+    }))
+    .sort((a, b) => b.value - a.value);
+  const sectorSource = `보유 ${holdings.length.toLocaleString()}개 · 현재가 기반 평가금액`;
+  const apiInvestmentFlow = flowAnalytics?.investment_flow ?? [];
+  const portfolioChartData = apiInvestmentFlow;
+  const monthKey = new Date().toISOString().slice(0, 7);
+  const monthNetInvestmentUSD = trades
+    .filter((t) => t.date.startsWith(monthKey))
+    .reduce((sum, t) => {
+      const cash = t.type === "매수" ? t.total + t.fee : -(t.total - t.fee);
+      return sum + (isKRTicker(t.symbol) ? cash / 1300 : cash);
+    }, 0);
+  const usHoldingCount = holdings.filter((h) => !h.isKR).length;
+  const krHoldingCount = holdings.filter((h) => h.isKR).length;
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -1222,14 +1296,19 @@ function PortfolioTab() {
           {
             label: "보유 종목",
             value: `${holdings.length}개`,
-            sub: "미국 4 · 국내 2",
+            sub: `미국 ${usHoldingCount} · 국내 ${krHoldingCount}`,
             color: "text-foreground",
           },
           {
-            label: "이달 수익",
-            value: "+$3,154",
-            sub: "+8.5% MoM",
-            color: "text-up",
+            label: "이달 순투자",
+            value: fmtUSD(monthNetInvestmentUSD),
+            sub: fmtKRW(monthNetInvestmentUSD * 1300),
+            color:
+              monthNetInvestmentUSD > 0
+                ? "text-up"
+                : monthNetInvestmentUSD < 0
+                  ? "text-down"
+                  : "text-muted-foreground",
           },
         ].map((c) => (
           <div
@@ -1247,7 +1326,12 @@ function PortfolioTab() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 bg-card border border-border rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold">포트폴리오 추이</h3>
+            <div>
+              <h3 className="text-sm font-semibold">투자금 흐름</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                거래내역 기준 누적 순투자금 · 원화 환산
+              </p>
+            </div>
             <div className="flex gap-1">
               {(["주", "월", "년"] as const).map((p) => (
                 <button
@@ -1265,73 +1349,115 @@ function PortfolioTab() {
               ))}
             </div>
           </div>
-          <div className="flex items-end gap-0.5 h-24">
-            {portfolioChartData.map((d, i) => (
-              <div
-                key={i}
-                className="flex-1 flex flex-col items-center gap-0.5"
-              >
-                <div className="w-full relative" style={{ height: 72 }}>
-                  <div
-                    className={cn(
-                      "absolute bottom-0 w-full rounded-t transition-all",
-                      i === portfolioChartData.length - 1
-                        ? "bg-primary"
-                        : "bg-muted/60",
-                    )}
-                    style={{ height: `${(d.value / maxBar) * 100}%` }}
-                  />
-                </div>
-                {d.label && (
-                  <span className="text-[8px] text-muted-foreground truncate w-full text-center">
-                    {d.label}
-                  </span>
-                )}
+          {flowAnalyticsLoading && portfolioChartData.length === 0 ? (
+            <div className="h-24 rounded-lg bg-muted/20 animate-pulse" />
+          ) : portfolioChartData.length === 0 ? (
+            <div className="h-24 flex items-center justify-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">
+              {trades.length === 0
+                ? "거래내역이 생기면 API 누적 순투자금 차트가 표시됩니다"
+                : "백엔드 거래내역 동기화 후 API 누적 순투자금 차트가 표시됩니다"}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <KLineSeriesChart
+                data={portfolioChartData}
+                settingsScope="mypage-cashflow"
+                height={170}
+                valueFormatter={(v) => fmtKRW(v)}
+                zeroLine
+                showRangeControls={false}
+                allowValueTransform={false}
+                fixedScaleLabel="원"
+                fixedScaleDetail="API 현금흐름"
+                fixedScaleTitle="/portfolios/me/analytics API가 반환한 원화 현금흐름 값을 그대로 표시"
+                sourceLabel="API"
+                sourceTone="primary"
+                sourceTitle="/portfolios/me/analytics API 응답 기준"
+                series={[
+                  {
+                    key: "value",
+                    label: "누적 순투자금",
+                    color: "var(--primary)",
+                    type: "area",
+                  },
+                  {
+                    key: "netFlow",
+                    label: "기간 순유입",
+                    color: "var(--violet)",
+                    type: "bar",
+                  },
+                ]}
+              />
+              <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                <span
+                  className="rounded border border-primary/35 bg-primary/10 px-1.5 py-0.5 font-mono text-primary"
+                  title="/portfolios/me/analytics API 응답 기준"
+                >
+                  API
+                </span>
+                <span>백엔드 거래내역 API 기준</span>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
-          <h3 className="text-sm font-semibold mb-3">섹터 비중</h3>
-          <ResponsiveContainer width="100%" height={100}>
-            <PieChart>
-              <Pie
-                data={sectorData}
-                cx="50%"
-                cy="50%"
-                innerRadius={28}
-                outerRadius={45}
-                dataKey="value"
-              >
-                {sectorData.map((_, i) => (
-                  <Cell
-                    key={i}
-                    fill={SECTOR_COLORS[i % SECTOR_COLORS.length]}
-                  />
-                ))}
-              </Pie>
-              <Tooltip formatter={(v: number) => [fmtUSD(v)]} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="space-y-1 mt-1">
-            {sectorData.map((s, i) => (
-              <div
-                key={s.name}
-                className="flex items-center justify-between text-xs"
-              >
-                <div className="flex items-center gap-1.5">
-                  <div
-                    className="w-2 h-2 rounded-full"
-                    style={{ background: SECTOR_COLORS[i] }}
-                  />
-                  <span className="text-muted-foreground">{s.name}</span>
-                </div>
-                <span className="font-medium">
-                  {((s.value / totalValueUSD) * 100).toFixed(1)}%
-                </span>
-              </div>
-            ))}
+          <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <h3 className="text-sm font-semibold">섹터 비중</h3>
+            <span className="text-[10px] text-muted-foreground font-mono">
+              {sectorSource}
+            </span>
           </div>
+          {sectorData.length === 0 ? (
+            <div className="h-[137px] flex items-center justify-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">
+              보유 종목이 생기면 섹터 비중이 표시됩니다
+            </div>
+          ) : (
+            <div
+              className="space-y-3"
+              role="list"
+              aria-label={`섹터 비중. ${sectorSource}. 평가금액 내림차순`}
+            >
+              {sectorData.map((s, i) => {
+                const color = SECTOR_COLORS[i % SECTOR_COLORS.length];
+                const rowLabel = `${s.name} 섹터 비중 ${fmtPct(s.pct)}, 평가금액 ${fmtUSD(
+                  s.value,
+                )}. ${sectorSource}`;
+                return (
+                  <div
+                    key={s.name}
+                    className="space-y-1.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    role="listitem"
+                    tabIndex={0}
+                    title={rowLabel}
+                    aria-label={rowLabel}
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <div
+                          className="w-2 h-2 rounded-full"
+                          style={{ background: color }}
+                        />
+                        <span className="text-muted-foreground">{s.name}</span>
+                      </div>
+                      <span className="font-medium">{fmtPct(s.pct)}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted/40 overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${Math.max(2, s.pct)}%`,
+                          background: color,
+                        }}
+                      />
+                    </div>
+                    <div className="text-[10px] text-muted-foreground text-right">
+                      {fmtUSD(s.value)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
       <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -1364,52 +1490,64 @@ function PortfolioTab() {
               </tr>
             </thead>
             <tbody>
-              {holdings.map((h) => (
-                <tr
-                  key={h.symbol}
-                  onClick={() => setSelectedTicker(h.symbol)}
-                  className="border-b border-border/50 hover:bg-muted/10 transition-colors cursor-pointer group"
-                >
-                  <td className="px-4 py-3">
-                    <div className="font-semibold group-hover:text-primary transition-colors">
-                      {h.name}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground font-mono">
-                      {h.symbol}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 font-mono">
-                    {h.shares.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-muted-foreground">
-                    {fmtPrice(h.avgPrice, h.symbol)}
-                  </td>
-                  <td className="px-4 py-3 font-mono font-medium">
-                    {fmtPrice(h.currentPrice, h.symbol)}
-                  </td>
-                  <td className="px-4 py-3 font-mono font-semibold">
-                    {fmtValue(h.marketValue, h.symbol)}
-                  </td>
+              {holdings.length === 0 ? (
+                <tr>
                   <td
-                    className={cn(
-                      "px-4 py-3 font-mono text-sm",
-                      h.pnl >= 0 ? "text-up" : "text-down",
-                    )}
+                    colSpan={7}
+                    className="px-4 py-10 text-center text-xs text-muted-foreground"
                   >
-                    {h.pnl >= 0 ? "+" : ""}
-                    {fmtValue(Math.abs(h.pnl), h.symbol)}
-                  </td>
-                  <td
-                    className={cn(
-                      "px-4 py-3 font-mono font-semibold",
-                      h.pnlP >= 0 ? "text-up" : "text-down",
-                    )}
-                  >
-                    {h.pnlP >= 0 ? "+" : ""}
-                    {h.pnlP.toFixed(2)}%
+                    아직 보유 종목이 없습니다. 거래를 추가하면 이 표가 실제
+                    거래내역 기준으로 채워집니다.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                holdings.map((h) => (
+                  <tr
+                    key={h.symbol}
+                    onClick={() => setSelectedTicker(h.symbol)}
+                    className="border-b border-border/50 hover:bg-muted/10 transition-colors cursor-pointer group"
+                  >
+                    <td className="px-4 py-3">
+                      <div className="font-semibold group-hover:text-primary transition-colors">
+                        {h.name}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground font-mono">
+                        {h.symbol}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-mono">
+                      {h.shares.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-muted-foreground">
+                      {fmtPrice(h.avgPrice, h.symbol)}
+                    </td>
+                    <td className="px-4 py-3 font-mono font-medium">
+                      {fmtPrice(h.currentPrice, h.symbol)}
+                    </td>
+                    <td className="px-4 py-3 font-mono font-semibold">
+                      {fmtValue(h.marketValue, h.symbol)}
+                    </td>
+                    <td
+                      className={cn(
+                        "px-4 py-3 font-mono text-sm",
+                        h.pnl >= 0 ? "text-up" : "text-down",
+                      )}
+                    >
+                      {h.pnl >= 0 ? "+" : ""}
+                      {fmtValue(Math.abs(h.pnl), h.symbol)}
+                    </td>
+                    <td
+                      className={cn(
+                        "px-4 py-3 font-mono font-semibold",
+                        h.pnlP >= 0 ? "text-up" : "text-down",
+                      )}
+                    >
+                      {h.pnlP >= 0 ? "+" : ""}
+                      {h.pnlP.toFixed(2)}%
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -1430,7 +1568,7 @@ function PortfolioTab() {
             appendToLocalArray<Journal>("financelab_journals", j)
           }
           currentHoldings={netSharesByTrade(
-            readLocalArray<Trade>("financelab_trades", INIT_TRADES),
+            readLocalArray<Trade>("financelab_trades", []),
           )}
         />
       )}
@@ -1441,76 +1579,51 @@ function PortfolioTab() {
 // ── Watchlist Tab ─────────────────────────────────────────────
 function WatchlistTab() {
   const { watchlist, addToWatchlist, removeFromWatchlist } = useWatchlist();
+  const { byTicker, loading: stocksLoading } = useLiveStockUniverse();
   const [search, setSearch] = useState("");
   const [tradeForTicker, setTradeForTicker] = useState<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
-  const defaultList = [
-    {
-      ticker: "META",
-      name: "메타",
-      exchange: "NASDAQ",
-      price: 512.3,
-      changePct: 0.47,
-      sector: "기술",
-      addedAt: "",
-    },
-    {
-      ticker: "GOOGL",
-      name: "알파벳",
-      exchange: "NASDAQ",
-      price: 172.8,
-      changePct: -0.69,
-      sector: "기술",
-      addedAt: "",
-    },
-    {
-      ticker: "TSLA",
-      name: "테슬라",
-      exchange: "NASDAQ",
-      price: 248.5,
-      changePct: 3.63,
-      sector: "자동차",
-      addedAt: "",
-    },
-    {
-      ticker: "035420",
-      name: "NAVER",
-      exchange: "KRX",
-      price: 198500,
-      changePct: 1.79,
-      sector: "IT",
-      addedAt: "",
-    },
-    {
-      ticker: "035720",
-      name: "카카오",
-      exchange: "KRX",
-      price: 42300,
-      changePct: -1.86,
-      sector: "IT",
-      addedAt: "",
-    },
-  ];
-  const displayList = watchlist.length > 0 ? watchlist : defaultList;
-  const searchResults = useMemo(() => {
-    if (!search.trim()) return [];
-    const q = search.toLowerCase();
-    return ALL_STOCKS.filter(
-      (s) =>
-        (s.ticker.toLowerCase().includes(q) ||
-          s.name.toLowerCase().includes(q)) &&
-        !displayList.some((w) => w.ticker === s.ticker),
-    ).slice(0, 8);
-  }, [search, displayList]);
+  const { data: searchResults = [], loading: searchLoading } = useStockSearch(
+    showSearch ? search : "",
+    10,
+  );
+  const quoteControllerRef = useRef<AbortController | null>(null);
+  const displayList = useMemo(
+    () =>
+      watchlist.map((item) => {
+        const live = byTicker.get(item.ticker);
+        return live
+          ? {
+              ...item,
+              name: live.name,
+              exchange: live.exchange,
+              price: live.price,
+              changePct: live.changePct,
+              sector: live.sector,
+            }
+          : item;
+      }),
+    [byTicker, watchlist],
+  );
+  const filteredSearchResults = useMemo(
+    () =>
+      (searchResults ?? [])
+        .filter((s) => !displayList.some((w) => w.ticker === s.ticker))
+        .slice(0, 8),
+    [displayList, searchResults],
+  );
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node))
         setShowSearch(false);
     };
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      quoteControllerRef.current?.abort();
+    };
   }, []);
   return (
     <div className="space-y-4">
@@ -1531,19 +1644,41 @@ function WatchlistTab() {
             className="w-full pl-9 pr-4 py-2.5 text-sm bg-card border border-border rounded-xl focus:outline-none focus:border-primary transition-colors"
           />
         </div>
-        {showSearch && searchResults.length > 0 && (
+        {showSearch && searchLoading && search.trim() && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-2xl z-20 px-4 py-3 text-xs text-muted-foreground">
+            검색 중...
+          </div>
+        )}
+        {showSearch && !searchLoading && filteredSearchResults.length > 0 && (
           <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-2xl z-20 overflow-hidden">
-            {searchResults.map((s) => (
+            {filteredSearchResults.map((s) => (
               <button
                 key={s.ticker}
-                onClick={() => {
+                onClick={async () => {
+                  quoteControllerRef.current?.abort();
+                  const controller = new AbortController();
+                  quoteControllerRef.current = controller;
+                  let quote = { price: 0, changePct: 0 };
+                  try {
+                    quote = await fetchLatestBarQuote(s.ticker, {
+                      signal: controller.signal,
+                    });
+                    if (controller.signal.aborted) return;
+                  } catch {
+                    if (controller.signal.aborted) return;
+                    /* keep empty quote; detail modal can still load bars */
+                  } finally {
+                    if (quoteControllerRef.current === controller) {
+                      quoteControllerRef.current = null;
+                    }
+                  }
                   addToWatchlist({
                     ticker: s.ticker,
                     name: s.name,
                     exchange: s.exchange,
-                    price: s.price,
-                    changePct: s.changePct,
-                    sector: s.sector,
+                    price: quote.price,
+                    changePct: quote.changePct,
+                    sector: "—",
                   });
                   setSearch("");
                   setShowSearch(false);
@@ -1557,21 +1692,12 @@ function WatchlistTab() {
                 <div className="flex-1">
                   <div className="text-sm font-medium">{s.name}</div>
                   <div className="text-xs text-muted-foreground">
-                    {s.exchange} · {s.sector}
+                    {s.exchange}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-mono">
-                    {fmtPrice(s.price, s.ticker)}
-                  </div>
-                  <div
-                    className={cn(
-                      "text-xs font-mono",
-                      s.changePct >= 0 ? "text-up" : "text-down",
-                    )}
-                  >
-                    {s.changePct >= 0 ? "+" : ""}
-                    {s.changePct.toFixed(2)}%
+                  <div className="text-xs text-muted-foreground font-mono">
+                    {s.country}
                   </div>
                 </div>
                 <Plus size={14} className="text-primary flex-shrink-0" />
@@ -1579,6 +1705,14 @@ function WatchlistTab() {
             ))}
           </div>
         )}
+        {showSearch &&
+          search.trim() &&
+          !searchLoading &&
+          filteredSearchResults.length === 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-xl shadow-2xl z-20 px-4 py-3 text-xs text-muted-foreground">
+              DB 검색 결과가 없습니다
+            </div>
+          )}
       </div>
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="px-4 py-3 border-b border-border flex items-center justify-between">
@@ -1606,6 +1740,18 @@ function WatchlistTab() {
             </tr>
           </thead>
           <tbody>
+            {stocksLoading &&
+              displayList.length === 0 &&
+              Array.from({ length: 4 }, (_, i) => (
+                <tr
+                  key={`watch-loading-${i}`}
+                  className="border-b border-border/50"
+                >
+                  <td className="px-4 py-3" colSpan={6}>
+                    <div className="h-8 rounded bg-muted/25 animate-pulse" />
+                  </td>
+                </tr>
+              ))}
             {displayList.map((stock) => {
               const isKR = isKRTicker(stock.ticker);
               const changeAbs = (stock.price * Math.abs(stock.changePct)) / 100;
@@ -1668,6 +1814,18 @@ function WatchlistTab() {
                 </tr>
               );
             })}
+            {!stocksLoading && displayList.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-4 py-10 text-center">
+                  <div className="text-sm font-medium text-foreground">
+                    관심종목이 없습니다
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    위 검색창에서 DB에 등록된 종목을 추가하세요.
+                  </div>
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -1687,7 +1845,7 @@ function WatchlistTab() {
             appendToLocalArray<Journal>("financelab_journals", j)
           }
           currentHoldings={netSharesByTrade(
-            readLocalArray<Trade>("financelab_trades", INIT_TRADES),
+            readLocalArray<Trade>("financelab_trades", []),
           )}
         />
       )}
@@ -1697,88 +1855,21 @@ function WatchlistTab() {
 
 // ── Trades Tab ────────────────────────────────────────────────
 function TradesTab() {
-  const [trades, setTrades] = useLocalState<Trade[]>(
-    "financelab_trades",
-    INIT_TRADES,
-  );
+  const [trades, setTrades] = useLocalState<Trade[]>("financelab_trades", []);
   const { add: addTradeSynced } = useTradesBackendSync(trades, setTrades);
   const [showAddModal, setShowAddModal] = useState(false);
   const [tradeForTicker, setTradeForTicker] = useState<string | null>(null);
   const [period, setPeriod] = useState<"일" | "주" | "월" | "년">("월");
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
-  // 실현손익 누적 시계열 차트 데이터 생성 (현재 기준 과거 N 기간)
-  const profitData = useMemo(() => {
-    const now = new Date();
-    // 기간별 라벨 생성 함수
-    const getLabel = (d: Date): string => {
-      if (period === "일") return d.toISOString().slice(0, 10);
-      if (period === "주") {
-        const ws = new Date(d);
-        ws.setDate(d.getDate() - d.getDay());
-        return ws.toISOString().slice(0, 10);
-      }
-      if (period === "월")
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      return String(d.getFullYear());
-    };
-    // 현재부터 과거 N기간 라벨 목록 생성
-    const N =
-      period === "일" ? 14 : period === "주" ? 12 : period === "월" ? 12 : 5;
-    const labels: string[] = [];
-    for (let i = N - 1; i >= 0; i--) {
-      const d = new Date(now);
-      if (period === "일") d.setDate(d.getDate() - i);
-      else if (period === "주") {
-        d.setDate(d.getDate() - d.getDay() - i * 7);
-      } else if (period === "월") d.setMonth(d.getMonth() - i);
-      else d.setFullYear(d.getFullYear() - i);
-      const lbl = getLabel(d);
-      if (!labels.includes(lbl)) labels.push(lbl);
-    }
-    // 매수 평균단가 추적 + 매도시 실현손익 계산
-    const avgMap: Record<string, { totalCost: number; shares: number }> = {};
-    const pnlByLabel: Record<string, number> = {};
-    [...trades]
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .forEach((t) => {
-        const lbl = getLabel(new Date(t.date));
-        if (t.type === "매수") {
-          if (!avgMap[t.symbol]) avgMap[t.symbol] = { totalCost: 0, shares: 0 };
-          avgMap[t.symbol].totalCost += t.total;
-          avgMap[t.symbol].shares += t.shares;
-        } else {
-          const avg = avgMap[t.symbol]
-            ? avgMap[t.symbol].totalCost / avgMap[t.symbol].shares
-            : t.price;
-          const pnl = (t.price - avg) * t.shares - t.fee;
-          pnlByLabel[lbl] = (pnlByLabel[lbl] ?? 0) + pnl;
-        }
-      });
-    // 라벨별 누적 수익 계산
-    let cum = 0;
-    return labels.map((lbl) => {
-      cum += pnlByLabel[lbl] ?? 0;
-      const dispLabel =
-        period === "일"
-          ? lbl.slice(5)
-          : period === "월"
-            ? lbl.slice(5) + "월"
-            : period === "주"
-              ? lbl.slice(5)
-              : lbl;
-      return { label: dispLabel, pnl: pnlByLabel[lbl] ?? 0, cumPnl: cum };
-    });
-  }, [trades, period]);
+  const { data: tradeAnalytics, loading: tradeAnalyticsLoading } =
+    usePortfolioAnalytics("month", pnlPeriodToApi(period));
+  const apiRealizedPnl = tradeAnalytics?.realized_pnl ?? [];
+  const profitData = apiRealizedPnl;
   const totalRealizedPnl =
     profitData.length > 0 ? profitData[profitData.length - 1].cumPnl : 0;
-  const maxProfit = Math.max(...profitData.map((d) => Math.abs(d.pnl)), 1);
-  const totalBuy = trades
-    .filter((t) => t.type === "매수")
-    .reduce((s, t) => s + t.total, 0);
-  const totalSell = trades
-    .filter((t) => t.type === "매도")
-    .reduce((s, t) => s + t.total, 0);
-  const totalFee = trades.reduce((s, t) => s + t.fee, 0);
+  const totalBuy = tradeAnalytics?.total_buy ?? 0;
+  const totalSell = tradeAnalytics?.total_sell ?? 0;
+  const totalFee = tradeAnalytics?.total_fee ?? 0;
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-4 gap-3">
@@ -1852,90 +1943,83 @@ function TradesTab() {
             ))}
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={160}>
-          <LineChart
-            data={profitData}
-            margin={{ top: 5, right: 5, left: 0, bottom: 0 }}
-          >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="var(--border)"
-              opacity={0.4}
-            />
-            <XAxis
-              dataKey="label"
-              tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-              tickLine={false}
-              axisLine={false}
-              interval="preserveStartEnd"
-            />
-            <YAxis
-              tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(v) =>
+        {tradeAnalyticsLoading && profitData.length === 0 ? (
+          <div className="h-[160px] rounded-lg bg-muted/20 animate-pulse" />
+        ) : profitData.length === 0 ? (
+          <div className="h-[160px] flex items-center justify-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">
+            {trades.length === 0
+              ? "거래내역이 생기면 API 실현손익 누적 추이가 표시됩니다"
+              : "백엔드 거래내역 동기화 후 API 실현손익 누적 추이가 표시됩니다"}
+          </div>
+        ) : (
+          <>
+            <KLineSeriesChart
+              data={profitData}
+              settingsScope="mypage-realized-pnl"
+              height={190}
+              valueFormatter={(v) =>
                 v === 0
                   ? "0"
                   : v > 0
                     ? `+$${(v / 1000).toFixed(1)}K`
                     : `-$${(Math.abs(v) / 1000).toFixed(1)}K`
               }
-              width={55}
-            />
-            <Tooltip
-              contentStyle={{
-                background: "var(--card)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                fontSize: 12,
-              }}
-              formatter={(value: number, name: string) => [
-                `${value >= 0 ? "+" : ""}$${value.toFixed(0)} (${value >= 0 ? "+" : ""}${fmtKRW(value * 1300)})`,
-                name === "cumPnl" ? "누적 실현손익" : "해당 기간 실현손익",
+              zeroLine
+              showRangeControls={false}
+              allowValueTransform={false}
+              fixedScaleLabel="$"
+              fixedScaleDetail="API 실현손익"
+              fixedScaleTitle="/portfolios/me/analytics API가 반환한 실현손익 값을 그대로 표시"
+              sourceLabel="API"
+              sourceTone="primary"
+              sourceTitle="/portfolios/me/analytics API 응답 기준"
+              series={[
+                {
+                  key: "cumPnl",
+                  label: "누적 실현손익",
+                  color: totalRealizedPnl >= 0 ? "#10b981" : "#ef4444",
+                  type: "area",
+                },
+                {
+                  key: "pnl",
+                  label: "기간 손익",
+                  color: "#6366f1",
+                  type: "bar",
+                },
               ]}
-              labelStyle={{ color: "var(--foreground)", fontWeight: 600 }}
             />
-            <Line
-              type="monotone"
-              dataKey="cumPnl"
-              stroke={totalRealizedPnl >= 0 ? "#10b981" : "#ef4444"}
-              strokeWidth={2}
-              dot={{
-                r: 3,
-                fill: totalRealizedPnl >= 0 ? "#10b981" : "#ef4444",
-              }}
-              activeDot={{ r: 5 }}
-              name="cumPnl"
-            />
-            <Line
-              type="monotone"
-              dataKey="pnl"
-              stroke="#6366f1"
-              strokeWidth={1.5}
-              strokeDasharray="4 2"
-              dot={false}
-              name="pnl"
-            />
-          </LineChart>
-        </ResponsiveContainer>
-        <div className="flex items-center gap-4 mt-2 justify-end">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <div
-              className="w-4 h-0.5 rounded"
-              style={{
-                background: totalRealizedPnl >= 0 ? "#10b981" : "#ef4444",
-              }}
-            />{" "}
-            누적 실현손익
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <div
-              className="w-4 h-0.5 rounded"
-              style={{ background: "#6366f1", borderTop: "2px dashed #6366f1" }}
-            />{" "}
-            기간별 실현손익
-          </div>
-        </div>
+            <div className="flex items-center gap-4 mt-2 justify-end">
+              <div className="mr-auto flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                <span
+                  className="rounded border border-primary/35 bg-primary/10 px-1.5 py-0.5 font-mono text-primary"
+                  title="/portfolios/me/analytics API 응답 기준"
+                >
+                  API
+                </span>
+                <span>백엔드 거래내역 API 기준</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <div
+                  className="w-4 h-0.5 rounded"
+                  style={{
+                    background: totalRealizedPnl >= 0 ? "#10b981" : "#ef4444",
+                  }}
+                />{" "}
+                누적 실현손익
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <div
+                  className="w-4 h-0.5 rounded"
+                  style={{
+                    background: "#6366f1",
+                    borderTop: "2px dashed #6366f1",
+                  }}
+                />{" "}
+                기간별 실현손익
+              </div>
+            </div>
+          </>
+        )}
       </div>
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="px-4 py-3 border-b border-border flex items-center justify-between">
@@ -1976,52 +2060,64 @@ function TradesTab() {
               </tr>
             </thead>
             <tbody>
-              {trades.map((trade) => (
-                <tr
-                  key={trade.id}
-                  onClick={() => setSelectedTicker(trade.symbol)}
-                  className="border-b border-border/50 hover:bg-muted/10 transition-colors cursor-pointer group"
-                >
-                  <td className="px-4 py-3 text-xs text-muted-foreground font-mono">
-                    {trade.date}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="font-semibold group-hover:text-primary transition-colors">
-                      {trade.symbol}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {trade.name}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={cn(
-                        "text-xs px-1.5 py-0.5 rounded border font-semibold",
-                        trade.type === "매수"
-                          ? "border-up/40 text-up bg-up/10"
-                          : "border-down/40 text-down bg-down/10",
-                      )}
-                    >
-                      {trade.type}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 font-mono">
-                    {trade.shares.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-muted-foreground">
-                    {fmtPrice(trade.price, trade.symbol)}
-                  </td>
-                  <td className="px-4 py-3 font-mono font-semibold">
-                    {fmtValue(trade.total, trade.symbol)}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                    {fmtValue(trade.fee, trade.symbol)}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground max-w-[120px] truncate">
-                    {trade.note}
+              {trades.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="px-4 py-10 text-center text-xs text-muted-foreground"
+                  >
+                    아직 거래 내역이 없습니다. 거래를 추가하면 실현손익과
+                    포트폴리오 차트가 실제 거래 기준으로 채워집니다.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                trades.map((trade) => (
+                  <tr
+                    key={trade.id}
+                    onClick={() => setSelectedTicker(trade.symbol)}
+                    className="border-b border-border/50 hover:bg-muted/10 transition-colors cursor-pointer group"
+                  >
+                    <td className="px-4 py-3 text-xs text-muted-foreground font-mono">
+                      {trade.date}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="font-semibold group-hover:text-primary transition-colors">
+                        {trade.symbol}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {trade.name}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={cn(
+                          "text-xs px-1.5 py-0.5 rounded border font-semibold",
+                          trade.type === "매수"
+                            ? "border-up/40 text-up bg-up/10"
+                            : "border-down/40 text-down bg-down/10",
+                        )}
+                      >
+                        {trade.type}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 font-mono">
+                      {trade.shares.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-muted-foreground">
+                      {fmtPrice(trade.price, trade.symbol)}
+                    </td>
+                    <td className="px-4 py-3 font-mono font-semibold">
+                      {fmtValue(trade.total, trade.symbol)}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                      {fmtValue(trade.fee, trade.symbol)}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground max-w-[120px] truncate">
+                      {trade.note}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -2064,7 +2160,7 @@ function JournalTab() {
     "financelab_journals",
     INIT_JOURNALS,
   );
-  const [trades] = useLocalState<Trade[]>("financelab_trades", INIT_TRADES);
+  const [trades] = useLocalState<Trade[]>("financelab_trades", []);
   const { upsert: upsertJournalSynced } = useJournalsBackendSync(
     journals,
     setJournals,
@@ -2572,12 +2668,9 @@ function hydrateBookmark(item: BookmarkItem): {
         href: `/masters/${item.id}`,
       };
   } else if (item.type === "stock") {
-    // Look up the company name; only the stock detail page itself
-    // shows the bare ticker.
-    const stock = ALL_STOCKS.find((s) => s.ticker === item.id);
     return {
-      title: stock?.name ?? item.id,
-      subtitle: stock ? item.id : undefined,
+      title: item.id,
+      subtitle: "종목",
       href: `/stocks/${item.id}`,
     };
   } else if (item.type === "news") {

@@ -19,6 +19,28 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (
+            id.includes("/react/") ||
+            id.includes("/react-dom/") ||
+            id.includes("/scheduler/") ||
+            id.includes("/wouter/")
+          ) {
+            return "vendor-react";
+          }
+          if (id.includes("@supabase")) return "vendor-supabase";
+          if (id.includes("@radix-ui")) return "vendor-radix";
+          if (id.includes("klinecharts") || id.includes("recharts")) {
+            return "vendor-charts";
+          }
+          if (id.includes("lucide-react")) return "vendor-icons";
+          return undefined;
+        },
+      },
+    },
   },
   server: {
     port: 3000,

@@ -3,14 +3,25 @@
  * Features: Price chart with expandable technical indicator panels
  * Indicators: Moving Averages, Bollinger Bands, MACD, RSI, Stochastic, Volume
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "wouter";
 import { cn } from "@/lib/utils";
-import { US_STOCKS, KR_STOCKS } from "@/lib/data";
 import { useStocks, useStock, useStockBars } from "@/features/stocks";
+import {
+  stocksService,
+  type StockFinancialPeriod,
+} from "@/features/stocks/service";
 import type { Stock } from "@/types";
-import { ArrowLeft, TrendingUp, TrendingDown, Star, Bell } from "lucide-react";
+import {
+  ArrowLeft,
+  TrendingUp,
+  TrendingDown,
+  Star,
+  Bell,
+  RefreshCw,
+} from "lucide-react";
 import StockChart from "@/components/StockChart";
+import KLineSeriesChart from "@/components/KLineSeriesChart";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useWatchlist } from "@/contexts/WatchlistContext";
@@ -114,8 +125,8 @@ function buildBarsRows(
   });
 
   return bars.map((b, i) => {
-    const dt = new Date(b.date);
-    const label = `${dt.getMonth() + 1}/${dt.getDate()}`;
+    const dt = new Date(`${b.date}T00:00:00Z`);
+    const label = `${dt.getUTCMonth() + 1}/${dt.getUTCDate()}`;
     const ma20v = sma(i, 20);
     const sd = stdev(i, 20, ma20v);
     const isUp = b.close >= b.open;
@@ -150,10 +161,113 @@ function buildBarsRows(
   });
 }
 
+function fmtOptional(value: unknown, suffix = "") {
+  if (value == null || value === "") return "—";
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return "—";
+  return `${numeric.toLocaleString(undefined, { maximumFractionDigits: 2 })}${suffix}`;
+}
+
+function metricStatus(
+  value: number | null | undefined,
+  kind: "pe" | "pbr" | "roe" | "dividend",
+): string {
+  if (value == null || !Number.isFinite(value)) return "데이터 없음";
+  if (kind === "pe") {
+    if (value <= 0) return "해석 주의";
+    if (value < 15) return "낮음";
+    if (value > 40) return "높음";
+    return "중립";
+  }
+  if (kind === "pbr") {
+    if (value < 1) return "낮음";
+    if (value > 5) return "높음";
+    return "중립";
+  }
+  if (kind === "roe") {
+    if (value >= 20) return "우수";
+    if (value <= 0) return "주의";
+    return "중립";
+  }
+  if (value >= 3) return "높음";
+  if (value === 0) return "없음";
+  return "중립";
+}
+
+function statusClass(status: string): string {
+  if (status === "우수") return "border-up text-up";
+  if (status === "주의" || status === "해석 주의")
+    return "border-down text-down";
+  if (status === "데이터 없음") return "border-border text-muted-foreground";
+  return "border-muted-foreground text-muted-foreground";
+}
+
+type FinancialChartRow = {
+  year: string;
+  revenue: number | null;
+  netIncome: number | null;
+  eps: number | null;
+};
+
+function valueFromStatement(
+  rows: Record<string, unknown>[],
+  concepts: string[],
+): number | null {
+  const normalized = new Set(concepts.map((concept) => concept.toLowerCase()));
+  for (const row of rows) {
+    const concept = String(
+      row.concept ?? row.label ?? row.name ?? "",
+    ).toLowerCase();
+    if (!normalized.has(concept)) continue;
+    const raw = row.value ?? row.amount ?? row.v;
+    const value = typeof raw === "number" ? raw : Number(raw);
+    if (Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+function financialPeriodToRow(
+  period: StockFinancialPeriod,
+): FinancialChartRow | null {
+  const revenue = valueFromStatement(period.income_statement, [
+    "us-gaap_revenues",
+    "us-gaap_revenuefromcontractwithcustomerexcludingassessedtax",
+    "us-gaap_salesrevenuenet",
+    "ifrs-full_revenue",
+    "revenue",
+    "revenues",
+  ]);
+  const netIncome = valueFromStatement(period.income_statement, [
+    "us-gaap_netincomeloss",
+    "ifrs-full_profitloss",
+    "net income",
+    "netincomeloss",
+  ]);
+  const eps = valueFromStatement(period.income_statement, [
+    "us-gaap_earningspersharediluted",
+    "us-gaap_earningspersharebasic",
+    "ifrs-full_basicanddilutedearningslossespershare",
+    "eps",
+  ]);
+  if (revenue == null && netIncome == null && eps == null) return null;
+  const label =
+    period.year != null
+      ? String(period.year)
+      : period.period
+        ? period.period.slice(0, 4)
+        : "—";
+  return {
+    year: label,
+    revenue: revenue == null ? null : revenue / 1_000_000_000,
+    netIncome: netIncome == null ? null : netIncome / 1_000_000_000,
+    eps,
+  };
+}
+
 // Number of daily bars to load per chart period. StockChart owns its own
 // period UI; this only feeds the Tab 3 "Technical Signals" panel below,
 // which reads the latest computed indicators off the bars.
-const BARS_FOR_SIGNALS = 130; // ~6 months — enough for stable MA/RSI/MACD.
+const BARS_FOR_SIGNALS = 365; // 1y — enough for stable signals and 52w range.
 
 // ── Main Component ─────────────────────────────────────────────
 export default function StockDetail() {
@@ -162,22 +276,19 @@ export default function StockDetail() {
 
   const [activeTab, setActiveTab] = useState(0);
   const [alertOpen, setAlertOpen] = useState(false);
+  const [financialData, setFinancialData] = useState<FinancialChartRow[]>([]);
+  const [financialLoading, setFinancialLoading] = useState(false);
+  const [financialError, setFinancialError] = useState<string | null>(null);
+  const [financialRetry, setFinancialRetry] = useState(0);
   const { isWatched, toggleWatchlist } = useWatchlist();
 
-  // Live stock universe (US + KR movers) overlayed onto the mock
-  // list. The Stock shape from /v1/movers matches the mock row shape
-  // (ticker / name / price / changePct / sector / exchange) so we
-  // can concat freely. Mock stays as backstop if /v1/movers is empty.
   const { data: liveUS } = useStocks("US");
   const { data: liveKR } = useStocks("KR");
   const allStocks = useMemo(
-    () => [...(liveUS ?? []), ...(liveKR ?? []), ...US_STOCKS, ...KR_STOCKS],
+    () => [...(liveUS ?? []), ...(liveKR ?? [])],
     [liveUS, liveKR],
   );
   const fromListRaw = allStocks.find((s: any) => s.ticker === ticker);
-  // The mock US_STOCKS / KR_STOCKS arrays are looser than Stock (missing
-  // change / volume / country) — fill defaults so the rest of this file
-  // gets a real Stock.
   const fromList: Stock | undefined = fromListRaw
     ? {
         ...(fromListRaw as Stock),
@@ -272,6 +383,228 @@ export default function StockDetail() {
     () => (barsData && barsData.length > 5 ? buildBarsRows(barsData) : []),
     [barsData],
   );
+  const signalSourceSummary = useMemo(() => {
+    const first = chartData[0];
+    const latest = chartData[chartData.length - 1];
+    if (!first || !latest) {
+      return "DB 일봉 로딩 중";
+    }
+    return `DB 일봉 ${first.date} - ${latest.date} · ${chartData.length.toLocaleString()}개`;
+  }, [chartData]);
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    if (!ticker) {
+      setFinancialData([]);
+      setFinancialLoading(false);
+      setFinancialError(null);
+      return;
+    }
+    setFinancialLoading(true);
+    setFinancialError(null);
+    stocksService
+      .financials(ticker, "annual", { signal: controller.signal })
+      .then((response) => {
+        if (cancelled) return;
+        const rows = response.periods
+          .map(financialPeriodToRow)
+          .filter((row): row is FinancialChartRow => row != null)
+          .sort((a, b) => a.year.localeCompare(b.year))
+          .slice(-6);
+        setFinancialData(rows);
+        setFinancialError(null);
+        setFinancialLoading(false);
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        if (cancelled) return;
+        setFinancialData([]);
+        setFinancialError(
+          error instanceof Error
+            ? error.message
+            : "재무제표 API 요청이 실패했습니다",
+        );
+        setFinancialLoading(false);
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [financialRetry, ticker]);
+  const range52w = useMemo(() => {
+    const valid = (barsData ?? []).filter(
+      (bar) =>
+        /^\d{4}-\d{2}-\d{2}$/.test(bar.date) &&
+        Number.isFinite(bar.high) &&
+        Number.isFinite(bar.low) &&
+        bar.high > 0 &&
+        bar.low > 0 &&
+        bar.high >= bar.low,
+    );
+    if (!valid.length)
+      return { high: null as number | null, low: null as number | null };
+    return {
+      high: Math.max(...valid.map((bar) => bar.high)),
+      low: Math.min(...valid.map((bar) => bar.low)),
+    };
+  }, [barsData]);
+  const technicalSignals = useMemo(() => {
+    const latest = chartData[chartData.length - 1];
+    const prev = chartData[chartData.length - 2];
+    if (!latest) {
+      return [
+        {
+          label: "RSI (14)",
+          value: "—",
+          desc: "DB 일봉 로딩 대기",
+          status: "중립",
+        },
+        {
+          label: "MACD",
+          value: "—",
+          desc: "DB 일봉 로딩 대기",
+          status: "중립",
+        },
+        {
+          label: "볼린저밴드",
+          value: "—",
+          desc: "DB 일봉 로딩 대기",
+          status: "중립",
+        },
+        {
+          label: "MA20 / MA60",
+          value: "—",
+          desc: "DB 일봉 로딩 대기",
+          status: "중립",
+        },
+        {
+          label: "거래량",
+          value: "—",
+          desc: "DB 일봉 로딩 대기",
+          status: "중립",
+        },
+        {
+          label: "스토캐스틱",
+          value: "—",
+          desc: "DB 일봉 로딩 대기",
+          status: "중립",
+        },
+      ];
+    }
+
+    const rsiStatus =
+      latest.rsi >= 70 ? "주의" : latest.rsi <= 30 ? "매수" : "중립";
+    const rsiDesc =
+      latest.rsi >= 70
+        ? "과매수권 진입"
+        : latest.rsi <= 30
+          ? "과매도권 반등 관찰"
+          : "중립 구간 (30-70)";
+
+    const macdGap = latest.macdLine - latest.signalLine;
+    const prevMacdGap = prev ? prev.macdLine - prev.signalLine : macdGap;
+    const macdStatus = macdGap > 0 ? "매수" : macdGap < 0 ? "매도" : "중립";
+    const macdDesc =
+      prevMacdGap <= 0 && macdGap > 0
+        ? "시그널 상향 돌파"
+        : prevMacdGap >= 0 && macdGap < 0
+          ? "시그널 하향 이탈"
+          : macdGap > 0
+            ? "MACD가 시그널 상단"
+            : macdGap < 0
+              ? "MACD가 시그널 하단"
+              : "시그널과 근접";
+
+    const bandSpan = latest.bbUpper - latest.bbLower || 1;
+    const bandPos = ((latest.close - latest.bbLower) / bandSpan) * 100;
+    const bandStatus =
+      latest.close >= latest.bbUpper
+        ? "주의"
+        : latest.close <= latest.bbLower
+          ? "매수"
+          : "중립";
+    const bandDesc =
+      latest.close >= latest.bbUpper
+        ? "상단 밴드 돌파"
+        : latest.close <= latest.bbLower
+          ? "하단 밴드 접촉"
+          : latest.close >= latest.bbMiddle
+            ? "중간 밴드 위"
+            : "중간 밴드 아래";
+
+    const maGap = latest.ma20 - latest.ma60;
+    const prevMaGap = prev ? prev.ma20 - prev.ma60 : maGap;
+    const maStatus = maGap > 0 ? "매수" : maGap < 0 ? "매도" : "중립";
+    const maDesc =
+      prevMaGap <= 0 && maGap > 0
+        ? "MA20이 MA60 상향 돌파"
+        : prevMaGap >= 0 && maGap < 0
+          ? "MA20이 MA60 하향 이탈"
+          : maGap > 0
+            ? "중기 추세 상향"
+            : maGap < 0
+              ? "중기 추세 하향"
+              : "이평선 수렴";
+
+    const recentVolumes = chartData.slice(-20).map((d) => d.volume);
+    const avgVolume =
+      recentVolumes.reduce((sum, v) => sum + v, 0) /
+      Math.max(1, recentVolumes.length);
+    const volumePct =
+      avgVolume > 0 ? ((latest.volume - avgVolume) / avgVolume) * 100 : 0;
+    const volumeStatus =
+      volumePct >= 35 ? "주목" : volumePct <= -35 ? "주의" : "중립";
+
+    const stochStatus =
+      latest.stochK >= 80 ? "주의" : latest.stochK <= 20 ? "매수" : "중립";
+    const stochDesc =
+      latest.stochK >= 80
+        ? "과매수 근접"
+        : latest.stochK <= 20
+          ? "과매도 근접"
+          : latest.stochK >= latest.stochD
+            ? "%K가 %D 상단"
+            : "%K가 %D 하단";
+
+    return [
+      {
+        label: "RSI (14)",
+        value: latest.rsi.toFixed(1),
+        desc: rsiDesc,
+        status: rsiStatus,
+      },
+      {
+        label: "MACD",
+        value: latest.macdLine.toFixed(3),
+        desc: macdDesc,
+        status: macdStatus,
+      },
+      {
+        label: "볼린저밴드",
+        value: `${bandPos.toFixed(0)}% 위치`,
+        desc: bandDesc,
+        status: bandStatus,
+      },
+      {
+        label: "MA20 / MA60",
+        value: maGap >= 0 ? "정배열" : "역배열",
+        desc: maDesc,
+        status: maStatus,
+      },
+      {
+        label: "거래량",
+        value: `${volumePct >= 0 ? "+" : ""}${volumePct.toFixed(0)}%`,
+        desc: "20일 평균 대비",
+        status: volumeStatus,
+      },
+      {
+        label: "스토캐스틱",
+        value: `${latest.stochK.toFixed(0)} / ${latest.stochD.toFixed(0)}`,
+        desc: stochDesc,
+        status: stochStatus,
+      },
+    ];
+  }, [chartData]);
 
   if (!stock) {
     // Still resolving the profile? Render a skeleton instead of the
@@ -395,18 +728,25 @@ export default function StockDetail() {
             >
               {up ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
               {up ? "+" : ""}
-              {((stock.price * stock.changePct) / 100).toFixed(2)} (
-              {up ? "+" : ""}
+              {stock.change.toFixed(2)} ({up ? "+" : ""}
               {stock.changePct.toFixed(2)}%)
             </div>
           </div>
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-x-6 gap-y-2 text-sm">
             {[
-              { label: "시가총액", value: stock.marketCap },
-              { label: "P/E", value: `${stock.pe}x` },
-              { label: "ROE", value: `${stock.roe}%` },
-              { label: "52주 고가", value: (stock.price * 1.18).toFixed(0) },
-              { label: "52주 저가", value: (stock.price * 0.74).toFixed(0) },
+              { label: "시가총액", value: stock.marketCap || "—" },
+              { label: "P/E", value: fmtOptional(stock.pe, "x") },
+              { label: "ROE", value: fmtOptional(stock.roe, "%") },
+              {
+                label: "52주 고가",
+                value:
+                  range52w.high == null ? "—" : range52w.high.toLocaleString(),
+              },
+              {
+                label: "52주 저가",
+                value:
+                  range52w.low == null ? "—" : range52w.low.toLocaleString(),
+              },
             ].map((item) => (
               <div key={item.label}>
                 <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
@@ -422,13 +762,13 @@ export default function StockDetail() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-muted/40 p-1 rounded-xl w-fit">
+      <div className="flex max-w-full w-fit gap-1 overflow-x-auto rounded-xl bg-muted/40 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map((tab, i) => (
           <button
             key={tab}
             onClick={() => setActiveTab(i)}
             className={cn(
-              "text-sm px-4 py-2 rounded-lg transition-all duration-200 font-medium",
+              "shrink-0 whitespace-nowrap text-sm px-4 py-2 rounded-lg transition-all duration-200 font-medium",
               activeTab === i
                 ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground",
@@ -450,67 +790,127 @@ export default function StockDetail() {
       {/* ── Tab 1: Financials ── */}
       {activeTab === 1 && (
         <div className="space-y-4">
-          <div className="bg-card border border-border rounded-xl p-5 overflow-x-auto">
-            <h2 className="text-base font-bold font-['Outfit'] mb-4">
-              연간 실적
-            </h2>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  {["항목", "2022", "2023", "2024", "TTM"].map((h) => (
-                    <th
-                      key={h}
-                      className="text-left py-2 px-3 text-xs text-muted-foreground font-medium"
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  { label: "매출 (B$)", values: ["394", "383", "391", "398"] },
-                  { label: "순이익 (B$)", values: ["100", "97", "101", "104"] },
-                  {
-                    label: "EPS ($)",
-                    values: ["6.11", "6.13", "6.43", "6.58"],
-                  },
-                  {
-                    label: "영업이익률",
-                    values: ["30.3%", "29.8%", "31.5%", "32.1%"],
-                  },
-                  {
-                    label: "ROE",
-                    values: (() => {
-                      const roe = stock.roe ?? 20;
-                      return [
-                        `${roe}%`,
-                        `${(roe * 0.92).toFixed(1)}%`,
-                        `${(roe * 0.98).toFixed(1)}%`,
-                        `${roe}%`,
-                      ];
-                    })(),
-                  },
-                ].map((row) => (
-                  <tr
-                    key={row.label}
-                    className="border-b border-border/50 hover:bg-muted/30 transition-colors"
-                  >
-                    <td className="py-2.5 px-3 text-xs text-muted-foreground">
-                      {row.label}
-                    </td>
-                    {row.values.map((v, i) => (
-                      <td
-                        key={i}
-                        className="py-2.5 px-3 font-mono-num text-sm font-medium"
-                      >
-                        {v}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="bg-card border border-border rounded-xl p-5">
+            <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <h2 className="text-base font-bold font-['Outfit']">연간 실적</h2>
+              <span className="text-[11px] text-muted-foreground font-mono">
+                {financialLoading && financialData.length > 0
+                  ? "갱신 중..."
+                  : financialData.length > 0
+                    ? `/stocks/${ticker}/financials · ${financialData.length}개`
+                    : "DB/API 재무제표"}
+              </span>
+            </div>
+            {financialLoading && financialData.length === 0 ? (
+              <div className="h-48 rounded-lg bg-muted/20 animate-pulse" />
+            ) : financialData.length === 0 ? (
+              <div className="h-48 flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border/70 bg-muted/10 px-4 text-center text-sm text-muted-foreground">
+                <span>
+                  {financialError
+                    ? "재무제표 API 요청이 실패했습니다"
+                    : "재무제표 DB 데이터가 아직 없습니다"}
+                </span>
+                {financialError && (
+                  <span className="max-w-full truncate font-mono text-[10px] text-destructive">
+                    {financialError}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setFinancialRetry((value) => value + 1)}
+                  className="mt-2 inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
+                >
+                  <RefreshCw size={12} />
+                  다시 불러오기
+                </button>
+              </div>
+            ) : (
+              <>
+                <KLineSeriesChart
+                  data={financialData.map((row) => ({
+                    ...row,
+                    date: `${row.year}-01-01`,
+                  }))}
+                  settingsScope={`stock-detail-financials-${ticker}`}
+                  height={240}
+                  barLayout="group"
+                  showRangeControls={false}
+                  allowValueTransform={false}
+                  fixedScaleLabel="B"
+                  fixedScaleDetail="재무제표 원값"
+                  fixedScaleTitle="DB/API 재무제표의 billion 단위 값을 그대로 표시"
+                  sourceLabel="API"
+                  sourceTone="primary"
+                  sourceTitle={`/stocks/${ticker}/financials API 재무제표 기준`}
+                  valueFormatter={(value) => `${value.toFixed(2)}B`}
+                  series={[
+                    {
+                      key: "revenue",
+                      label: "매출액",
+                      color: "#38bdf8",
+                      type: "bar",
+                    },
+                    {
+                      key: "netIncome",
+                      label: "순이익",
+                      color: "#22c55e",
+                      type: "bar",
+                    },
+                  ]}
+                />
+                <div className="mt-4 overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-2 px-3 text-xs text-muted-foreground font-medium">
+                          항목
+                        </th>
+                        {financialData.map((row) => (
+                          <th
+                            key={row.year}
+                            className="text-left py-2 px-3 text-xs text-muted-foreground font-medium"
+                          >
+                            {row.year}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { label: "매출액 ($B)", key: "revenue" as const },
+                        { label: "순이익 ($B)", key: "netIncome" as const },
+                        { label: "EPS", key: "eps" as const },
+                      ].map((row) => (
+                        <tr
+                          key={row.label}
+                          className="border-b border-border/50 hover:bg-muted/30 transition-colors"
+                        >
+                          <td className="py-2.5 px-3 text-xs text-muted-foreground">
+                            {row.label}
+                          </td>
+                          {financialData.map((period) => {
+                            const value = period[row.key];
+                            return (
+                              <td
+                                key={`${row.label}-${period.year}`}
+                                className="py-2.5 px-3 font-mono-num text-sm font-medium"
+                              >
+                                {value == null
+                                  ? "—"
+                                  : Number(value).toLocaleString(undefined, {
+                                      maximumFractionDigits:
+                                        row.key === "eps" ? 2 : 1,
+                                    })}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -519,48 +919,50 @@ export default function StockDetail() {
       {activeTab === 2 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[
-            ...(() => {
-              const pe = stock.pe ?? 25;
-              const roe = stock.roe ?? 20;
-              return [
-                {
-                  label: "P/E (현재)",
-                  value: `${pe}x`,
-                  peer: "섹터 평균 32x",
-                  status: pe < 32 ? "저평가" : "고평가",
-                },
-                {
-                  label: "P/B",
-                  value: `${(pe / 8).toFixed(1)}x`,
-                  peer: "섹터 평균 4.2x",
-                  status: "적정",
-                },
-                {
-                  label: "EV/EBITDA",
-                  value: `${(pe * 0.8).toFixed(1)}x`,
-                  peer: "섹터 평균 18x",
-                  status: "적정",
-                },
-                {
-                  label: "PEG Ratio",
-                  value: `${(pe / 20).toFixed(2)}`,
-                  peer: "1.0 이하 저평가",
-                  status: pe / 20 < 1 ? "저평가" : "고평가",
-                },
-                {
-                  label: "배당수익률",
-                  value: "0.52%",
-                  peer: "섹터 평균 1.2%",
-                  status: "낮음",
-                },
-                {
-                  label: "ROE",
-                  value: `${roe}%`,
-                  peer: "섹터 평균 18%",
-                  status: roe > 18 ? "우수" : "보통",
-                },
-              ];
-            })(),
+            {
+              label: "P/E",
+              value: fmtOptional(stock.pe, "x"),
+              peer: "API basic financials",
+              status: metricStatus(stock.pe, "pe"),
+            },
+            {
+              label: "P/B",
+              value: fmtOptional(stock.pbr, "x"),
+              peer: "API basic financials",
+              status: metricStatus(stock.pbr, "pbr"),
+            },
+            {
+              label: "ROE",
+              value: fmtOptional(stock.roe, "%"),
+              peer: "API basic financials",
+              status: metricStatus(stock.roe, "roe"),
+            },
+            {
+              label: "배당수익률",
+              value: fmtOptional(stock.dividendYield, "%"),
+              peer: "API basic financials",
+              status: metricStatus(stock.dividendYield, "dividend"),
+            },
+            {
+              label: "현재가",
+              value: stock.price > 0 ? stock.price.toLocaleString() : "—",
+              peer: latestBar
+                ? `DB 일봉 ${latestBar.date}`
+                : "DB 가격 데이터 없음",
+              status: stock.price > 0 ? "중립" : "데이터 없음",
+            },
+            {
+              label: "52주 범위",
+              value:
+                range52w.low != null && range52w.high != null
+                  ? `${range52w.low.toLocaleString()} - ${range52w.high.toLocaleString()}`
+                  : "—",
+              peer: "DB 일봉 high/low",
+              status:
+                range52w.low != null && range52w.high != null
+                  ? "중립"
+                  : "데이터 없음",
+            },
           ].map((item) => (
             <div
               key={item.label}
@@ -577,14 +979,7 @@ export default function StockDetail() {
               </div>
               <Badge
                 variant="outline"
-                className={cn(
-                  "text-[10px] mt-2",
-                  item.status === "저평가" || item.status === "우수"
-                    ? "border-up text-up"
-                    : item.status === "고평가" || item.status === "낮음"
-                      ? "border-down text-down"
-                      : "border-muted-foreground text-muted-foreground",
-                )}
+                className={cn("text-[10px] mt-2", statusClass(item.status))}
               >
                 {item.status}
               </Badge>
@@ -595,90 +990,71 @@ export default function StockDetail() {
 
       {/* ── Tab 3: Technical Signals ── */}
       {activeTab === 3 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {[
-            {
-              label: "RSI (14)",
-              value: chartData[chartData.length - 1]?.rsi.toFixed(1) ?? "—",
-              desc: "중립 구간 (30-70)",
-              status: "중립",
-            },
-            {
-              label: "MACD",
-              value:
-                chartData[chartData.length - 1]?.macdLine.toFixed(3) ?? "—",
-              desc: "시그널 상향 돌파",
-              status: "매수",
-            },
-            {
-              label: "볼린저밴드",
-              value: "중간 밴드 위",
-              desc: "상단 밴드 도달 전",
-              status: "중립",
-            },
-            {
-              label: "MA20 / MA60",
-              value: "골든크로스",
-              desc: "단기 추세 상향",
-              status: "매수",
-            },
-            {
-              label: "거래량",
-              value: "+42%",
-              desc: "20일 평균 대비",
-              status: "주목",
-            },
-            {
-              label: "스토캐스틱",
-              value: `${chartData[chartData.length - 1]?.stochK.toFixed(0) ?? "—"} / ${chartData[chartData.length - 1]?.stochD.toFixed(0) ?? "—"}`,
-              desc: "과매수 근접",
-              status: "주의",
-            },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className="bg-card border border-border rounded-xl p-4 flex items-center gap-4"
-            >
-              <div
-                className={cn(
-                  "w-1.5 h-10 rounded-full flex-shrink-0",
-                  item.status === "매수"
-                    ? "bg-up"
-                    : item.status === "매도"
-                      ? "bg-down"
-                      : item.status === "주의"
-                        ? "bg-gold"
-                        : item.status === "주목"
-                          ? "bg-sky"
-                          : "bg-muted-foreground/30",
-                )}
-              />
-              <div className="flex-1">
-                <div className="text-xs text-muted-foreground">
-                  {item.label}
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+            <span>기술 지표 기준</span>
+            <span className="font-mono-num">{signalSourceSummary}</span>
+          </div>
+          <div
+            className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+            role="list"
+            aria-label={`기술 지표 신호. ${signalSourceSummary}`}
+          >
+            {technicalSignals.map((item) => {
+              const ariaLabel = `${item.label}: ${item.value}, ${item.status}. ${item.desc}. ${signalSourceSummary}`;
+              return (
+                <div
+                  key={item.label}
+                  className="bg-card border border-border rounded-xl p-4 flex items-center gap-4 outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  role="listitem"
+                  tabIndex={0}
+                  title={ariaLabel}
+                  aria-label={ariaLabel}
+                >
+                  <div
+                    className={cn(
+                      "w-1.5 h-10 rounded-full flex-shrink-0",
+                      item.status === "매수"
+                        ? "bg-up"
+                        : item.status === "매도"
+                          ? "bg-down"
+                          : item.status === "주의"
+                            ? "bg-gold"
+                            : item.status === "주목"
+                              ? "bg-sky"
+                              : "bg-muted-foreground/30",
+                    )}
+                  />
+                  <div className="flex-1">
+                    <div className="text-xs text-muted-foreground">
+                      {item.label}
+                    </div>
+                    <div className="text-base font-bold font-mono-num mt-0.5">
+                      {item.value}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {item.desc}
+                    </div>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-xs flex-shrink-0",
+                      item.status === "매수" || item.status === "주목"
+                        ? "border-up text-up"
+                        : item.status === "매도"
+                          ? "border-down text-down"
+                          : item.status === "주의"
+                            ? "border-gold text-gold"
+                            : "border-muted-foreground text-muted-foreground",
+                    )}
+                  >
+                    {item.status}
+                  </Badge>
                 </div>
-                <div className="text-base font-bold font-mono-num mt-0.5">
-                  {item.value}
-                </div>
-                <div className="text-xs text-muted-foreground">{item.desc}</div>
-              </div>
-              <Badge
-                variant="outline"
-                className={cn(
-                  "text-xs flex-shrink-0",
-                  item.status === "매수" || item.status === "주목"
-                    ? "border-up text-up"
-                    : item.status === "매도"
-                      ? "border-down text-down"
-                      : item.status === "주의"
-                        ? "border-gold text-gold"
-                        : "border-muted-foreground text-muted-foreground",
-                )}
-              >
-                {item.status}
-              </Badge>
-            </div>
-          ))}
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

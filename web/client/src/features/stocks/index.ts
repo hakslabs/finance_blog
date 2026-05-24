@@ -1,2 +1,7 @@
 export { stocksService } from "./service";
-export { useStocks, useStock, useStockBars } from "./use-stocks";
+export {
+  useStocks,
+  useStock,
+  useStockBars,
+  useStockSearch,
+} from "./use-stocks";

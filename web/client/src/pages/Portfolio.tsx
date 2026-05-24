@@ -1,36 +1,25 @@
 /**
  * Portfolio.tsx — Portfolio Tracker Page
  */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import {
-  PORTFOLIO_HOLDINGS,
-  PORTFOLIO_ALLOCATION,
-  generatePortfolioChart,
-} from "@/lib/data";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
 import { TrendingUp, TrendingDown, PlusCircle, RefreshCw } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { AddTransactionDialog } from "@/components/AddTransactionDialog";
-import { useHoldings } from "@/features/portfolio";
+import {
+  usePortfolioHistory,
+  usePortfolioSnapshot,
+} from "@/features/portfolio";
+import KLineSeriesChart from "@/components/KLineSeriesChart";
 
 const COLORS = ["#38BDF8", "#A78BFA", "#FBBF24", "#34D399", "#94A3B8"];
+const PORTFOLIO_HISTORY_DAYS = 1825;
 
-function PctBadge({ value }: { value: number }) {
-  const up = value >= 0;
+function PctBadge({ value }: { value: number | null | undefined }) {
+  const numeric = value ?? 0;
+  const up = numeric >= 0;
   return (
     <span
       className={cn(
@@ -40,34 +29,109 @@ function PctBadge({ value }: { value: number }) {
     >
       {up ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
       {up ? "+" : ""}
-      {value.toFixed(2)}%
+      {value == null ? "—" : `${numeric.toFixed(2)}%`}
     </span>
   );
 }
 
-const PERF_METRICS = [
-  { label: "총 자산", value: "₩4,821만", sub: "+₩482만 (이번 달)", up: true },
-  { label: "총 수익률", value: "+12.4%", sub: "원금 대비", up: true },
-  {
-    label: "시장 대비",
-    value: "+4.2%p",
-    sub: "KOSPI 대비 초과 수익",
-    up: true,
-  },
-  { label: "최대 낙폭", value: "-8.2%", sub: "2024년 8월", up: false },
-];
+function fmtMoney(value: number | null | undefined, currency = "KRW") {
+  if (value == null || !Number.isFinite(value)) return "—";
+  return new Intl.NumberFormat("ko-KR", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: currency === "KRW" ? 0 : 2,
+  }).format(value);
+}
+
+function fmtSignedMoney(value: number | null | undefined, currency = "KRW") {
+  if (value == null || !Number.isFinite(value)) return "—";
+  const abs = fmtMoney(Math.abs(value), currency);
+  return `${value >= 0 ? "+" : "-"}${abs}`;
+}
+
+type PortfolioPoint = {
+  date: string;
+  portfolio: number | null;
+  cost: number | null;
+};
 
 export default function Portfolio() {
-  const chartData = generatePortfolioChart(30);
   const [addOpen, setAddOpen] = useState(false);
-  const { refetch: refetchHoldings, loading: holdingsLoading } = useHoldings();
+  const {
+    data: snapshot,
+    refetch: refetchSnapshot,
+    loading: snapshotLoading,
+  } = usePortfolioSnapshot();
+  const {
+    data: history,
+    refetch: refetchHistory,
+    loading: performanceLoading,
+  } = usePortfolioHistory(PORTFOLIO_HISTORY_DAYS);
+
+  const totals = snapshot?.totals;
+  const holdings = useMemo(
+    () =>
+      [...(snapshot?.holdings ?? [])].sort(
+        (a, b) => (b.weight_pct ?? 0) - (a.weight_pct ?? 0),
+      ),
+    [snapshot?.holdings],
+  );
+  const composition = snapshot?.composition ?? [];
+  const currency = totals?.currency ?? "KRW";
+  const performanceData = (history?.rows ?? []) as PortfolioPoint[];
+  const hasHoldings = holdings.length > 0;
+  const performanceRangeLabel = useMemo(() => {
+    const first = performanceData[0]?.date;
+    const last = performanceData.at(-1)?.date;
+    if (!first || !last) return "DB 가격 기반";
+    return `DB 가격 기반 · ${first} - ${last} · ${performanceData.length.toLocaleString("ko-KR")}개`;
+  }, [performanceData]);
+  const allocationSourceLabel = `API 포트폴리오 스냅샷 · ${currency} 평가금액 비중`;
+
+  const perfMetrics = [
+    {
+      label: "총 자산",
+      value: fmtMoney(totals?.total_value, currency),
+      sub: `원금 ${fmtMoney(totals?.total_cost, currency)}`,
+      up: (totals?.total_value ?? 0) >= 0,
+    },
+    {
+      label: "총 수익률",
+      value:
+        totals == null
+          ? "—"
+          : `${totals.total_return_pct >= 0 ? "+" : ""}${totals.total_return_pct.toFixed(2)}%`,
+      sub: fmtSignedMoney(totals?.total_return, currency),
+      up: (totals?.total_return_pct ?? 0) >= 0,
+    },
+    {
+      label: "오늘 손익",
+      value: fmtSignedMoney(totals?.today_pnl, currency),
+      sub:
+        totals == null
+          ? "—"
+          : `${totals.today_pct >= 0 ? "+" : ""}${totals.today_pct.toFixed(2)}%`,
+      up: (totals?.today_pnl ?? 0) >= 0,
+    },
+    {
+      label: "보유 종목",
+      value: `${holdings.length}개`,
+      sub: composition.length
+        ? `상위 ${composition.length}개 비중 표시`
+        : "보유 없음",
+      up: true,
+    },
+  ];
 
   return (
     <div className="space-y-6 animate-fade-in-up">
       <AddTransactionDialog
         open={addOpen}
         onOpenChange={setAddOpen}
-        onCreated={() => refetchHoldings()}
+        onCreated={() => {
+          refetchSnapshot();
+          refetchHistory();
+        }}
       />
       <div className="flex items-center justify-between">
         <div>
@@ -91,14 +155,15 @@ export default function Portfolio() {
             size="sm"
             className="gap-1"
             onClick={() => {
-              refetchHoldings();
+              refetchSnapshot();
+              refetchHistory();
               toast.success("최신 가격으로 동기화 중…");
             }}
-            disabled={holdingsLoading}
+            disabled={snapshotLoading}
           >
             <RefreshCw
               size={14}
-              className={holdingsLoading ? "animate-spin" : undefined}
+              className={snapshotLoading ? "animate-spin" : undefined}
             />
             동기화
           </Button>
@@ -107,7 +172,7 @@ export default function Portfolio() {
 
       {/* Performance metrics */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {PERF_METRICS.map((m) => (
+        {perfMetrics.map((m) => (
           <div
             key={m.label}
             className="bg-card border border-border rounded-xl p-4"
@@ -130,115 +195,125 @@ export default function Portfolio() {
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
         {/* Performance chart */}
         <div className="xl:col-span-3 bg-card border border-border rounded-xl p-5">
-          <h2 className="text-base font-bold font-['Outfit'] mb-4">
-            수익률 추이 (30일)
-          </h2>
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={chartData}
-                margin={{ top: 4, right: 4, bottom: 0, left: -20 }}
-              >
-                <XAxis
-                  dataKey="day"
-                  tick={{ fontSize: 10 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 10 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--card)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "8px",
-                    fontSize: 11,
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="portfolio"
-                  stroke="var(--sky)"
-                  strokeWidth={2}
-                  dot={false}
-                  name="포트폴리오"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="kospi"
-                  stroke="var(--violet)"
-                  strokeWidth={1.5}
-                  dot={false}
-                  strokeDasharray="4 2"
-                  name="KOSPI"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="sp500"
-                  stroke="var(--gold)"
-                  strokeWidth={1.5}
-                  dot={false}
-                  strokeDasharray="4 2"
-                  name="S&P 500"
-                />
-              </LineChart>
-            </ResponsiveContainer>
+          <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <h2 className="text-base font-bold font-['Outfit']">
+              포트폴리오 가치 추이
+            </h2>
+            <span className="text-[11px] text-muted-foreground font-mono tabular-nums">
+              {performanceLoading && performanceData.length > 0
+                ? `갱신 중... · ${performanceRangeLabel}`
+                : performanceRangeLabel}
+            </span>
           </div>
+          {performanceLoading && performanceData.length === 0 ? (
+            <div className="h-56 rounded-lg bg-muted/20 animate-pulse" />
+          ) : performanceData.length === 0 ? (
+            <div className="h-56 flex items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/10 text-center text-sm text-muted-foreground px-6">
+              {hasHoldings
+                ? "보유 종목의 DB 가격 히스토리가 아직 없습니다"
+                : "거래내역을 등록하면 DB 가격 기반 포트폴리오 추이가 표시됩니다"}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <KLineSeriesChart
+                data={performanceData}
+                settingsScope="portfolio-performance"
+                height={250}
+                valueFormatter={(v) => fmtMoney(v, currency)}
+                sourceLabel="API"
+                sourceTone="primary"
+                sourceTitle="/portfolios/me/history API · DB 가격 히스토리 기준"
+                series={[
+                  {
+                    key: "portfolio",
+                    label: "평가금액",
+                    color: "var(--primary)",
+                    type: "area",
+                  },
+                  {
+                    key: "cost",
+                    label: "원금",
+                    color: "var(--muted-foreground)",
+                    type: "line",
+                    dashed: true,
+                  },
+                ]}
+              />
+              {(history?.holdings.length ?? 0) > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                  {history?.holdings.map((item) => (
+                    <span
+                      key={item.symbol}
+                      className="rounded border border-border/60 bg-muted/20 px-1.5 py-0.5"
+                      title={`${item.symbol} DB 일봉 ${item.from_date ?? "?"} ~ ${
+                        item.to_date ?? "?"
+                      }`}
+                    >
+                      {item.symbol} {item.returned_count.toLocaleString()}행
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Allocation pie */}
+        {/* Allocation */}
         <div className="xl:col-span-2 bg-card border border-border rounded-xl p-5">
           <h2 className="text-base font-bold font-['Outfit'] mb-4">
             자산 배분
           </h2>
-          <div className="h-40">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={PORTFOLIO_ALLOCATION}
-                  dataKey="pct"
-                  nameKey="label"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40}
-                  outerRadius={65}
-                  paddingAngle={2}
-                >
-                  {PORTFOLIO_ALLOCATION.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--card)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "8px",
-                    fontSize: 11,
-                  }}
-                  formatter={(v: number) => [`${v}%`, "비중"]}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="space-y-1.5 mt-2">
-            {PORTFOLIO_ALLOCATION.map((a, i) => (
-              <div key={a.label} className="flex items-center gap-2">
-                <div
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ background: COLORS[i % COLORS.length] }}
-                />
-                <span className="text-xs text-muted-foreground flex-1">
-                  {a.label}
-                </span>
-                <span className="text-xs font-mono-num font-medium">
-                  {a.pct}%
-                </span>
-                <span className="text-xs text-muted-foreground">{a.value}</span>
-              </div>
-            ))}
+          {composition.length === 0 ? (
+            <div className="h-44 flex items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/10 text-sm text-muted-foreground">
+              보유 종목이 없습니다
+            </div>
+          ) : (
+            <div
+              className="space-y-3"
+              role="list"
+              aria-label={`자산 배분. ${allocationSourceLabel}`}
+            >
+              {composition.map((a, i) => {
+                const rowLabel = `${a.label} 비중 ${a.percent.toFixed(
+                  2,
+                )}%, 평가금액 ${fmtMoney(a.amount, currency)}. ${allocationSourceLabel}`;
+                return (
+                  <div
+                    key={a.label}
+                    className="space-y-1.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    role="listitem"
+                    tabIndex={0}
+                    title={rowLabel}
+                    aria-label={rowLabel}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground flex-1">
+                        {a.label}
+                      </span>
+                      <span className="text-xs font-mono-num font-medium">
+                        {a.percent.toFixed(1)}%
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {fmtMoney(a.amount, currency)}
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted/40 overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${Math.max(2, a.percent)}%`,
+                          background: COLORS[i % COLORS.length],
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <div className="mt-4 text-[11px] text-muted-foreground">
+            도넛보다 비중 차이를 빠르게 비교할 수 있도록 막대 기준으로
+            표시합니다
           </div>
         </div>
       </div>
@@ -265,48 +340,82 @@ export default function Portfolio() {
               </tr>
             </thead>
             <tbody>
-              {PORTFOLIO_HOLDINGS.map((h) => (
+              {holdings.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="py-10 px-4 text-center text-sm text-muted-foreground"
+                  >
+                    등록된 보유 종목이 없습니다
+                  </td>
+                </tr>
+              )}
+              {holdings.map((h) => (
                 <tr
-                  key={h.ticker}
+                  key={`${h.symbol}-${h.exchange}`}
                   className="border-b border-border/50 hover:bg-muted/30 transition-colors"
                 >
                   <td className="py-3 px-4">
-                    <Link href={`/stocks/${h.ticker}`}>
+                    <Link href={`/stocks/${h.symbol}`}>
                       <div className="cursor-pointer">
                         <div className="font-semibold text-sm hover:text-primary transition-colors">
                           {h.name}
                         </div>
                         <div className="text-[10px] text-muted-foreground font-mono-num">
-                          {h.ticker}
+                          {h.symbol}
                         </div>
                       </div>
                     </Link>
                   </td>
-                  <td className="py-3 px-4 font-mono-num text-sm">—</td>
-                  <td className="py-3 px-4">
-                    <PctBadge value={h.changePct} />
+                  <td className="py-3 px-4 font-mono-num text-sm">
+                    {fmtMoney(h.last_price, h.currency)}
                   </td>
-                  <td className="py-3 px-4 font-mono-num text-sm">{h.value}</td>
                   <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
+                    <PctBadge value={h.today_pct} />
+                  </td>
+                  <td className="py-3 px-4 font-mono-num text-sm">
+                    {fmtMoney(h.market_value, h.currency)}
+                  </td>
+                  <td className="py-3 px-4">
+                    <div
+                      className="flex items-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                      tabIndex={0}
+                      title={`${h.symbol} 비중 ${
+                        h.weight_pct == null
+                          ? "데이터 없음"
+                          : `${h.weight_pct.toFixed(2)}%`
+                      }, 평가금액 ${fmtMoney(h.market_value, h.currency)}. ${allocationSourceLabel}`}
+                      aria-label={`${h.symbol} 비중 ${
+                        h.weight_pct == null
+                          ? "데이터 없음"
+                          : `${h.weight_pct.toFixed(2)}%`
+                      }, 평가금액 ${fmtMoney(h.market_value, h.currency)}. ${allocationSourceLabel}`}
+                    >
                       <div className="w-16 h-1.5 bg-muted/30 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-primary/60 rounded-full"
-                          style={{ width: `${h.weight * 4}%` }}
+                          style={{
+                            width: `${Math.min(100, h.weight_pct ?? 0)}%`,
+                          }}
                         />
                       </div>
-                      <span className="text-xs font-mono-num">{h.weight}%</span>
+                      <span className="text-xs font-mono-num">
+                        {h.weight_pct == null
+                          ? "—"
+                          : `${h.weight_pct.toFixed(1)}%`}
+                      </span>
                     </div>
                   </td>
                   <td className="py-3 px-4">
                     <span
                       className={cn(
                         "text-sm font-mono-num font-bold",
-                        h.changePct >= 0 ? "text-up" : "text-down",
+                        (h.pnl_pct ?? 0) >= 0 ? "text-up" : "text-down",
                       )}
                     >
-                      {h.changePct >= 0 ? "+" : ""}
-                      {(h.changePct * 0.8).toFixed(1)}%
+                      {h.pnl_pct == null
+                        ? "—"
+                        : `${h.pnl_pct >= 0 ? "+" : ""}${h.pnl_pct.toFixed(1)}%`}
                     </span>
                   </td>
                 </tr>

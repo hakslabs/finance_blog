@@ -21,11 +21,9 @@ import type {
   MarketIndex,
   Stock,
   SectorData,
-  MacroIndicator,
   NewsItem,
   CalendarEvent,
   Master,
-  FearGreedData,
   Report,
   LearnGuide,
 } from "@/types";
@@ -678,145 +676,6 @@ export const KR_SECTORS: SectorData[] = [
   },
 ];
 
-// ── 거시 지표 ──────────────────────────────────────────────────
-export const MACRO_INDICATORS: MacroIndicator[] = [
-  {
-    id: "us_cpi",
-    name: "미국 CPI (YoY)",
-    value: "3.2%",
-    numValue: 3.2,
-    prev: "3.5%",
-    status: "하락",
-    good: true,
-    unit: "%",
-    trend: "down",
-    country: "US",
-    category: "물가",
-    description:
-      "미국 소비자물가지수. 연준의 목표치는 2%이며 하락 추세는 금리 인하 가능성을 높입니다.",
-    source: "BLS",
-    updateFrequency: "monthly",
-  },
-  {
-    id: "us_unemployment",
-    name: "미국 실업률",
-    value: "3.9%",
-    numValue: 3.9,
-    prev: "3.8%",
-    status: "상승",
-    good: false,
-    unit: "%",
-    trend: "up",
-    country: "US",
-    category: "고용",
-    description: "미국 실업률. 낮을수록 경기 호황이나 과열 우려도 있습니다.",
-    source: "BLS",
-    updateFrequency: "monthly",
-  },
-  {
-    id: "fed_rate",
-    name: "연준 기준금리",
-    value: "5.25%",
-    numValue: 5.25,
-    prev: "5.25%",
-    status: "동결",
-    good: null,
-    unit: "%",
-    trend: "flat",
-    country: "US",
-    category: "금리",
-    description:
-      "미국 연방준비제도 기준금리. 2024년 이후 동결 중이며 시장은 인하 시점에 주목합니다.",
-    source: "Federal Reserve",
-    updateFrequency: "quarterly",
-  },
-  {
-    id: "us_10y",
-    name: "미국 10Y 국채",
-    value: "4.42%",
-    numValue: 4.42,
-    prev: "4.58%",
-    status: "하락",
-    good: true,
-    unit: "%",
-    trend: "down",
-    country: "US",
-    category: "금리",
-    description:
-      "미국 10년물 국채 수익률. 주식 밸류에이션과 역의 관계이며 글로벌 금리의 기준점입니다.",
-    source: "US Treasury",
-    updateFrequency: "daily",
-  },
-  {
-    id: "kr_rate",
-    name: "한국 기준금리",
-    value: "3.50%",
-    numValue: 3.5,
-    prev: "3.50%",
-    status: "동결",
-    good: null,
-    unit: "%",
-    trend: "flat",
-    country: "KR",
-    category: "금리",
-    description:
-      "한국은행 기준금리. 현재 동결 중이며 연내 인하 기대감이 있습니다.",
-    source: "한국은행",
-    updateFrequency: "quarterly",
-  },
-  {
-    id: "kr_cpi",
-    name: "한국 CPI (YoY)",
-    value: "2.8%",
-    numValue: 2.8,
-    prev: "3.1%",
-    status: "하락",
-    good: true,
-    unit: "%",
-    trend: "down",
-    country: "KR",
-    category: "물가",
-    description:
-      "한국 소비자물가지수. 한국은행 목표치 2%에 근접하며 금리 인하 여건이 형성되고 있습니다.",
-    source: "통계청",
-    updateFrequency: "monthly",
-  },
-  {
-    id: "wti",
-    name: "WTI 유가",
-    value: "$71.84",
-    numValue: 71.84,
-    prev: "$74.20",
-    status: "하락",
-    good: true,
-    unit: "$",
-    trend: "down",
-    country: "GLOBAL",
-    category: "원자재",
-    description:
-      "서부텍사스산 원유 가격. 에너지 비용과 인플레이션에 직접적 영향을 미칩니다.",
-    source: "NYMEX",
-    updateFrequency: "daily",
-  },
-  {
-    id: "dxy",
-    name: "달러 인덱스 (DXY)",
-    value: "104.2",
-    numValue: 104.2,
-    prev: "105.8",
-    status: "하락",
-    good: true,
-    unit: "",
-    trend: "down",
-    country: "GLOBAL",
-    category: "환율",
-    description:
-      "주요 6개국 통화 대비 달러 강세를 나타내는 지수. 하락 시 신흥국 자산에 유리합니다.",
-    source: "ICE",
-    updateFrequency: "daily",
-  },
-];
-
 // ── 뉴스 ──────────────────────────────────────────────────────
 export const MARKET_NEWS: NewsItem[] = [
   {
@@ -1016,46 +875,6 @@ export const CALENDAR_EVENTS: CalendarEvent[] = [
     previousValue: "6.6조",
   },
 ];
-
-// ── 공포탐욕지수 ──────────────────────────────────────────────
-function generateFearGreedHistory(baseValue: number, days = 30) {
-  let v = baseValue;
-  return Array.from({ length: days }, (_, i) => {
-    v += (Math.random() - 0.5) * 8;
-    v = Math.max(5, Math.min(95, v));
-    const date = new Date();
-    date.setDate(date.getDate() - (days - 1 - i));
-    return {
-      date: date.toLocaleDateString("ko-KR", {
-        month: "numeric",
-        day: "numeric",
-      }),
-      value: Math.round(v),
-      vix: parseFloat((20 - (v / 100) * 10 + Math.random() * 2).toFixed(1)),
-      adr: parseFloat(
-        (100 + (v / 100) * 40 - 20 + Math.random() * 10).toFixed(1),
-      ),
-    };
-  });
-}
-
-export const FEAR_GREED_US: FearGreedData = {
-  market: "US",
-  value: 62,
-  label: "탐욕",
-  vix: 14.8,
-  updatedAt: "2026-05-18T09:00:00Z",
-  history: generateFearGreedHistory(62, 90),
-};
-
-export const FEAR_GREED_KR: FearGreedData = {
-  market: "KR",
-  value: 58,
-  label: "탐욕",
-  adr: 124.8,
-  updatedAt: "2026-05-18T09:00:00Z",
-  history: generateFearGreedHistory(58, 90),
-};
 
 // ── 거장 투자자 ────────────────────────────────────────────────
 export const MASTERS: Master[] = [
@@ -1883,36 +1702,3 @@ export const LEARN_GUIDES: LearnGuide[] = [
     tags: ["옵션", "헤지", "커버드콜"],
   },
 ];
-
-// ── 유틸리티 함수 ──────────────────────────────────────────────
-export function generateSparkline(
-  points = 20,
-  trend: "up" | "down" | "flat" = "up",
-) {
-  const data = [];
-  let value = 100;
-  for (let i = 0; i < points; i++) {
-    const noise = (Math.random() - 0.5) * 4;
-    const drift = trend === "up" ? 0.5 : trend === "down" ? -0.5 : 0;
-    value += noise + drift;
-    data.push({ v: Math.max(80, Math.min(130, value)) });
-  }
-  return data;
-}
-
-export function generatePortfolioChart(days = 30) {
-  let portfolio = 100,
-    kospi = 100,
-    sp500 = 100;
-  return Array.from({ length: days }, (_, i) => {
-    portfolio += (Math.random() - 0.42) * 2.5;
-    kospi += (Math.random() - 0.46) * 1.8;
-    sp500 += (Math.random() - 0.44) * 2.0;
-    return {
-      day: i + 1,
-      portfolio: Math.max(85, portfolio),
-      kospi: Math.max(85, kospi),
-      sp500: Math.max(85, sp500),
-    };
-  });
-}

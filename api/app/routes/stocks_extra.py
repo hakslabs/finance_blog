@@ -11,6 +11,7 @@ return empty arrays / nulls instead of 500ing so the page stays usable.
 
 from __future__ import annotations
 
+from datetime import date, timedelta
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -37,6 +38,167 @@ class Bar(BaseModel):
 class BarsResponse(BaseModel):
     symbol: str
     items: List[Bar]
+    requested_days: int = 0
+    returned_count: int = 0
+    from_date: Optional[str] = None
+    to_date: Optional[str] = None
+    instrument_count: int = 0
+    raw_count: int = 0
+    duplicate_count: int = 0
+
+
+class BarsCompareSeries(BaseModel):
+    symbol: str
+    requested_days: int = 0
+    returned_count: int = 0
+    from_date: Optional[str] = None
+    to_date: Optional[str] = None
+
+
+class BarsCompareResponse(BaseModel):
+    symbols: List[str]
+    requested_days: int = 0
+    compare_from_date: Optional[str] = None
+    compare_to_date: Optional[str] = None
+    compare_baseline_date: Optional[str] = None
+    compare_row_count: int = 0
+    rows: List[Dict[str, Any]]
+    returns: Dict[str, float]
+    series: List[BarsCompareSeries]
+
+
+def _parse_bar_date(value: Any) -> Optional[date]:
+    try:
+        return date.fromisoformat(str(value)[:10])
+    except (TypeError, ValueError):
+        return None
+
+
+def _within_calendar_window(rows: List[Dict[str, Any]], days: int) -> List[Dict[str, Any]]:
+    parsed_dates = [_parse_bar_date(row.get("t")) for row in rows]
+    latest = max((d for d in parsed_dates if d is not None), default=None)
+    if latest is None:
+        return rows
+    cutoff = latest - timedelta(days=max(0, days - 1))
+    return [
+        row
+        for row, parsed in zip(rows, parsed_dates)
+        if parsed is not None and parsed >= cutoff
+    ]
+
+
+def _bars_response(
+    symbol: str,
+    items: List[Bar],
+    days: int,
+    *,
+    instrument_count: int = 0,
+    raw_count: int = 0,
+    duplicate_count: int = 0,
+) -> BarsResponse:
+    return BarsResponse(
+        symbol=symbol,
+        items=items,
+        requested_days=days,
+        returned_count=len(items),
+        from_date=items[0].date if items else None,
+        to_date=items[-1].date if items else None,
+        instrument_count=instrument_count,
+        raw_count=raw_count,
+        duplicate_count=duplicate_count,
+    )
+
+
+def _label_for_compare_date(date_value: str, days: int) -> str:
+    if days >= 365:
+        return f"{date_value[2:4]}/{date_value[5:7]}"
+    return f"{date_value[5:7]}/{date_value[8:10]}"
+
+
+def _bars_compare_response(
+    responses: List[BarsResponse],
+    days: int,
+) -> BarsCompareResponse:
+    symbols = [response.symbol for response in responses]
+    date_set: set[str] = set()
+    prices_by_symbol: Dict[str, Dict[str, float]] = {}
+
+    for response in responses:
+        prices: Dict[str, float] = {}
+        for bar in response.items:
+            prices[bar.date] = bar.close
+            date_set.add(bar.date)
+        prices_by_symbol[response.symbol] = prices
+
+    valid_symbols = [
+        symbol for symbol in symbols if len(prices_by_symbol.get(symbol, {})) > 0
+    ]
+    base_by_symbol: Dict[str, float] = {}
+    last_by_symbol: Dict[str, float] = {}
+    rows: List[Dict[str, Any]] = []
+    returns: Dict[str, float] = {}
+    series_latest_dates = [
+        max(prices_by_symbol[symbol])
+        for symbol in valid_symbols
+        if prices_by_symbol.get(symbol)
+    ]
+    common_latest_date = min(series_latest_dates) if series_latest_dates else None
+    sorted_dates = [
+        date_value
+        for date_value in sorted(date_set)
+        if common_latest_date is None or date_value <= common_latest_date
+    ]
+    latest_date = sorted_dates[-1] if sorted_dates else None
+
+    for date_value in sorted_dates:
+        for symbol in valid_symbols:
+            close = prices_by_symbol.get(symbol, {}).get(date_value)
+            if close is not None:
+                last_by_symbol[symbol] = close
+
+        if valid_symbols and len(base_by_symbol) < len(valid_symbols):
+            if not all(symbol in last_by_symbol for symbol in valid_symbols):
+                continue
+            for symbol in valid_symbols:
+                base_by_symbol[symbol] = last_by_symbol[symbol]
+
+        row: Dict[str, Any] = {
+            "date": date_value,
+            "label": _label_for_compare_date(date_value, days),
+        }
+        for symbol in symbols:
+            base = base_by_symbol.get(symbol)
+            latest = last_by_symbol.get(symbol)
+            value = (
+                ((latest - base) / base) * 100
+                if base is not None and latest is not None and base != 0
+                else None
+            )
+            row[symbol] = value
+            if date_value == latest_date and value is not None:
+                returns[symbol] = value
+        rows.append(row)
+
+    return BarsCompareResponse(
+        symbols=symbols,
+        requested_days=days,
+        compare_from_date=rows[0]["date"] if rows else None,
+        compare_to_date=rows[-1]["date"] if rows else None,
+        compare_baseline_date=rows[0]["date"] if rows else None,
+        compare_row_count=len(rows),
+        rows=rows,
+        returns=returns,
+        series=[
+            BarsCompareSeries(
+                symbol=response.symbol,
+                requested_days=response.requested_days,
+                returned_count=response.returned_count,
+                from_date=response.from_date,
+                to_date=response.to_date,
+            )
+            for response in responses
+        ],
+    )
 
 
 class NewsItem(BaseModel):
@@ -178,19 +340,14 @@ async def _news_from_db(symbol: str, settings: Settings) -> List[NewsItem]:
     return items
 
 
-@router.get("/{symbol}/bars", response_model=BarsResponse)
-async def stock_bars(
+async def _stock_bars_from_db(
     symbol: str,
-    days: int = Query(90, ge=1, le=1825),
-    settings: Settings = Depends(get_settings),
+    days: int,
+    settings: Settings,
 ) -> BarsResponse:
-    """일봉 OHLC. price_bars_daily 테이블에서 instrument_id 룩업 후 최신 N일.
-
-    데이터가 없으면 빈 배열을 반환 (UI가 mock fallback 가능).
-    """
     symbol = symbol.upper()
     if not (settings.supabase_url and settings.supabase_service_role_key):
-        return BarsResponse(symbol=symbol, items=[])
+        return _bars_response(symbol, [], days)
     base = settings.supabase_url.rstrip("/")
     headers = {
         "apikey": settings.supabase_service_role_key,
@@ -214,20 +371,27 @@ async def stock_bars(
         # ahead of time, so query bars across the full set and let the
         # one with data win.
         inst_ids: List[str] = []
-        for cand in candidates:
+        inst_order: Dict[str, int] = {}
+        for cand_idx, cand in enumerate(candidates):
             inst_resp = await client.get(
                 f"{base}/rest/v1/instruments",
                 params={
                     "symbol": f"eq.{cand}",
-                    "select": "id",
+                    "select": "id,exchange",
                     "is_active": "eq.true",
+                    "order": "exchange.asc",
                     "limit": "5",
                 },
             )
             if inst_resp.status_code < 400 and inst_resp.json():
-                inst_ids.extend(r["id"] for r in inst_resp.json())
+                for row_idx, row in enumerate(inst_resp.json()):
+                    iid = row["id"]
+                    if iid in inst_order:
+                        continue
+                    inst_order[iid] = cand_idx * 10 + row_idx
+                    inst_ids.append(iid)
         if not inst_ids:
-            return BarsResponse(symbol=symbol, items=[])
+            return _bars_response(symbol, [], days)
         # Fetch per-id with paginated offsets. PostgREST hard-caps each
         # response at 1000 rows, so 5-year requests need multiple pages.
         PAGE = 1000
@@ -235,6 +399,7 @@ async def stock_bars(
         for iid in inst_ids:
             offset = 0
             collected = 0
+            source_rows: List[Dict[str, Any]] = []
             while collected < days:
                 page_size = min(PAGE, days - collected)
                 r = await client.get(
@@ -252,20 +417,41 @@ async def stock_bars(
                 rows = r.json()
                 if not rows:
                     break
-                all_rows.extend(rows)
+                source_rows.extend(rows)
                 collected += len(rows)
                 offset += len(rows)
                 if len(rows) < page_size:
                     break  # exhausted this id's history
-        # Sort descending by date so dedup keeps the freshest ingest.
-        all_rows.sort(key=lambda r: str(r.get("t", "")), reverse=True)
+            latest_t = str(source_rows[0].get("t", "")) if source_rows else ""
+            for row in source_rows:
+                row["_source_latest_t"] = latest_t
+                row["_source_order"] = inst_order.get(iid, 9999)
+            all_rows.extend(source_rows)
+        # The query param is named days, so trim by actual calendar dates
+        # after over-fetching rows. Otherwise 90 trading rows can render as
+        # four months, and stale legacy instrument rows can leak into short
+        # windows.
+        all_rows = _within_calendar_window(all_rows, days)
+        # Sort descending by bar date, then by source freshness. This makes
+        # duplicate symbol rows deterministic when legacy/current instruments
+        # overlap: the instrument with the freshest overall series wins.
+        all_rows.sort(
+            key=lambda r: (
+                str(r.get("t", "")),
+                str(r.get("_source_latest_t", "")),
+                -int(r.get("_source_order", 9999)),
+            ),
+            reverse=True,
+        )
     # Dedup by date (keep first occurrence from the desc-ordered list)
     # then flip to ascending and trim to `days`.
     seen: set[str] = set()
     deduped: List[Dict[str, Any]] = []
+    duplicate_count = 0
     for r in all_rows:
         d = str(r["t"])[:10]
         if d in seen:
+            duplicate_count += 1
             continue
         seen.add(d)
         deduped.append(r)
@@ -283,7 +469,64 @@ async def stock_bars(
         )
         for r in rows
     ]
-    return BarsResponse(symbol=symbol, items=items)
+    return _bars_response(
+        symbol,
+        items,
+        days,
+        instrument_count=len(inst_ids),
+        raw_count=len(all_rows),
+        duplicate_count=duplicate_count,
+    )
+
+
+@router.get("/bars/compare", response_model=BarsCompareResponse)
+async def stock_bars_compare(
+    symbols: str = Query(..., min_length=1),
+    days: int = Query(365, ge=1, le=1825),
+    settings: Settings = Depends(get_settings),
+) -> BarsCompareResponse:
+    """여러 종목의 DB 일봉을 공통 날짜축 수익률 차트용으로 정렬한다."""
+    requested_symbols: List[str] = []
+    seen: set[str] = set()
+    for raw_symbol in symbols.split(","):
+        symbol = raw_symbol.strip().upper()
+        if not symbol or symbol in seen:
+            continue
+        seen.add(symbol)
+        requested_symbols.append(symbol)
+        if len(requested_symbols) >= 12:
+            break
+
+    if not requested_symbols:
+        return BarsCompareResponse(
+            symbols=[],
+            requested_days=days,
+            compare_from_date=None,
+            compare_to_date=None,
+            compare_baseline_date=None,
+            compare_row_count=0,
+            rows=[],
+            returns={},
+            series=[],
+        )
+
+    responses = [
+        await _stock_bars_from_db(symbol, days, settings) for symbol in requested_symbols
+    ]
+    return _bars_compare_response(responses, days)
+
+
+@router.get("/{symbol}/bars", response_model=BarsResponse)
+async def stock_bars(
+    symbol: str,
+    days: int = Query(90, ge=1, le=1825),
+    settings: Settings = Depends(get_settings),
+) -> BarsResponse:
+    """일봉 OHLC. price_bars_daily 테이블에서 instrument_id 룩업 후 최신 N일.
+
+    데이터가 없으면 빈 배열을 반환한다. UI는 명시적인 empty state를 그린다.
+    """
+    return await _stock_bars_from_db(symbol, days, settings)
 
 
 @router.get("/{symbol}/news", response_model=NewsResponse)

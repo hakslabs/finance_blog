@@ -9,6 +9,8 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "wouter";
 import { apiGet } from "@/lib/http";
+import { prefetchRoute } from "@/lib/route-prefetch";
+import { useIndices } from "@/features/indices";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -57,48 +59,71 @@ const NAV_ITEMS = [
   { path: "/mypage", icon: User, label: "마이페이지", sublabel: "My Page" },
 ];
 
-const TICKER_DATA = [
-  { symbol: "KOSPI", value: "2,684.32", change: "+0.69%", up: true },
-  { symbol: "S&P 500", value: "5,812.44", change: "+0.38%", up: true },
-  { symbol: "NASDAQ", value: "18,024.1", change: "+0.72%", up: true },
-  { symbol: "USD/KRW", value: "1,387.20", change: "-0.22%", up: false },
-  { symbol: "WTI", value: "$71.84", change: "+0.59%", up: true },
-  { symbol: "GOLD", value: "$2,318.4", change: "+0.41%", up: true },
-  { symbol: "BTC", value: "$61,240", change: "-1.32%", up: false },
-  { symbol: "VIX", value: "14.2", change: "-2.8%", up: false },
-  { symbol: "US 10Y", value: "4.42%", change: "+3bp", up: true },
-  { symbol: "NVDA", value: "912.18", change: "+3.42%", up: true },
-  { symbol: "AAPL", value: "184.32", change: "+1.24%", up: true },
-  { symbol: "TSLA", value: "218.40", change: "-2.10%", up: false },
-  { symbol: "삼성전자", value: "78,400", change: "+0.51%", up: true },
-];
-
 function TickerBar() {
-  const doubled = [...TICKER_DATA, ...TICKER_DATA];
+  const { data: indices } = useIndices();
+  const tickerItems =
+    indices?.map((item) => {
+      const up = item.change > 0;
+      const flat = item.change === 0;
+      return {
+        symbol: item.symbol,
+        value:
+          item.symbol === "USD/KRW"
+            ? item.value.toLocaleString(undefined, {
+                maximumFractionDigits: 2,
+              })
+            : item.value.toLocaleString(undefined, {
+                maximumFractionDigits: item.value >= 1000 ? 1 : 2,
+              }),
+        change: `${item.changePct > 0 ? "+" : ""}${item.changePct.toFixed(2)}%`,
+        up,
+        flat,
+      };
+    }) ?? [];
+  const doubled = [...tickerItems, ...tickerItems];
   return (
-    <div className="h-8 bg-card border-b border-border overflow-hidden flex items-center">
-      <div className="flex items-center gap-0 ticker-scroll whitespace-nowrap">
-        {doubled.map((item, i) => (
-          <span
-            key={i}
-            className="inline-flex items-center gap-1.5 px-4 text-xs"
-          >
-            <span className="text-muted-foreground font-mono">
-              {item.symbol}
-            </span>
-            <span className="font-mono font-medium">{item.value}</span>
+    <div className="ticker-viewport relative h-8 bg-card border-b border-border overflow-hidden">
+      <div
+        className={cn(
+          "absolute inset-y-0 left-0 flex items-center gap-0 whitespace-nowrap",
+          doubled.length > 0 ? "ticker-scroll" : "",
+        )}
+      >
+        {doubled.length > 0 ? (
+          doubled.map((item, i) => (
             <span
-              className={cn(
-                "font-mono font-medium flex items-center gap-0.5",
-                item.up ? "text-up" : "text-down",
-              )}
+              key={i}
+              className="inline-flex items-center gap-1.5 px-4 text-xs"
             >
-              {item.up ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-              {item.change}
+              <span className="text-muted-foreground font-mono">
+                {item.symbol}
+              </span>
+              <span className="font-mono font-medium">{item.value}</span>
+              <span
+                className={cn(
+                  "font-mono font-medium flex items-center gap-0.5",
+                  item.flat
+                    ? "text-muted-foreground"
+                    : item.up
+                      ? "text-up"
+                      : "text-down",
+                )}
+              >
+                {item.up || item.flat ? (
+                  <TrendingUp size={10} />
+                ) : (
+                  <TrendingDown size={10} />
+                )}
+                {item.change}
+              </span>
+              <span className="text-border mx-1">|</span>
             </span>
-            <span className="text-border mx-1">|</span>
+          ))
+        ) : (
+          <span className="inline-flex items-center gap-2 px-4 text-xs text-muted-foreground">
+            <Activity size={12} /> 시장 데이터를 불러오는 중
           </span>
-        ))}
+        )}
       </div>
     </div>
   );
@@ -277,7 +302,9 @@ function Sidebar({
           "transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]",
           collapsed ? "w-16" : "w-64",
           "lg:translate-x-0",
-          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+          mobileOpen
+            ? "translate-x-0"
+            : "hidden -translate-x-full lg:flex lg:translate-x-0",
         )}
       >
         {/* Logo */}
@@ -330,7 +357,14 @@ function Sidebar({
               location === item.path ||
               (item.path !== "/" && location.startsWith(item.path));
             return (
-              <Link key={item.path} href={item.path} onClick={onMobileClose}>
+              <Link
+                key={item.path}
+                href={item.path}
+                onClick={onMobileClose}
+                onMouseEnter={() => prefetchRoute(item.path)}
+                onFocus={() => prefetchRoute(item.path)}
+                onTouchStart={() => prefetchRoute(item.path)}
+              >
                 <div
                   className={cn(
                     "relative flex items-center gap-3 mx-2 my-0.5 rounded-lg transition-all duration-150",
@@ -561,7 +595,12 @@ type SearchResults = {
 // (handled in pages/MyPage.tsx).
 function BookmarkHeaderButton() {
   return (
-    <Link href="/mypage?tab=bookmarks">
+    <Link
+      href="/mypage?tab=bookmarks"
+      onMouseEnter={() => prefetchRoute("/mypage")}
+      onFocus={() => prefetchRoute("/mypage")}
+      onTouchStart={() => prefetchRoute("/mypage")}
+    >
       <Button variant="ghost" size="icon" className="h-8 w-8" title="북마크">
         <Bookmark size={16} />
       </Button>
@@ -752,6 +791,13 @@ function Header({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
                     {results.symbols.map((s) => (
                       <button
                         key={s.symbol}
+                        onMouseEnter={() =>
+                          prefetchRoute(`/stocks/${s.symbol}`)
+                        }
+                        onFocus={() => prefetchRoute(`/stocks/${s.symbol}`)}
+                        onTouchStart={() =>
+                          prefetchRoute(`/stocks/${s.symbol}`)
+                        }
                         onClick={() => go(`/stocks/${s.symbol}`)}
                         className="w-full flex items-center justify-between gap-3 px-3 py-1.5 hover:bg-muted text-left"
                       >
@@ -778,6 +824,9 @@ function Header({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
                     {results.masters.map((m) => (
                       <button
                         key={m.slug}
+                        onMouseEnter={() => prefetchRoute(`/masters/${m.slug}`)}
+                        onFocus={() => prefetchRoute(`/masters/${m.slug}`)}
+                        onTouchStart={() => prefetchRoute(`/masters/${m.slug}`)}
                         onClick={() => go(`/masters/${m.slug}`)}
                         className="w-full flex items-center justify-between gap-3 px-3 py-1.5 hover:bg-muted text-left"
                       >
@@ -799,6 +848,9 @@ function Header({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
                     {results.reports.map((r) => (
                       <button
                         key={r.id}
+                        onMouseEnter={() => prefetchRoute("/reports")}
+                        onFocus={() => prefetchRoute("/reports")}
+                        onTouchStart={() => prefetchRoute("/reports")}
                         onClick={() => go(`/reports`)}
                         className="w-full flex items-center justify-between gap-3 px-3 py-1.5 hover:bg-muted text-left"
                       >
@@ -847,7 +899,14 @@ function MobileBottomBar() {
             location === item.path ||
             (item.path !== "/" && location.startsWith(item.path));
           return (
-            <Link key={item.path} href={item.path} className="flex-1">
+            <Link
+              key={item.path}
+              href={item.path}
+              className="flex-1"
+              onMouseEnter={() => prefetchRoute(item.path)}
+              onFocus={() => prefetchRoute(item.path)}
+              onTouchStart={() => prefetchRoute(item.path)}
+            >
               <div
                 className={cn(
                   "flex flex-col items-center justify-center h-full gap-1 transition-all duration-150",

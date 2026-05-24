@@ -1,12 +1,14 @@
 /**
  * Stocks.tsx — Stock Screener Page
  */
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
-import { US_STOCKS, KR_STOCKS, generateSparkline } from "@/lib/data";
-import { useStocks } from "@/features/stocks";
-import { AreaChart, Area, ResponsiveContainer } from "recharts";
+import { prefetchRoute } from "@/lib/route-prefetch";
+import { useStockBars, useStockSearch, useStocks } from "@/features/stocks";
+import { stocksService, type StockSearchHit } from "@/features/stocks/service";
+import type { Stock } from "@/types";
+import StockMiniChart from "@/components/StockMiniChart";
 import {
   Search,
   TrendingUp,
@@ -16,6 +18,48 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+
+async function searchHitToStock(
+  hit: StockSearchHit,
+  init?: RequestInit,
+): Promise<Stock> {
+  let price = 0;
+  let change = 0;
+  let changePct = 0;
+  let volume = 0;
+  try {
+    const bars = (await stocksService.bars(hit.ticker, 30, init)).items;
+    const latest = bars.at(-1);
+    const prev = bars.at(-2);
+    if (latest) {
+      price = latest.close;
+      volume = latest.volume;
+    }
+    if (latest && prev) {
+      change = latest.close - prev.close;
+      changePct = prev.close > 0 ? (change / prev.close) * 100 : 0;
+    }
+  } catch {
+    /* Keep row visible even if bars are not yet ingested. */
+  }
+  return {
+    ticker: hit.ticker,
+    name: hit.name,
+    price,
+    change,
+    changePct,
+    volume,
+    marketCap: "",
+    sector: "—",
+    exchange:
+      hit.exchange === "KOSDAQ"
+        ? "KOSDAQ"
+        : hit.country === "KR"
+          ? "KOSPI"
+          : "NASDAQ",
+    country: hit.country,
+  };
+}
 
 function PctBadge({ value }: { value: number }) {
   const up = value >= 0;
@@ -33,39 +77,67 @@ function PctBadge({ value }: { value: number }) {
   );
 }
 
-function Sparkline({ up }: { up: boolean }) {
-  const data = generateSparkline(12, up ? "up" : "down");
+type SparklinePeriod = "1M" | "3M" | "1Y" | "2Y" | "5Y";
+const SPARKLINE_PERIOD_DAYS: Record<SparklinePeriod, number> = {
+  "1M": 31,
+  "3M": 92,
+  "1Y": 365,
+  "2Y": 730,
+  "5Y": 1825,
+};
+
+function Sparkline({
+  ticker,
+  period,
+}: {
+  ticker: string;
+  period: SparklinePeriod;
+}) {
+  const { data: barsData, loading } = useStockBars(
+    ticker,
+    SPARKLINE_PERIOD_DAYS[period],
+  );
+  const data = useMemo(
+    () =>
+      (barsData ?? []).map((bar) => ({
+        date: bar.date,
+        value: bar.close,
+      })),
+    [barsData],
+  );
+  const priceData = useMemo(
+    () =>
+      data.filter((point) => Number.isFinite(point.value) && point.value > 0),
+    [data],
+  );
+  const up =
+    priceData.length < 2
+      ? true
+      : priceData[priceData.length - 1].value >= priceData[0].value;
+
   return (
-    <div className="w-16 h-8">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart
-          data={data}
-          margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
-        >
-          <defs>
-            <linearGradient id={`sg-${up}`} x1="0" y1="0" x2="0" y2="1">
-              <stop
-                offset="0%"
-                stopColor={up ? "#22c55e" : "#ef4444"}
-                stopOpacity={0.3}
-              />
-              <stop
-                offset="100%"
-                stopColor={up ? "#22c55e" : "#ef4444"}
-                stopOpacity={0}
-              />
-            </linearGradient>
-          </defs>
-          <Area
-            type="monotone"
-            dataKey="v"
-            stroke={up ? "#22c55e" : "#ef4444"}
-            strokeWidth={1.5}
-            fill={`url(#sg-${up})`}
-            dot={false}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+    <div
+      className="w-20 h-9"
+      title={`${period} DB 일봉 ${priceData.length.toLocaleString()}행`}
+    >
+      {loading ? (
+        <div className="h-full w-full rounded bg-muted/30 animate-pulse" />
+      ) : priceData.length > 1 ? (
+        <StockMiniChart
+          data={priceData}
+          height={36}
+          color={up ? "#22c55e" : "#ef4444"}
+          interactive={false}
+          valueKind="price"
+          sourceLabel="DB"
+          sourceTone="primary"
+          sourceTitle={`${period} DB 일봉 ${priceData.length.toLocaleString()}행`}
+        />
+      ) : (
+        <div className="h-full w-full flex items-center justify-center text-[10px] text-muted-foreground">
+          —
+        </div>
+      )}
     </div>
   );
 }
@@ -91,43 +163,67 @@ export default function Stocks() {
     "changePct",
   );
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [sparklinePeriod, setSparklinePeriod] = useState<SparklinePeriod>("3M");
 
-  // Overlay live movers data; if the API has rows we use them, else
-  // fall back to the rich mock list (which has marketCap/pe/sector).
-  const baseStocks = market === "US" ? US_STOCKS : KR_STOCKS;
-  const { data: liveStocks } = useStocks(market);
-  const allStocks = useMemo(() => {
-    if (!liveStocks || liveStocks.length === 0) return baseStocks;
-    const liveBySymbol = new Map(liveStocks.map((s) => [s.ticker, s]));
-    return baseStocks.map((s) => {
-      const live = liveBySymbol.get(s.ticker);
-      return live
-        ? {
-            ...s,
-            price: live.price,
-            changePct: live.changePct,
-            change: live.change,
-            volume: live.volume,
-          }
-        : s;
-    });
-  }, [baseStocks, liveStocks]);
+  const { data: liveStocks, loading, error, refetch } = useStocks(market);
+  const searchMode = search.trim().length > 0;
+  const { data: searchHits = [], loading: searchLoading } = useStockSearch(
+    searchMode ? search : "",
+    24,
+  );
+  const [searchStocks, setSearchStocks] = useState<Stock[]>([]);
+  const [hydratingSearch, setHydratingSearch] = useState(false);
+  const allStocks = liveStocks ?? [];
+
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    const hits = (searchHits ?? []).filter((hit) => hit.country === market);
+    if (!searchMode || hits.length === 0) {
+      setSearchStocks([]);
+      setHydratingSearch(false);
+      return;
+    }
+    setHydratingSearch(true);
+    Promise.all(
+      hits.map((hit) => searchHitToStock(hit, { signal: controller.signal })),
+    )
+      .then((rows) => {
+        if (cancelled) return;
+        setSearchStocks(rows);
+        setHydratingSearch(false);
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        if (cancelled) return;
+        setSearchStocks([]);
+        setHydratingSearch(false);
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [market, searchHits, searchMode]);
 
   const filtered = useMemo(() => {
-    let list = allStocks.filter((s) => {
+    const source = searchMode ? searchStocks : allStocks;
+    let list = source.filter((s) => {
       const matchSearch =
+        searchMode ||
         s.ticker.toLowerCase().includes(search.toLowerCase()) ||
         s.name.toLowerCase().includes(search.toLowerCase());
-      const matchSector = sector === "전체" || s.sector.includes(sector);
+      const matchSector =
+        searchMode || sector === "전체" || s.sector.includes(sector);
       return matchSearch && matchSector;
     });
     list = [...list].sort((a, b) => {
-      const va = a[sortBy] as number;
-      const vb = b[sortBy] as number;
+      const va = Number(a[sortBy] ?? Number.NEGATIVE_INFINITY);
+      const vb = Number(b[sortBy] ?? Number.NEGATIVE_INFINITY);
       return sortDir === "desc" ? vb - va : va - vb;
     });
     return list;
-  }, [allStocks, search, sector, sortBy, sortDir]);
+  }, [allStocks, search, searchMode, searchStocks, sector, sortBy, sortDir]);
+  const tableLoading = searchMode ? searchLoading || hydratingSearch : loading;
 
   const handleSort = (col: typeof sortBy) => {
     if (sortBy === col) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
@@ -137,12 +233,21 @@ export default function Stocks() {
     }
   };
 
+  const avgChange =
+    filtered.length > 0
+      ? filtered.reduce((a, s) => a + s.changePct, 0) / filtered.length
+      : 0;
+  const bestChange =
+    filtered.length > 0 ? Math.max(...filtered.map((s) => s.changePct)) : 0;
+  const worstChange =
+    filtered.length > 0 ? Math.min(...filtered.map((s) => s.changePct)) : 0;
+
   return (
     <div className="space-y-6 animate-fade-in-up">
       <div>
         <h1 className="text-2xl font-bold font-['Outfit']">종목 검색</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          미국 · 한국 종목 스크리너
+          DB 전체 종목 검색 · 실가격 스파크라인
         </p>
       </div>
 
@@ -197,7 +302,36 @@ export default function Stocks() {
             </button>
           ))}
         </div>
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/20 p-1">
+          <span className="px-1.5 text-[10px] font-mono text-muted-foreground">
+            CHART
+          </span>
+          {(["1M", "3M", "1Y", "2Y", "5Y"] as SparklinePeriod[]).map(
+            (period) => (
+              <button
+                key={period}
+                onClick={() => setSparklinePeriod(period)}
+                className={cn(
+                  "rounded px-2 py-1 text-xs font-medium transition-colors",
+                  sparklinePeriod === period
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-card hover:text-foreground",
+                )}
+                title={`스파크라인 ${period} DB 일봉`}
+                aria-pressed={sparklinePeriod === period}
+              >
+                {period}
+              </button>
+            ),
+          )}
+        </div>
       </div>
+      {searchMode && (
+        <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+          검색 결과는 `/v1/search` 전체 DB에서 가져오고, 가격/등락률은 최근
+          일봉으로 보정합니다.
+        </div>
+      )}
 
       {/* Stats bar */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
@@ -214,23 +348,17 @@ export default function Stocks() {
           },
           {
             label: "평균 등락",
-            value:
-              (
-                filtered.reduce((a, s) => a + s.changePct, 0) /
-                  filtered.length || 0
-              ).toFixed(2) + "%",
+            value: avgChange.toFixed(2) + "%",
             color: "text-foreground",
           },
           {
             label: "최고 상승",
-            value:
-              Math.max(...filtered.map((s) => s.changePct)).toFixed(2) + "%",
+            value: bestChange.toFixed(2) + "%",
             color: "text-up",
           },
           {
             label: "최고 하락",
-            value:
-              Math.min(...filtered.map((s) => s.changePct)).toFixed(2) + "%",
+            value: worstChange.toFixed(2) + "%",
             color: "text-down",
           },
           {
@@ -270,7 +398,7 @@ export default function Stocks() {
                   { label: "P/E", key: "pe" as const },
                   { label: "ROE", key: null },
                   { label: "섹터", key: null },
-                  { label: "차트", key: null },
+                  { label: `차트 ${sparklinePeriod}`, key: null },
                 ].map((h) => (
                   <th
                     key={h.label}
@@ -295,51 +423,99 @@ export default function Stocks() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((stock) => (
-                <tr
-                  key={stock.ticker}
-                  className="border-b border-border/50 hover:bg-muted/30 transition-colors group"
-                >
-                  <td className="py-3 px-4">
-                    <Link href={`/stocks/${stock.ticker}`}>
-                      <div className="cursor-pointer">
-                        <div className="font-semibold text-sm group-hover:text-primary transition-colors truncate max-w-[180px]">
-                          {stock.name}
+              {tableLoading &&
+                Array.from({ length: 8 }, (_, i) => (
+                  <tr
+                    key={`loading-${i}`}
+                    className="border-b border-border/50"
+                  >
+                    <td className="py-3 px-4" colSpan={8}>
+                      <div className="h-8 rounded bg-muted/25 animate-pulse" />
+                    </td>
+                  </tr>
+                ))}
+              {!tableLoading &&
+                filtered.map((stock) => (
+                  <tr
+                    key={stock.ticker}
+                    className="border-b border-border/50 hover:bg-muted/30 transition-colors group"
+                  >
+                    <td className="py-3 px-4">
+                      <Link
+                        href={`/stocks/${stock.ticker}`}
+                        onMouseEnter={() =>
+                          prefetchRoute(`/stocks/${stock.ticker}`)
+                        }
+                        onFocus={() => prefetchRoute(`/stocks/${stock.ticker}`)}
+                        onTouchStart={() =>
+                          prefetchRoute(`/stocks/${stock.ticker}`)
+                        }
+                      >
+                        <div className="cursor-pointer">
+                          <div className="font-semibold text-sm group-hover:text-primary transition-colors truncate max-w-[180px]">
+                            {stock.name}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground font-mono-num">
+                            {stock.ticker}
+                          </div>
                         </div>
-                        <div className="text-[10px] text-muted-foreground font-mono-num">
-                          {stock.ticker}
-                        </div>
-                      </div>
-                    </Link>
-                  </td>
-                  <td className="py-3 px-4 font-mono-num font-medium text-sm">
-                    {stock.price.toLocaleString()}
-                  </td>
-                  <td className="py-3 px-4">
-                    <PctBadge value={stock.changePct} />
-                  </td>
-                  <td className="py-3 px-4 text-xs text-muted-foreground font-mono-num">
-                    {stock.marketCap}
-                  </td>
-                  <td className="py-3 px-4 text-xs font-mono-num">
-                    {stock.pe}x
-                  </td>
-                  <td className="py-3 px-4 text-xs font-mono-num">
-                    {stock.roe}%
-                  </td>
-                  <td className="py-3 px-4">
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] px-1.5 py-0"
-                    >
-                      {stock.sector}
-                    </Badge>
-                  </td>
-                  <td className="py-3 px-4">
-                    <Sparkline up={stock.changePct >= 0} />
+                      </Link>
+                    </td>
+                    <td className="py-3 px-4 font-mono-num font-medium text-sm">
+                      {stock.price > 0 ? stock.price.toLocaleString() : "—"}
+                    </td>
+                    <td className="py-3 px-4">
+                      <PctBadge value={stock.changePct} />
+                    </td>
+                    <td className="py-3 px-4 text-xs text-muted-foreground font-mono-num">
+                      {stock.marketCap || "—"}
+                    </td>
+                    <td className="py-3 px-4 text-xs font-mono-num">
+                      {stock.pe != null ? `${stock.pe}x` : "—"}
+                    </td>
+                    <td className="py-3 px-4 text-xs font-mono-num">
+                      {stock.roe != null ? `${stock.roe}%` : "—"}
+                    </td>
+                    <td className="py-3 px-4">
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] px-1.5 py-0"
+                      >
+                        {stock.sector}
+                      </Badge>
+                    </td>
+                    <td className="py-3 px-4">
+                      <Sparkline
+                        ticker={stock.ticker}
+                        period={sparklinePeriod}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              {!tableLoading && filtered.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-4 py-12 text-center">
+                    <div className="text-sm font-medium text-foreground">
+                      표시할 종목 데이터가 없습니다
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {error
+                        ? "API 응답을 받지 못했습니다. 다시 시도해 주세요."
+                        : searchMode
+                          ? "검색어를 바꾸거나 다른 시장을 선택하세요."
+                          : "검색 조건을 조정하거나 다른 시장을 선택하세요."}
+                    </div>
+                    {error && !searchMode && (
+                      <button
+                        onClick={refetch}
+                        className="mt-3 rounded border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        다시 불러오기
+                      </button>
+                    )}
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

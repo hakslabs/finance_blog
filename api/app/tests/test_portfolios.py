@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 
@@ -9,6 +9,7 @@ from app.main import app
 from app.models.portfolios import Portfolio
 from app.repos.portfolios import PortfolioRepo, get_portfolio_repo, _row_to_transaction
 from app.repos.watchlists import WatchlistRepo, get_watchlist_repo
+from app.settings import Settings, get_settings
 from app.tests.auth_helpers import auth_header
 
 
@@ -42,6 +43,48 @@ class _StubPortfolioRepo:
         # list while passing the raw rows through for holding derivation.
         self._portfolio.transactions = [_row_to_transaction(r) for r in self._tx_rows]
         return self._portfolio, self._tx_rows
+
+
+class _FakeResponse:
+    def __init__(self, rows: List[Dict[str, Any]], status_code: int = 200) -> None:
+        self._rows = rows
+        self.status_code = status_code
+
+    def json(self) -> List[Dict[str, Any]]:
+        return self._rows
+
+
+class _FakeAsyncClient:
+    instruments: List[Dict[str, Any]] = []
+    bars: Dict[str, List[Dict[str, Any]]] = {}
+    calls: List[Dict[str, Any]] = []
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        pass
+
+    async def __aenter__(self) -> "_FakeAsyncClient":
+        return self
+
+    async def __aexit__(self, *args: Any) -> None:
+        return None
+
+    async def get(self, url: str, params: Dict[str, str]) -> _FakeResponse:
+        self.calls.append({"url": url, "params": dict(params)})
+        if url.endswith("/instruments"):
+            return _FakeResponse(self.instruments)
+        instrument_id = params["instrument_id"].removeprefix("eq.")
+        limit = int(params.get("limit", "1000"))
+        offset = int(params.get("offset", "0"))
+        return _FakeResponse(self.bars.get(instrument_id, [])[offset : offset + limit])
+
+
+def _settings() -> Settings:
+    return Settings(
+        APP_ENV="local",
+        SUPABASE_URL="https://example.supabase.co",
+        SUPABASE_SERVICE_ROLE_KEY="test-service-role",
+        SUPABASE_JWT_SECRET="test-supabase-jwt-secret-32-bytes-minimum",
+    )
 
 
 def _aapl_instrument() -> Dict[str, str]:
@@ -239,9 +282,158 @@ def test_multi_symbol_holdings(client: TestClient, override_repos) -> None:
     assert [h["symbol"] for h in holdings] == ["AAPL", "MSFT"]
 
 
-def test_missing_supabase_config_returns_503(client: TestClient) -> None:
-    from app.settings import Settings, get_settings
+def test_portfolio_history_uses_db_bars_server_side(
+    client: TestClient,
+    override_repos,
+    monkeypatch,
+) -> None:
+    msft = {"symbol": "MSFT", "name": "Microsoft", "exchange": "NASDAQ", "currency": "USD"}
+    portfolio = Portfolio(
+        id=uuid4(), name="P", currency="USD",
+        updated_at=datetime(2026, 5, 14, tzinfo=timezone.utc),
+        holdings=[], transactions=[],
+    )
+    tx_rows = [
+        _tx("buy", "2026-02-15", instrument=_aapl_instrument(), quantity=10, price=150.0, amount=1500.0),
+        _tx("buy", "2026-02-20", instrument=msft, quantity=5, price=380.0, amount=1900.0),
+    ]
+    override_repos(portfolio, tx_rows)
+    app.dependency_overrides[get_settings] = _settings
+    _FakeAsyncClient.calls = []
+    _FakeAsyncClient.instruments = [
+        {"id": "inst-aapl", "symbol": "AAPL", "exchange": "NASDAQ"},
+        {"id": "inst-msft", "symbol": "MSFT", "exchange": "NASDAQ"},
+    ]
+    _FakeAsyncClient.bars = {
+        "inst-aapl": [
+            {"t": "2026-05-22", "c": 120},
+            {"t": "2026-05-21", "c": 110},
+            {"t": "2026-05-20", "c": 100},
+        ],
+        "inst-msft": [
+            {"t": "2026-05-22", "c": 220},
+            {"t": "2026-05-20", "c": 200},
+        ],
+    }
+    monkeypatch.setattr(
+        "app.routes.portfolio_snapshot.httpx.AsyncClient",
+        _FakeAsyncClient,
+    )
 
+    try:
+        response = client.get("/v1/portfolios/me/history?days=3", headers=auth_header())
+    finally:
+        app.dependency_overrides.pop(get_settings, None)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["currency"] == "USD"
+    assert body["requested_days"] == 3
+    assert [row["date"] for row in body["rows"]] == [
+        "2026-05-20",
+        "2026-05-21",
+        "2026-05-22",
+    ]
+    assert body["rows"][0]["portfolio"] == 2000
+    assert body["rows"][1]["portfolio"] == 2100
+    assert body["rows"][2]["portfolio"] == 2300
+    assert body["rows"][0]["cost"] == 3400
+    bar_queries = [
+        c for c in _FakeAsyncClient.calls if c["url"].endswith("/price_bars_daily")
+    ]
+    assert all(q["params"]["offset"] == "0" for q in bar_queries)
+    assert all(q["params"]["limit"] == "3" for q in bar_queries)
+    assert body["holdings"][0]["returned_count"] == 3
+    assert body["holdings"][1]["returned_count"] == 2
+
+
+def test_portfolio_history_paginates_past_postgrest_limit(
+    client: TestClient,
+    override_repos,
+    monkeypatch,
+) -> None:
+    portfolio = Portfolio(
+        id=uuid4(), name="P", currency="USD",
+        updated_at=datetime(2026, 5, 14, tzinfo=timezone.utc),
+        holdings=[], transactions=[],
+    )
+    tx_rows = [
+        _tx("buy", "2022-01-01", instrument=_aapl_instrument(), quantity=1, price=100.0, amount=100.0),
+    ]
+    override_repos(portfolio, tx_rows)
+    app.dependency_overrides[get_settings] = _settings
+    _FakeAsyncClient.calls = []
+    _FakeAsyncClient.instruments = [
+        {"id": "inst-aapl", "symbol": "AAPL", "exchange": "NASDAQ"},
+    ]
+    latest = date(2026, 5, 22)
+    _FakeAsyncClient.bars = {
+        "inst-aapl": [
+            {"t": (latest - timedelta(days=i)).isoformat(), "c": 2000 - i}
+            for i in range(1200)
+        ],
+    }
+    monkeypatch.setattr(
+        "app.routes.portfolio_snapshot.httpx.AsyncClient",
+        _FakeAsyncClient,
+    )
+
+    try:
+        response = client.get("/v1/portfolios/me/history?days=1200", headers=auth_header())
+    finally:
+        app.dependency_overrides.pop(get_settings, None)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["requested_days"] == 1200
+    assert body["holdings"][0]["returned_count"] == 1200
+    assert len(body["rows"]) == 1200
+    assert body["rows"][0]["date"] == "2023-02-08"
+    assert body["rows"][-1]["date"] == "2026-05-22"
+    bar_queries = [
+        c for c in _FakeAsyncClient.calls if c["url"].endswith("/price_bars_daily")
+    ]
+    assert [q["params"]["limit"] for q in bar_queries] == ["1000", "200"]
+    assert [q["params"]["offset"] for q in bar_queries] == ["0", "1000"]
+
+
+def test_portfolio_analytics_builds_flow_and_realized_pnl(
+    client: TestClient,
+    override_repos,
+) -> None:
+    current_year = date.today().year
+    portfolio = Portfolio(
+        id=uuid4(), name="P", currency="USD",
+        updated_at=datetime(current_year, 5, 14, tzinfo=timezone.utc),
+        holdings=[], transactions=[],
+    )
+    tx_rows = [
+        _tx("buy", f"{current_year}-01-10", instrument=_aapl_instrument(), quantity=10, price=100.0, amount=1000.0),
+        _tx("sell", f"{current_year}-03-10", instrument=_aapl_instrument(), quantity=4, price=125.0, amount=500.0),
+        _tx("buy", f"{current_year}-04-10", instrument=_aapl_instrument(), quantity=2, price=110.0, amount=220.0),
+    ]
+    override_repos(portfolio, tx_rows)
+
+    response = client.get(
+        "/v1/portfolios/me/analytics?flow_period=year&pnl_period=year",
+        headers=auth_header(),
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["currency"] == "KRW"
+    assert body["flow_currency"] == "KRW"
+    assert body["pnl_currency"] == "USD"
+    assert body["total_buy"] == 1586000
+    assert body["total_sell"] == 650000
+    assert body["total_realized_pnl"] == 100
+    assert body["realized_pnl"][-1]["date"] == f"{current_year}-01-01"
+    assert body["realized_pnl"][-1]["pnl"] == 100
+    assert body["investment_flow"][-1]["date"] == f"{current_year}-{date.today().month:02d}-01"
+    assert body["investment_flow"][-1]["value"] == 936000
+
+
+def test_missing_supabase_config_returns_503(client: TestClient) -> None:
     empty = Settings(
         APP_ENV="local",
         SUPABASE_URL=None,

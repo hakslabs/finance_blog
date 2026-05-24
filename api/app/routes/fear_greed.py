@@ -12,6 +12,7 @@ from app.settings import Settings, get_settings
 
 
 router = APIRouter(prefix="/sentiment/fear-greed", tags=["sentiment"])
+PAGE_SIZE = 1000
 
 
 class HistoryPoint(BaseModel):
@@ -47,29 +48,62 @@ def _service_headers(settings: Settings):
     if not settings.supabase_url or not settings.supabase_service_role_key:
         raise HTTPException(503, "upstream_unavailable")
     k = settings.supabase_service_role_key
-    return {"apikey": k, "Authorization": f"Bearer {k}", "Accept": "application/json"}
+    return {
+        "apikey": k,
+        "Authorization": f"Bearer {k}",
+        "Accept": "application/json",
+    }
+
+
+async def _fetch_history_rows(
+    client: httpx.AsyncClient,
+    base_url: str,
+    market: str,
+    days: int,
+) -> list[dict]:
+    rows: list[dict] = []
+    offset = 0
+    while len(rows) < days:
+        limit = min(PAGE_SIZE, days - len(rows))
+        r = await client.get(
+            f"{base_url}/rest/v1/fear_greed_history",
+            params={
+                "select": "date,value,vix,adr",
+                "market": f"eq.{market}",
+                "order": "date.desc",
+                "limit": str(limit),
+                "offset": str(offset),
+            },
+        )
+        if r.status_code >= 400:
+            raise HTTPException(r.status_code, r.text[:200])
+        page = r.json()
+        rows.extend(page)
+        if len(page) < limit:
+            break
+        offset += len(page)
+    return rows
 
 
 @router.get("", response_model=FearGreedData)
 async def get_fear_greed(
     market: str = Query("US", pattern="^(US|KR)$"),
-    days: int = Query(90, ge=1, le=365),
+    days: int = Query(90, ge=1, le=1825),
     settings: Settings = Depends(get_settings),
 ) -> FearGreedData:
     base = settings.supabase_url.rstrip("/")
     async with httpx.AsyncClient(timeout=8.0, headers=_service_headers(settings)) as c:
-        r = await c.get(f"{base}/rest/v1/fear_greed_history",
-                        params={"select": "date,value,vix,adr",
-                                "market": f"eq.{market}",
-                                "order": "date.desc",
-                                "limit": str(days)})
-        if r.status_code >= 400:
-            raise HTTPException(r.status_code, r.text[:200])
-        rows = r.json()
+        rows = await _fetch_history_rows(c, base, market, days)
     if not rows:
-        # empty fallback so the page can render
-        return FearGreedData(market=market, value=50, label=_label(50),
-                             updatedAt=datetime.now(tz=timezone.utc).isoformat(), history=[])
+        # Empty DB state: return no history so the page can render an honest
+        # empty state instead of a synthetic chart.
+        return FearGreedData(
+            market=market,
+            value=50,
+            label=_label(50),
+            updatedAt=datetime.now(tz=timezone.utc).isoformat(),
+            history=[],
+        )
     rows_sorted = sorted(rows, key=lambda x: x["date"])  # asc for chart
     latest = rows_sorted[-1]
     return FearGreedData(

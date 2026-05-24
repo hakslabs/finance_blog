@@ -8,34 +8,15 @@
  */
 import { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { apiGet } from "@/lib/http";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
+import { prefetchRoute } from "@/lib/route-prefetch";
 import {
-  MARKET_INDICES,
-  MARKET_NEWS,
-  CALENDAR_EVENTS,
-  PORTFOLIO_HOLDINGS,
-  PORTFOLIO_ALLOCATION,
-  SECTOR_ROTATION,
-  generatePortfolioChart,
-  KR_STOCKS,
-  US_STOCKS,
-  tickerToName,
-} from "@/lib/data";
-import {
-  AreaChart,
-  Area,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  ReferenceLine,
-} from "recharts";
+  compareLabelForDate,
+  rebaseCompareRows,
+  type CompareSeriesRow,
+} from "@/lib/compare-series";
+import { MARKET_NEWS, CALENDAR_EVENTS, tickerToName } from "@/lib/data";
 import {
   TrendingUp,
   TrendingDown,
@@ -50,8 +31,11 @@ import {
   ChevronRight,
   Bookmark,
   BookmarkMinus,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import KLineSeriesChart from "@/components/KLineSeriesChart";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWatchlist } from "@/contexts/WatchlistContext";
@@ -61,7 +45,9 @@ import { useNews } from "@/features/news";
 import { useUnifiedCalendar } from "@/features/calendar";
 import { useSectors } from "@/features/sectors";
 import { useFearGreed } from "@/features/fear-greed";
-import { useStocks } from "@/features/stocks";
+import { stocksService, useStocks } from "@/features/stocks";
+import type { StockBarsCompareResponse } from "@/features/stocks/service";
+import type { MarketIndex } from "@/types";
 
 // Pretty-print a backend ISO timestamp for the small "업데이트:" hint
 // under each widget. Returns "조금 전" if within 60s, "5분 전" for sub-hour,
@@ -101,104 +87,6 @@ function detectOpenMarket(): "KR" | "US" {
   if (totalMin >= nyOpen && totalMin < nyClose) return "US";
   return "KR";
 }
-
-// ── VIX / ADR 히스토리 목업 데이터 ────────────────────────────
-const VIX_HISTORY = Array.from({ length: 60 }, (_, i) => {
-  const base = 16 + Math.sin(i * 0.2) * 4 + Math.random() * 3;
-  return { day: `${i + 1}일`, value: parseFloat(base.toFixed(2)) };
-});
-const ADR_HISTORY = Array.from({ length: 60 }, (_, i) => {
-  const base = 55 + Math.sin(i * 0.15) * 20 + Math.random() * 8;
-  return { day: `${i + 1}일`, value: parseFloat(base.toFixed(1)) };
-});
-
-// ── 섹터 로테이션 데이터 (미국/한국 분리) ─────────────────────
-const US_SECTORS = [
-  { sector: "IT", return1d: 1.2, return1w: 3.4, return1m: 8.2, flow: "유입" },
-  {
-    sector: "헬스케어",
-    return1d: 0.8,
-    return1w: 1.9,
-    return1m: 5.1,
-    flow: "유입",
-  },
-  {
-    sector: "에너지",
-    return1d: -0.5,
-    return1w: -1.2,
-    return1m: -3.8,
-    flow: "유출",
-  },
-  { sector: "금융", return1d: 0.3, return1w: 0.9, return1m: 2.4, flow: "중립" },
-  {
-    sector: "소비재",
-    return1d: -0.2,
-    return1w: 0.4,
-    return1m: 1.1,
-    flow: "중립",
-  },
-  {
-    sector: "유틸리티",
-    return1d: 0.1,
-    return1w: -0.3,
-    return1m: -1.2,
-    flow: "유출",
-  },
-  {
-    sector: "산업재",
-    return1d: 0.6,
-    return1w: 1.5,
-    return1m: 3.7,
-    flow: "유입",
-  },
-  {
-    sector: "통신",
-    return1d: -0.1,
-    return1w: 0.2,
-    return1m: 0.8,
-    flow: "중립",
-  },
-];
-const KR_SECTORS = [
-  {
-    sector: "반도체",
-    return1d: 2.1,
-    return1w: 4.8,
-    return1m: 11.3,
-    flow: "유입",
-  },
-  {
-    sector: "2차전지",
-    return1d: -1.3,
-    return1w: -2.4,
-    return1m: -8.7,
-    flow: "유출",
-  },
-  {
-    sector: "바이오",
-    return1d: 0.9,
-    return1w: 2.1,
-    return1m: 6.4,
-    flow: "유입",
-  },
-  {
-    sector: "자동차",
-    return1d: 0.4,
-    return1w: 1.2,
-    return1m: 3.1,
-    flow: "중립",
-  },
-  { sector: "금융", return1d: 0.2, return1w: 0.6, return1m: 1.8, flow: "중립" },
-  {
-    sector: "화학",
-    return1d: -0.6,
-    return1w: -1.8,
-    return1m: -4.2,
-    flow: "유출",
-  },
-  { sector: "철강", return1d: 0.3, return1w: 0.7, return1m: 2.0, flow: "중립" },
-  { sector: "엔터", return1d: 1.4, return1w: 3.2, return1m: 7.9, flow: "유입" },
-];
 
 // ── 공통 컴포넌트 ─────────────────────────────────────────────
 function PctBadge({ value }: { value: number }) {
@@ -295,17 +183,27 @@ function FearGreedGauge({
   const needleLen = r - 8;
   const needleX = cx + needleLen * Math.cos(toRad(needleAngle));
   const needleY = cy + needleLen * Math.sin(toRad(needleAngle));
+  const gaugeTitle = `${market} 공포·탐욕 지수 ${value} · ${currentZone.label} · ${label}. 히스토리 차트 열기`;
   return (
-    <div
-      className="flex flex-col items-center cursor-pointer group hover:opacity-90 transition-opacity"
+    <button
+      type="button"
+      className="group flex flex-col items-center rounded-lg outline-none transition-opacity hover:opacity-90 focus-visible:ring-1 focus-visible:ring-primary/60"
       onClick={onClick}
-      title={`${market} 히스토리 차트 보기`}
+      title={gaugeTitle}
+      aria-label={gaugeTitle}
     >
       <div className="text-xs font-bold text-muted-foreground mb-1">
         {market}
       </div>
       {/* viewBox: 0 0 180 105 — semi-circle fits with padding */}
-      <svg width="160" height="115" viewBox="0 0 180 130">
+      <svg
+        width="160"
+        height="115"
+        viewBox="0 0 180 130"
+        role="img"
+        aria-label={`${market} 공포·탐욕 게이지 ${value}, ${currentZone.label}`}
+      >
+        <title>{`${market} 공포·탐욕 게이지 ${value}, ${currentZone.label}`}</title>
         {/* Background arc */}
         <path
           d={arcPath(0, 100)}
@@ -367,7 +265,7 @@ function FearGreedGauge({
       <span className="text-[9px] text-primary opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 flex items-center gap-0.5">
         <ChevronRight size={9} /> 히스토리 보기
       </span>
-    </div>
+    </button>
   );
 }
 
@@ -379,31 +277,28 @@ function FearGreedModal({
   market: "KR" | "US";
   onClose: () => void;
 }) {
-  // /v1/sentiment/fear-greed returns the index value + 90-day history.
-  // The chart plots the 60 most recent points so it matches the previous
-  // mock's window. Falls back to a flat baseline if the table is empty.
-  const { data: fg } = useFearGreed(market);
-  const history = (fg?.history ?? []).slice(-60).map((p, i) => ({
-    day: i + 1,
-    date: p.date,
-    value: p.value,
-    vix: p.vix,
-    adr: p.adr,
-  }));
-  const data =
-    history.length > 0
-      ? history
-      : Array.from({ length: 60 }, (_, i) => ({
-          day: i + 1,
-          date: "",
-          value: 50,
-          vix: null,
-          adr: null,
-        }));
+  const [rangeDays, setRangeDays] = useState(365);
+  // /v1/sentiment/fear-greed returns the index value + requested DB history.
+  // The chart plots only persisted DB history. When the table is empty, show
+  // an explicit empty state instead of a synthetic flat baseline.
+  const { data: fg, loading, error, refetch } = useFearGreed(market, rangeDays);
+  const data = (fg?.history ?? [])
+    .filter(
+      (p) =>
+        /^\d{4}-\d{2}-\d{2}$/.test(p.date) && Number.isFinite(Number(p.value)),
+    )
+    .map((p) => ({
+      date: p.date,
+      value: p.value,
+      vix: p.vix,
+      adr: p.adr,
+    }));
+  const hasHistory = data.length > 0;
+  const rangeLabel = rangeDays >= 1825 ? "5년" : `${rangeDays}일`;
   const title =
     market === "US"
-      ? "공포·탐욕 지수 히스토리 (US, 60일)"
-      : "공포·탐욕 지수 히스토리 (KR, 60일)";
+      ? `공포·탐욕 지수 히스토리 (US, ${rangeLabel})`
+      : `공포·탐욕 지수 히스토리 (KR, ${rangeLabel})`;
   const sub =
     market === "US"
       ? "낮을수록 공포, 높을수록 탐욕 (CNN Fear & Greed)"
@@ -411,16 +306,19 @@ function FearGreedModal({
   const refLine = 50;
   const color = market === "US" ? "#38bdf8" : "#a78bfa";
 
-  // Stat cards: pull live current / 30d avg / 60d high from the series.
+  // Stat cards: pull live current / 30d avg / visible-window high from the series.
   const values = data.map((d) => d.value);
-  const currentValue = fg?.value ?? values[values.length - 1] ?? 50;
-  const avg30 =
-    values.length >= 30
+  const currentValue = hasHistory
+    ? (fg?.value ?? values[values.length - 1])
+    : null;
+  const avg30 = !hasHistory
+    ? null
+    : values.length >= 30
       ? values.slice(-30).reduce((s, v) => s + v, 0) /
         Math.min(30, values.length)
       : values.reduce((s, v) => s + v, 0) / Math.max(values.length, 1);
-  const high60 = values.length ? Math.max(...values) : 0;
-  const low60 = values.length ? Math.min(...values) : 0;
+  const rangeHigh = hasHistory ? Math.max(...values) : null;
+  const rangeLow = hasHistory ? Math.min(...values) : null;
 
   return createPortal(
     <div
@@ -431,91 +329,130 @@ function FearGreedModal({
         className="bg-card border border-border rounded-2xl p-6 w-full max-w-2xl mx-4 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 gap-3">
           <div>
             <h3 className="text-lg font-bold font-['Outfit']">{title}</h3>
             <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-muted transition-colors"
-          >
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-lg border border-border overflow-hidden text-xs">
+              {[
+                { label: "90D", days: 90 },
+                { label: "180D", days: 180 },
+                { label: "1Y", days: 365 },
+                { label: "5Y", days: 1825 },
+              ].map((option) => (
+                <button
+                  key={option.label}
+                  onClick={() => setRangeDays(option.days)}
+                  className={cn(
+                    "px-2 py-1 transition-colors",
+                    rangeDays === option.days
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
         <div className="h-56">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={data}
-              margin={{ top: 4, right: 4, bottom: 0, left: -10 }}
-            >
-              <defs>
-                <linearGradient id="fearGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={color} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={color} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis
-                dataKey="day"
-                tick={{ fontSize: 9 }}
-                tickLine={false}
-                axisLine={false}
-                interval={9}
-              />
-              <YAxis tick={{ fontSize: 9 }} tickLine={false} axisLine={false} />
-              <Tooltip
-                contentStyle={{
-                  background: "var(--card)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "8px",
-                  fontSize: 11,
-                }}
-                labelStyle={{ color: "var(--muted-foreground)" }}
-              />
-              <ReferenceLine
-                y={refLine}
-                stroke="var(--muted-foreground)"
-                strokeDasharray="4 2"
-                strokeWidth={1}
-              />
-              <Area
-                type="monotone"
-                dataKey="value"
-                stroke={color}
-                strokeWidth={2}
-                fill="url(#fearGrad)"
-                dot={false}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          {loading && !fg ? (
+            <div className="h-full flex flex-col items-center justify-center gap-2 text-center text-xs text-muted-foreground px-4">
+              <Loader2 size={18} className="animate-spin" />
+              공포·탐욕 DB 히스토리를 불러오는 중입니다
+            </div>
+          ) : error ? (
+            <div className="h-full flex flex-col items-center justify-center gap-2 text-center text-xs text-muted-foreground px-4">
+              <div>공포·탐욕 API 요청에 실패했습니다</div>
+              <button
+                type="button"
+                onClick={refetch}
+                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] text-foreground hover:bg-muted"
+              >
+                <RefreshCw size={12} />
+                다시 불러오기
+              </button>
+            </div>
+          ) : hasHistory ? (
+            <KLineSeriesChart
+              data={data.map((row) => ({
+                date: row.date,
+                value: row.value,
+                neutral: refLine,
+              }))}
+              settingsScope={`home-fear-greed-${market}`}
+              height={224}
+              valueFormatter={(v) => v.toFixed(0)}
+              zeroLine={false}
+              showRangeControls={false}
+              allowValueTransform={false}
+              sourceLabel="DB"
+              sourceTone="primary"
+              sourceTitle="/sentiment/fear-greed DB 히스토리 기준"
+              series={[
+                {
+                  key: "value",
+                  label: market === "US" ? "US 심리" : "KR 심리",
+                  color,
+                  type: "line",
+                },
+                {
+                  key: "neutral",
+                  label: "중립선 50",
+                  color: "var(--muted-foreground)",
+                  type: "line",
+                  dashed: true,
+                },
+              ]}
+            />
+          ) : (
+            <div className="h-full flex items-center justify-center text-center text-xs text-muted-foreground px-4">
+              공포·탐욕 DB 히스토리가 아직 없습니다
+            </div>
+          )}
         </div>
         <div className="mt-3 grid grid-cols-3 gap-3">
           <div className="bg-muted/30 rounded-lg p-3 text-center">
             <div className="text-xs text-muted-foreground">현재 지수</div>
             <div className="text-lg font-bold font-mono" style={{ color }}>
-              {currentValue}
+              {currentValue ?? "—"}
             </div>
             <div className="text-[10px] text-muted-foreground">
-              {fg?.label ?? "—"}
+              {hasHistory ? (fg?.label ?? "—") : "DB 데이터 없음"}
             </div>
           </div>
           <div className="bg-muted/30 rounded-lg p-3 text-center">
             <div className="text-xs text-muted-foreground">30일 평균</div>
             <div className="text-lg font-bold font-mono">
-              {avg30.toFixed(1)}
+              {avg30 == null ? "—" : avg30.toFixed(1)}
             </div>
           </div>
           <div className="bg-muted/30 rounded-lg p-3 text-center">
             <div className="text-xs text-muted-foreground">
-              60일 최고 / 최저
+              구간 최고 / 최저
             </div>
             <div className="text-lg font-bold font-mono">
-              <span className="text-up">{high60}</span>
+              <span className="text-up">{rangeHigh ?? "—"}</span>
               <span className="text-muted-foreground"> / </span>
-              <span className="text-down">{low60}</span>
+              <span className="text-down">{rangeLow ?? "—"}</span>
             </div>
           </div>
         </div>
+        {hasHistory && (
+          <div className="mt-2 text-[10px] text-muted-foreground font-mono text-right">
+            {data[0].date} ~ {data[data.length - 1].date} ·{" "}
+            {data.length.toLocaleString()} rows
+          </div>
+        )}
       </div>
     </div>,
     document.body,
@@ -763,11 +700,11 @@ function CalendarModal({
 }
 
 // ── 지수 상세 모달 ───────────────────────────────────────────
-// Maps the dashboard's index labels onto a Polygon-friendly ticker so
-// we can pull real history from /v1/quotes. For things Polygon doesn't
-// cover at this tier (KOSPI/KOSDAQ/USDKRW/BTC) we leave `null` and the
-// modal generates a deterministic mock walk seeded from the index's
-// current value — keeps the chart visually consistent across opens.
+// Maps the dashboard's index labels onto a tracked instrument so
+// we can pull real history from the public /v1/stocks/:symbol/bars path.
+// For index-like rows, use a tracked ETF only when the persisted price table
+// actually has bars. If no DB history exists, the modal shows an explicit
+// empty state instead of drawing synthetic history.
 const INDEX_PROXY: Record<string, string | null> = {
   "S&P 500": "SPY",
   NASDAQ: "QQQ",
@@ -775,87 +712,185 @@ const INDEX_PROXY: Record<string, string | null> = {
   VIX: "VIXY",
   GOLD: "GLD",
   WTI: "USO",
-  KOSPI: null,
+  KOSPI: "069500.KS",
   KOSDAQ: null,
   "USD/KRW": null,
   BTC: null,
 };
 
-function generateMockWalk(
-  seedValue: number,
-  days: number,
-): { t: string; c: number }[] {
-  // Deterministic pseudo-random walk so the chart doesn't reshuffle on
-  // every render. Uses a tiny LCG keyed by the integer value.
-  let seed = Math.max(1, Math.floor(seedValue * 100));
-  const rand = () => {
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    return (seed % 10000) / 10000;
-  };
-  const out: { t: string; c: number }[] = [];
-  let v = seedValue;
-  const today = new Date();
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    // ±0.7% daily drift, lightly trending toward the current value at the end
-    v = v * (1 + (rand() - 0.5) * 0.014);
-    out.push({ t: d.toISOString().slice(0, 10), c: v });
+type IndexBar = { t: string; c: number };
+type IndexHistory = {
+  bars: IndexBar[] | null;
+  source: "live" | "unavailable";
+  proxy: string | null;
+};
+
+function cleanIndexBars(
+  bars: Array<{ date?: string | null; close?: number | null }>,
+): IndexBar[] {
+  const byDate = new Map<string, IndexBar>();
+  for (const bar of bars) {
+    const date = String(bar.date ?? "").slice(0, 10);
+    const close = Number(bar.close);
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      !Number.isFinite(close) ||
+      close <= 0
+    ) {
+      continue;
+    }
+    byDate.set(date, { t: date, c: close });
   }
-  // Pin the last bar to the current value so summary maths line up.
-  out[out.length - 1].c = seedValue;
-  return out;
+  return Array.from(byDate.values()).sort((a, b) => a.t.localeCompare(b.t));
 }
 
-type IndexBar = { t: string; c: number };
-type IndexHistory = { bars: IndexBar[]; source: "live" | "mock" };
-
-function useIndexHistory(idx: (typeof MARKET_INDICES)[0]): IndexHistory {
+function useIndexHistory(idx: MarketIndex): IndexHistory {
   const proxy = INDEX_PROXY[idx.symbol];
   const [bars, setBars] = useState<IndexBar[] | null>(null);
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
     if (!proxy) {
       setBars(null);
       return;
     }
-    apiGet<{ bars: { t: string; c: number }[] }>(`/quotes/${proxy}?range=1mo`)
+    stocksService
+      .bars(proxy, 1825, { signal: controller.signal })
       .then((d) => {
         if (cancelled) return;
-        const trimmed = (d.bars ?? [])
-          .slice(-30)
-          .map((b) => ({ t: b.t.slice(0, 10), c: b.c }));
-        setBars(trimmed.length ? trimmed : null);
+        const cleaned = cleanIndexBars(d.items ?? []);
+        setBars(cleaned.length ? cleaned : null);
       })
       .catch(() => {
+        if (controller.signal.aborted) return;
         if (!cancelled) setBars(null);
       });
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [proxy]);
-  if (bars && bars.length >= 5) return { bars, source: "live" };
-  return { bars: generateMockWalk(idx.value, 30), source: "mock" };
+  if (bars && bars.length >= 5) return { bars, source: "live", proxy };
+  return { bars: null, source: "unavailable", proxy };
+}
+
+type MarketComparePeriod = "1D" | "1W" | "1M" | "3M" | "1Y" | "2Y" | "5Y";
+type MarketCompareSeriesMeta = {
+  symbol: string;
+  requested_days: number;
+  returned_count: number;
+  from_date?: string | null;
+  to_date?: string | null;
+};
+type PerfRow = {
+  date: string;
+  label: string;
+  baselineDate: string;
+  sp500: number | null;
+  kospi: number | null;
+};
+type MarketCompareMeta = {
+  from: string;
+  to: string;
+  baseline: string;
+  rows: number;
+  sourceFrom: string | null;
+  sourceTo: string | null;
+  sourceRows: number;
+  spBars: number;
+  krBars: number;
+  source: "api";
+  requestedDays: number;
+};
+type MarketCompareApiMeta = Pick<
+  StockBarsCompareResponse,
+  | "compare_from_date"
+  | "compare_to_date"
+  | "compare_baseline_date"
+  | "compare_row_count"
+>;
+
+const MARKET_COMPARE_LOOKBACK_DAYS: Record<MarketComparePeriod, number> = {
+  "1D": 2,
+  "1W": 7,
+  "1M": 31,
+  "3M": 92,
+  "1Y": 365,
+  "2Y": 730,
+  "5Y": 1825,
+};
+const DEFAULT_MARKET_COMPARE_PERIOD: MarketComparePeriod = "5Y";
+const MARKET_COMPARE_SOURCE_DAYS = MARKET_COMPARE_LOOKBACK_DAYS["5Y"];
+
+function buildMarketComparisonRowsFromApi(
+  rows: Array<Record<string, number | string | null>>,
+  period: MarketComparePeriod,
+): PerfRow[] {
+  const lookbackDays = MARKET_COMPARE_LOOKBACK_DAYS[period];
+  return rebaseCompareRows<CompareSeriesRow, PerfRow>(
+    rows as CompareSeriesRow[],
+    ["SPY", "069500.KS"],
+    lookbackDays,
+    (row, { baselineDate }) => {
+      const date = String(row.date ?? "");
+      return {
+        date,
+        label: compareLabelForDate(date, lookbackDays),
+        baselineDate,
+        sp500: typeof row.SPY === "number" ? row.SPY : null,
+        kospi: typeof row["069500.KS"] === "number" ? row["069500.KS"] : null,
+      };
+    },
+  ).rows;
+}
+
+function buildMarketComparisonMeta(
+  rows: PerfRow[],
+  series: MarketCompareSeriesMeta[],
+  requestedDays: number,
+  apiMeta: MarketCompareApiMeta | null,
+): MarketCompareMeta | null {
+  if (!rows.length) return null;
+  const bySymbol = new Map(series.map((item) => [item.symbol, item]));
+  return {
+    from: rows[0].date,
+    to: rows[rows.length - 1].date,
+    baseline: rows[0].baselineDate,
+    rows: rows.length,
+    sourceFrom: apiMeta?.compare_from_date ?? null,
+    sourceTo: apiMeta?.compare_to_date ?? null,
+    sourceRows: apiMeta?.compare_row_count ?? rows.length,
+    spBars: bySymbol.get("SPY")?.returned_count ?? 0,
+    krBars: bySymbol.get("069500.KS")?.returned_count ?? 0,
+    source: "api",
+    requestedDays,
+  };
 }
 
 function IndexModal({
   idx,
   onClose,
 }: {
-  idx: (typeof MARKET_INDICES)[0];
+  idx: MarketIndex;
   onClose: () => void;
 }) {
   const up = idx.change >= 0;
   const color = up ? "var(--up)" : "var(--down)";
-  const { bars, source } = useIndexHistory(idx);
+  const { bars, source, proxy } = useIndexHistory(idx);
+  const historyBars = bars ?? [];
+  const hasBars = historyBars.length > 0;
 
   // Summary stats over the rendered window
-  const high = bars.reduce((m, b) => Math.max(m, b.c), -Infinity);
-  const low = bars.reduce((m, b) => Math.min(m, b.c), Infinity);
-  const first = bars[0]?.c ?? idx.value;
-  const last = bars[bars.length - 1]?.c ?? idx.value;
-  const periodReturn = ((last - first) / first) * 100;
-  const periodUp = periodReturn >= 0;
+  const high = hasBars
+    ? historyBars.reduce((m, b) => Math.max(m, b.c), -Infinity)
+    : null;
+  const low = hasBars
+    ? historyBars.reduce((m, b) => Math.min(m, b.c), Infinity)
+    : null;
+  const first = hasBars ? historyBars[0].c : idx.value;
+  const last = hasBars ? historyBars[historyBars.length - 1].c : idx.value;
+  const periodReturn = hasBars ? ((last - first) / first) * 100 : null;
+  const periodUp = (periodReturn ?? 0) >= 0;
 
   return createPortal(
     <div
@@ -897,11 +932,11 @@ function IndexModal({
           </div>
         </div>
 
-        {/* 30d chart */}
+        {/* DB price history */}
         <div className="bg-muted/20 rounded-xl p-3 mb-3">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-              최근 30일 추이
+              DB 가격 히스토리
             </span>
             <span
               className={cn(
@@ -911,67 +946,47 @@ function IndexModal({
                   : "bg-muted text-muted-foreground",
               )}
             >
-              {source === "live" ? "실데이터" : "시뮬레이션"}
+              {source === "live"
+                ? proxy
+                  ? `DB ${proxy}`
+                  : "DB 실데이터"
+                : "DB 데이터 없음"}
             </span>
           </div>
-          <div className="h-32">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={bars}
-                margin={{ top: 2, right: 4, bottom: 0, left: -10 }}
-              >
-                <defs>
-                  <linearGradient
-                    id={`idxGrad-${idx.symbol}`}
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop offset="5%" stopColor={color} stopOpacity={0.3} />
-                    <stop offset="95%" stopColor={color} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis
-                  dataKey="t"
-                  tick={{ fontSize: 9 }}
-                  tickLine={false}
-                  axisLine={false}
-                  interval={5}
-                  tickFormatter={(v: string) => v.slice(5)}
-                />
-                <YAxis
-                  domain={["auto", "auto"]}
-                  tick={{ fontSize: 9 }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v: number) =>
-                    v >= 1000 ? v.toLocaleString() : v.toFixed(1)
-                  }
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--card)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "8px",
-                    fontSize: 11,
-                  }}
-                  labelStyle={{ color: "var(--muted-foreground)" }}
-                  formatter={(v: number) => [
-                    v.toLocaleString(undefined, { maximumFractionDigits: 2 }),
-                    "종가",
-                  ]}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="c"
-                  stroke={color}
-                  strokeWidth={2}
-                  fill={`url(#idxGrad-${idx.symbol})`}
-                  dot={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="h-56">
+            {hasBars ? (
+              <KLineSeriesChart
+                data={historyBars.map((bar) => ({
+                  date: bar.t,
+                  close: bar.c,
+                }))}
+                settingsScope={`home-market-index-${idx.symbol}`}
+                height={224}
+                showToolbar
+                valueFormatter={(v) =>
+                  v.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                }
+                sourceLabel={source === "live" ? "DB" : "NO DB"}
+                sourceTone={source === "live" ? "primary" : "warning"}
+                sourceTitle={
+                  source === "live"
+                    ? `${proxy ?? idx.symbol} DB 가격 히스토리 기준`
+                    : "DB 가격 히스토리가 아직 없습니다"
+                }
+                series={[
+                  {
+                    key: "close",
+                    label: "종가",
+                    color,
+                    type: "line",
+                  },
+                ]}
+              />
+            ) : (
+              <div className="h-full flex items-center justify-center text-center text-xs text-muted-foreground px-4">
+                이 지수의 DB 가격 히스토리가 아직 없습니다
+              </div>
+            )}
           </div>
         </div>
 
@@ -986,19 +1001,23 @@ function IndexModal({
               )}
             >
               {periodUp ? "+" : ""}
-              {periodReturn.toFixed(2)}%
+              {periodReturn == null ? "—" : `${periodReturn.toFixed(2)}%`}
             </div>
           </div>
           <div className="bg-muted/30 rounded-lg p-2.5 text-center">
             <div className="text-[10px] text-muted-foreground">30일 최고</div>
             <div className="text-sm font-bold font-mono">
-              {high.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              {high == null
+                ? "—"
+                : high.toLocaleString(undefined, { maximumFractionDigits: 2 })}
             </div>
           </div>
           <div className="bg-muted/30 rounded-lg p-2.5 text-center">
             <div className="text-[10px] text-muted-foreground">30일 최저</div>
             <div className="text-sm font-bold font-mono">
-              {low.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              {low == null
+                ? "—"
+                : low.toLocaleString(undefined, { maximumFractionDigits: 2 })}
             </div>
           </div>
         </div>
@@ -1026,9 +1045,6 @@ function IndexModal({
 function SectorRotationPanel() {
   const [market, setMarket] = useState<"US" | "KR">("US");
   const [period, setPeriod] = useState<"1d" | "1w" | "1m">("1m");
-  // /v1/sectors returns the same shape as the existing mock arrays, so
-  // the renderer below didn't need to change. Falls back to mock if
-  // sector metrics haven't been ingested (preview environment).
   // Map the backend SectorData shape onto the local rotation card's
   // shape (return1d/1w/1m + a derived `flow` label). `flow` doesn't
   // exist on the API yet — we proxy it from the daily rank.
@@ -1048,9 +1064,17 @@ function SectorRotationPanel() {
                 : "중립",
         }))
       : [];
-  const getReturn = (s: (typeof US_SECTORS)[0]) =>
+  const getReturn = (s: (typeof sectors)[number]) =>
     period === "1d" ? s.return1d : period === "1w" ? s.return1w : s.return1m;
   const sorted = [...sectors].sort((a, b) => getReturn(b) - getReturn(a));
+  const maxAbsReturn = Math.max(
+    1,
+    ...sorted.map((sector) => Math.abs(getReturn(sector))),
+  );
+  const periodLabel =
+    period === "1d" ? "당일" : period === "1w" ? "주간" : "월간";
+  const marketLabel = market === "US" ? "미국" : "한국";
+  const sourceLabel = `${marketLabel} 섹터 API · ${periodLabel} 수익률 내림차순`;
 
   return (
     <div className="bg-card border border-border rounded-xl p-5 flex-1">
@@ -1096,7 +1120,11 @@ function SectorRotationPanel() {
           </div>
         </div>
       </div>
-      <div className="space-y-1.5">
+      <div
+        className="space-y-1.5"
+        role="list"
+        aria-label={`홈 섹터 로테이션. ${sourceLabel}`}
+      >
         {sectorsLoading &&
           sorted.length === 0 &&
           Array.from({ length: 8 }).map((_, i) => (
@@ -1113,18 +1141,25 @@ function SectorRotationPanel() {
         {sorted.map((s, rank) => {
           const ret = getReturn(s);
           const up = ret >= 0;
-          const barWidth = Math.min(
-            (Math.abs(ret) / (market === "KR" ? 12 : 9)) * 100,
-            100,
-          );
+          const barWidth = (Math.abs(ret) / maxAbsReturn) * 50;
           const flowColor =
             s.flow === "유입"
               ? "text-up"
               : s.flow === "유출"
                 ? "text-down"
                 : "text-muted-foreground";
+          const rowLabel = `${rank + 1}위 ${s.sector}. ${periodLabel} 수익률 ${
+            up ? "+" : ""
+          }${ret.toFixed(2)}%. 자금흐름 ${s.flow}. ${sourceLabel}`;
           return (
-            <div key={s.sector} className="flex items-center gap-2">
+            <div
+              key={s.sector}
+              className="flex items-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              role="listitem"
+              tabIndex={0}
+              title={rowLabel}
+              aria-label={rowLabel}
+            >
               <span className="text-[10px] text-muted-foreground w-4 text-center font-mono">
                 {rank + 1}
               </span>
@@ -1132,13 +1167,14 @@ function SectorRotationPanel() {
                 {s.sector}
               </div>
               <div className="flex-1 h-5 bg-muted/30 rounded-full overflow-hidden relative">
+                <div className="absolute left-1/2 top-0 h-full w-px bg-border/80" />
                 <div
                   className={cn(
                     "h-full rounded-full transition-all duration-500",
                     up ? "bg-up/60" : "bg-down/60",
                   )}
                   style={{
-                    width: `${barWidth}%`,
+                    width: `${Math.max(2, barWidth)}%`,
                     marginLeft: up ? "50%" : `${50 - barWidth}%`,
                   }}
                 />
@@ -1179,8 +1215,7 @@ function StockListPanel({
   setMarketTab: (m: "KR" | "US") => void;
 }) {
   const { watchlist, removeFromWatchlist } = useWatchlist();
-  // /v1/movers is a price_bars_daily-backed top-movers feed (live). The
-  // mock arrays remain as fallback when the DB is empty (dev / preview).
+  // /v1/movers is a price_bars_daily-backed top-movers feed.
   const { data: liveMarketStocks, loading: stocksLoading } =
     useStocks(marketTab);
   const safeLive = liveMarketStocks ?? [];
@@ -1280,6 +1315,13 @@ function StockListPanel({
               <Link
                 href={`/analysis?ticker=${s.ticker}`}
                 className="flex-1 min-w-0"
+                onMouseEnter={() =>
+                  prefetchRoute(`/analysis?ticker=${s.ticker}`)
+                }
+                onFocus={() => prefetchRoute(`/analysis?ticker=${s.ticker}`)}
+                onTouchStart={() =>
+                  prefetchRoute(`/analysis?ticker=${s.ticker}`)
+                }
               >
                 <div className="flex items-center gap-2">
                   <div className="flex-1 min-w-0">
@@ -1329,9 +1371,9 @@ export default function Home() {
   const { user } = useAuth();
   const { watchlist } = useWatchlist();
   const defaultMarket = useMemo(() => detectOpenMarket(), []);
-  const [perfPeriod, setPerfPeriod] = useState<
-    "1D" | "1W" | "1M" | "3M" | "1Y"
-  >("1M");
+  const [perfPeriod, setPerfPeriod] = useState<MarketComparePeriod>(
+    DEFAULT_MARKET_COMPARE_PERIOD,
+  );
   const [marketTab, setMarketTab] = useState<"KR" | "US">(defaultMarket);
   const isLoggedIn = !!user;
 
@@ -1364,90 +1406,76 @@ export default function Home() {
     minImportance: 3,
   });
 
-  // Market comparison chart (Row 4L). Plot S&P 500 (SPY) and KOSPI200
-  // (069500 KODEX 200, KRW) as **cumulative % return** from the first bar
-  // of the period — not absolute prices. KODEX 200 tracks KOSPI200 in KRW
-  // directly, so it reflects the actual Korean-market move a domestic
-  // investor experiences (no USD-FX contamination like EWY).
-  type PerfRow = {
-    date: string;
-    label: string;
-    sp500: number | null;
-    kospi: number | null;
-  };
-  const [perfData, setPerfData] = useState<PerfRow[] | null>(null);
+  // Market comparison chart (Row 4L). Pull the benchmark comparison from the
+  // shared DB-backed /stocks/bars/compare API so SPY and KODEX 200 use the
+  // same common-baseline/carry-forward logic as other comparison charts.
+  const [marketCompareRows, setMarketCompareRows] = useState<
+    Array<Record<string, number | string | null>>
+  >([]);
+  const [marketCompareSeries, setMarketCompareSeries] = useState<
+    MarketCompareSeriesMeta[]
+  >([]);
+  const [marketCompareApiMeta, setMarketCompareApiMeta] =
+    useState<MarketCompareApiMeta | null>(null);
+  const [marketCompareLoading, setMarketCompareLoading] = useState(true);
+  const [marketCompareError, setMarketCompareError] = useState<string | null>(
+    null,
+  );
+  const [marketCompareRetry, setMarketCompareRetry] = useState(0);
   useEffect(() => {
-    // /v1/quotes only supports {1mo, 3mo, 6mo, 1y, 5y}. We always
-    // fetch the smallest range that contains the requested window
-    // and slice it client-side. 1D / 1W are subsets of 1mo.
-    const fetchRange =
-      perfPeriod === "1Y" ? "1y" : perfPeriod === "3M" ? "3mo" : "1mo";
-    // Tail length to keep after fetch. Trading-day approximations.
-    const tail =
-      perfPeriod === "1D"
-        ? 2
-        : perfPeriod === "1W"
-          ? 5
-          : perfPeriod === "1M"
-            ? 22
-            : perfPeriod === "3M"
-              ? 66
-              : 252;
     let cancelled = false;
-    Promise.all([
-      apiGet<{ bars: { t: string; c: number }[] }>(
-        `/quotes/SPY?range=${fetchRange}`,
-      ).catch(() => null),
-      apiGet<{ bars: { t: string; c: number }[] }>(
-        `/quotes/069500.KS?range=${fetchRange}`,
-      ).catch(() => null),
-    ]).then(([sp, kr]) => {
-      if (cancelled) return;
-      const spBars = (sp?.bars ?? []).slice(-tail);
-      const krBars = (kr?.bars ?? []).slice(-tail);
-      if (!spBars.length && !krBars.length) {
-        setPerfData(null);
-        return;
-      }
-      const sp0 = spBars[0]?.c ?? 1;
-      const kr0 = krBars[0]?.c ?? 1;
-      const len = Math.max(spBars.length, krBars.length);
-      const merged: PerfRow[] = Array.from({ length: len }, (_, i) => {
-        const spBar = spBars[i];
-        const krBar = krBars[i];
-        const date = (spBar?.t || krBar?.t || "").slice(0, 10);
-        // For 1D / 1W show MM/DD; for longer ranges keep MM/DD too,
-        // recharts interval prop thins out tick labels automatically.
-        const label = date
-          ? `${date.slice(5, 7)}/${date.slice(8, 10)}`
-          : `${i + 1}`;
-        return {
-          date,
-          label,
-          sp500: spBar ? ((spBar.c - sp0) / sp0) * 100 : null,
-          kospi: krBar ? ((krBar.c - kr0) / kr0) * 100 : null,
-        };
+    const controller = new AbortController();
+    setMarketCompareLoading(true);
+    setMarketCompareError(null);
+    stocksService
+      .compareBars(["SPY", "069500.KS"], MARKET_COMPARE_SOURCE_DAYS, {
+        signal: controller.signal,
+      })
+      .then((response) => {
+        if (cancelled) return;
+        setMarketCompareRows(response.rows);
+        setMarketCompareSeries(response.series);
+        setMarketCompareApiMeta({
+          compare_from_date: response.compare_from_date,
+          compare_to_date: response.compare_to_date,
+          compare_baseline_date: response.compare_baseline_date,
+          compare_row_count: response.compare_row_count,
+        });
+        setMarketCompareError(null);
+        setMarketCompareLoading(false);
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        if (cancelled) return;
+        setMarketCompareRows([]);
+        setMarketCompareSeries([]);
+        setMarketCompareApiMeta(null);
+        setMarketCompareError(
+          error instanceof Error
+            ? error.message
+            : "시장 비교 API 요청이 실패했습니다",
+        );
+        setMarketCompareLoading(false);
       });
-      setPerfData(merged);
-    });
     return () => {
       cancelled = true;
+      controller.abort();
     };
-  }, [perfPeriod]);
-  // Fallback to a synthetic walker only when the fetch fails — same
-  // shape (label / sp500 / kospi) so the chart never breaks.
-  const chartData =
-    perfData ??
-    generatePortfolioChart(30).map((r, _i, all) => {
-      const sp0 = (all[0] as any).sp500;
-      const kr0 = (all[0] as any).kospi;
-      return {
-        date: "",
-        label: String(r.day),
-        sp500: ((r.sp500 - sp0) / sp0) * 100,
-        kospi: ((r.kospi - kr0) / kr0) * 100,
-      };
-    });
+  }, [marketCompareRetry]);
+  const chartData = useMemo(
+    () => buildMarketComparisonRowsFromApi(marketCompareRows, perfPeriod),
+    [marketCompareRows, perfPeriod],
+  );
+  const marketCompareMeta = useMemo(
+    () =>
+      buildMarketComparisonMeta(
+        chartData,
+        marketCompareSeries,
+        MARKET_COMPARE_SOURCE_DAYS,
+        marketCompareApiMeta,
+      ),
+    [chartData, marketCompareApiMeta, marketCompareSeries, perfPeriod],
+  );
 
   // 모달 상태
   const [selectedNews, setSelectedNews] = useState<any | null>(null);
@@ -1796,87 +1824,103 @@ export default function Home() {
                 시장 누적 수익률
               </h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                S&P 500 (SPY) vs 한국 (EWY) — 기간 시작일 대비 % 변동
+                {marketCompareMeta
+                  ? `${marketCompareMeta.from}~${marketCompareMeta.to} · 기준 ${marketCompareMeta.baseline} 대비 % 변동`
+                  : "S&P 500 (SPY) vs KODEX 200 (069500) — 공통 기준일 대비 % 변동"}
               </p>
             </div>
-            <div className="flex gap-1">
-              {(["1D", "1W", "1M", "3M", "1Y"] as const).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPerfPeriod(p)}
-                  className={cn(
-                    "text-xs px-2 py-1 rounded-md transition-colors",
-                    perfPeriod === p
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
-                  )}
-                >
-                  {p}
-                </button>
-              ))}
+            <div className="flex flex-wrap justify-end gap-1">
+              {(["1D", "1W", "1M", "3M", "1Y", "2Y", "5Y"] as const).map(
+                (p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPerfPeriod(p)}
+                    className={cn(
+                      "text-xs px-2 py-1 rounded-md transition-colors",
+                      perfPeriod === p
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                    )}
+                  >
+                    {p}
+                  </button>
+                ),
+              )}
+              <button
+                onClick={() => setMarketCompareRetry((value) => value + 1)}
+                disabled={marketCompareLoading}
+                className={cn(
+                  "inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+                  marketCompareLoading
+                    ? "text-muted-foreground/45 cursor-wait"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+                title="시장 비교 데이터 다시 불러오기"
+                aria-label="시장 비교 데이터 다시 불러오기"
+              >
+                <RefreshCw
+                  size={13}
+                  className={cn(marketCompareLoading && "animate-spin")}
+                />
+              </button>
             </div>
           </div>
           <div className="flex-1 min-h-[160px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
+            {chartData.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center gap-1 text-center text-xs text-muted-foreground">
+                <span>
+                  {marketCompareLoading
+                    ? "시장 가격 데이터를 불러오는 중입니다"
+                    : marketCompareError
+                      ? "시장 비교 API 요청이 실패했습니다"
+                      : "시장 비교 DB 일봉 데이터가 없습니다"}
+                </span>
+                {marketCompareError && (
+                  <span className="max-w-full truncate font-mono text-[10px] text-destructive">
+                    {marketCompareError}
+                  </span>
+                )}
+                {!marketCompareLoading && (
+                  <button
+                    onClick={() => setMarketCompareRetry((value) => value + 1)}
+                    className="mt-1 inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
+                  >
+                    <RefreshCw size={12} />
+                    다시 불러오기
+                  </button>
+                )}
+              </div>
+            ) : (
+              <KLineSeriesChart
                 data={chartData}
-                margin={{ top: 4, right: 4, bottom: 0, left: -10 }}
-              >
-                <XAxis
-                  dataKey="label"
-                  tick={{ fontSize: 10 }}
-                  tickLine={false}
-                  axisLine={false}
-                  interval={Math.max(0, Math.floor(chartData.length / 6) - 1)}
-                />
-                <YAxis
-                  tick={{ fontSize: 10 }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v: number) =>
-                    `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`
-                  }
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--card)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "8px",
-                    fontSize: 11,
-                  }}
-                  labelStyle={{ color: "var(--muted-foreground)" }}
-                  formatter={(v: any) =>
-                    typeof v === "number"
-                      ? `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`
-                      : "—"
-                  }
-                />
-                <ReferenceLine
-                  y={0}
-                  stroke="var(--muted-foreground)"
-                  strokeDasharray="2 3"
-                  strokeWidth={1}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="sp500"
-                  stroke="var(--gold)"
-                  strokeWidth={2}
-                  dot={false}
-                  name="S&P 500"
-                  connectNulls
-                />
-                <Line
-                  type="monotone"
-                  dataKey="kospi"
-                  stroke="var(--violet)"
-                  strokeWidth={2}
-                  dot={false}
-                  name="KOSPI (EWY)"
-                  connectNulls
-                />
-              </LineChart>
-            </ResponsiveContainer>
+                settingsScope="home-market-compare"
+                height={210}
+                valueFormatter={(v) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`}
+                zeroLine
+                showRangeControls={false}
+                allowValueTransform={false}
+                fixedScaleLabel="%"
+                fixedScaleDetail="공통 기준=0%"
+                fixedScaleTitle="DB 일봉을 공통 기준일에 0%로 맞춘 누적 수익률"
+                sourceLabel="API"
+                sourceTone="primary"
+                sourceTitle="/stocks/bars/compare API 5Y 원본 기준"
+                series={[
+                  {
+                    key: "sp500",
+                    label: "S&P 500",
+                    color: "var(--gold)",
+                    type: "line",
+                  },
+                  {
+                    key: "kospi",
+                    label: "KODEX 200",
+                    color: "var(--violet)",
+                    type: "line",
+                  },
+                ]}
+              />
+            )}
           </div>
           <div className="flex gap-4 mt-2 flex-shrink-0">
             {(() => {
@@ -1893,7 +1937,7 @@ export default function Home() {
                   n: sp ?? 0,
                 },
                 {
-                  label: "KOSPI (EWY)",
+                  label: "KODEX 200",
                   color: "var(--violet)",
                   value: fmt(kr),
                   n: kr ?? 0,
@@ -1917,6 +1961,29 @@ export default function Home() {
               </div>
             ))}
           </div>
+          {marketCompareMeta && (
+            <div
+              className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-muted-foreground font-mono"
+              title="DB 일봉을 공통 기준일에 0%로 맞추고, 휴장일 차이는 이전 값을 이어붙여 비교합니다"
+            >
+              <span>
+                API 5Y 원본 {marketCompareMeta.requestedDays.toLocaleString()}일
+                {marketCompareMeta.sourceFrom && marketCompareMeta.sourceTo
+                  ? ` · ${marketCompareMeta.sourceFrom} ~ ${marketCompareMeta.sourceTo}`
+                  : ""}
+              </span>
+              <span>
+                표시 {perfPeriod} · 기준 {marketCompareMeta.baseline} ·{" "}
+                {marketCompareMeta.from} ~ {marketCompareMeta.to}
+              </span>
+              <span>
+                SPY {marketCompareMeta.spBars.toLocaleString()} · 069500.KS{" "}
+                {marketCompareMeta.krBars.toLocaleString()} · 원본{" "}
+                {marketCompareMeta.sourceRows.toLocaleString()} · 표시{" "}
+                {marketCompareMeta.rows.toLocaleString()}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Watchlist */}

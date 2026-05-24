@@ -10,9 +10,11 @@
     "format": "prettier --write \"*.md\" \"docs/**/*.md\" \"web/**/*.{js,ts,tsx,json,css,html}\"",
     "format:check": "prettier --check \"*.md\" \"docs/**/*.md\" \"web/**/*.{js,ts,tsx,json,css,html}\"",
     "format:docs": "prettier --write \"*.md\" \"docs/**/*.md\"",
-    "format:docs:check": "prettier --check \"*.md\" \"docs/**/*.md\""
+    "format:docs:check": "prettier --check \"*.md\" \"docs/**/*.md\"",
+    "test:charts": "playwright test tests/playwright/chart-smoke.spec.ts --browser=chromium --reporter=line"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "markdownlint-cli2": "^0.22.1",
     "prettier": "^3.8.3"
   }

@@ -185,6 +185,97 @@ Errors:
 - `429 rate_limited` — provider throttled; client may retry after `Retry-After` seconds.
 - `503 upstream_unavailable` — provider down and no cache; UI shows empty-state card.
 
+### `GET /v1/stocks/{symbol}/bars`
+
+- Auth: none in current MVP implementation.
+- Purpose: DB-backed daily OHLCV bars for stock charts. Used by full stock charts, mini charts, index proxy charts, and technical-signal panels.
+- Path param: `symbol` — uppercase, exchange-qualified when needed. Korean 6-digit symbols may be requested bare (`005930`) or with `.KS` / `.KQ`.
+- Query params:
+  - `days` — integer `1..1825`. Default `90`.
+
+200 response:
+
+```json
+{
+  "symbol": "AAPL",
+  "requested_days": 1825,
+  "returned_count": 1260,
+  "from_date": "2021-06-01",
+  "to_date": "2026-05-22",
+  "instrument_count": 1,
+  "raw_count": 1260,
+  "duplicate_count": 0,
+  "items": [
+    {
+      "date": "2026-05-22",
+      "open": 188.1,
+      "high": 190.0,
+      "low": 187.4,
+      "close": 189.5,
+      "volume": 50123400
+    }
+  ]
+}
+```
+
+Notes:
+
+- The backend fetches `price_bars_daily` with paginated PostgREST offsets so requests over 1000 rows, including 5-year chart windows, are not truncated by the default page limit.
+- `days` is applied as a calendar-day window from the latest available DB bar after over-fetching rows, so short ranges do not accidentally include months of extra trading rows or stale legacy instrument rows.
+- `raw_count` and `duplicate_count` are counted inside that calendar-day window after alias/instrument over-fetching and before final date dedupe.
+- Duplicate bar dates across legacy/current instrument rows are deduplicated deterministically.
+- Empty DB history returns `items: []` with counts set to `0`; frontend renders an honest empty state rather than mock bars.
+
+### `GET /v1/stocks/bars/compare`
+
+- Auth: none in current MVP implementation.
+- Purpose: DB-backed common-date return comparison for multiple stock/index proxy series. Used by dashboard market comparison and analysis watchlist comparison charts.
+- Query params:
+  - `symbols` — comma-separated symbols, max 12 after de-dupe.
+  - `days` — integer `1..1825`. Default `365`.
+
+200 response:
+
+```json
+{
+  "symbols": ["SPY", "069500.KS"],
+  "requested_days": 1825,
+  "compare_from_date": "2021-06-01",
+  "compare_to_date": "2026-05-22",
+  "compare_baseline_date": "2021-06-01",
+  "compare_row_count": 1260,
+  "rows": [
+    {
+      "date": "2021-06-01",
+      "label": "21/06",
+      "SPY": 0,
+      "069500.KS": 0
+    }
+  ],
+  "returns": {
+    "SPY": 42.1,
+    "069500.KS": 28.4
+  },
+  "series": [
+    {
+      "symbol": "SPY",
+      "requested_days": 1825,
+      "returned_count": 1260,
+      "from_date": "2021-06-01",
+      "to_date": "2026-05-22"
+    }
+  ]
+}
+```
+
+Notes:
+
+- `rows[*][symbol]` values are cumulative percent returns from `compare_baseline_date`.
+- The comparison window starts only after every valid symbol has an initial base price and stops at the earliest latest date among those symbols, so stale series are not extended forward as flat lines.
+- Missing dates inside that common window are carry-forwarded, so mixed US/KR calendars can share one comparison axis without fabricating post-history returns.
+- `compare_*` fields are the authoritative common comparison window used by frontend metadata labels.
+- Like single-symbol bars, each input symbol is paginated past 1000 rows before alignment.
+
 ### `GET /v1/portfolios/me` _(PR-11)_
 
 - Auth: required.
@@ -256,7 +347,7 @@ These power the live dashboard and listing pages. The full Pydantic shape is the
 | `GET /v1/movers?market=&limit=`              | -                | `market, items[{rank, symbol, name, market, last, change, change_pct, volume}]`                                                                                                                                                       | Stocks, Home movers cards                   |
 | `GET /v1/market/breadth?market=`             | -                | `market, score, rising, falling, flat, total, cells[{symbol, name, change_pct, last}]`                                                                                                                                                | Home breadth heatmap                        |
 | `GET /v1/notices`                            | `{ items }`      | `id, tag, title, description, url, starts_at, ends_at, is_pinned`                                                                                                                                                                     | Home pinned strip, Layout notification bell |
-| `GET /v1/sentiment/fear-greed`               | `{ items }`      | `market, market_code, value, label, previous_close/1_week/1_month/1_year, timestamp`                                                                                                                                                  | Home + Analysis sentiment cards             |
+| `GET /v1/sentiment/fear-greed?market=&days=` | -                | `market, value, label, vix, adr, updatedAt, history[{date,value,vix,adr}]`; `days` is clamped to 1..1825 and fetched from DB history in paginated chunks                                                                              | Home + Analysis sentiment cards             |
 | `GET /v1/reports/:id`                        | `{ report }`     | summary fields + `summary, body_url`                                                                                                                                                                                                  | ReportDetail                                |
 | `GET /v1/quotes/:symbol?range=`              | -                | `symbol, currency, last, change, change_pct, as_of, bars[OHLCV], last_refreshed_at, stale`                                                                                                                                            | StockDetail price chart                     |
 | `GET /v1/stocks/:symbol/profile`             | -                | `symbol, profile{name,country,currency,exchange,industry,ipo,market_cap,share_outstanding,logo,weburl,phone}, metrics{pe_ttm,pb,roe_ttm,dividend_yield,beta,week52_high/low,current_ratio,debt_equity,eps_ttm,revenue_per_share_ttm}` | StockDetail header + valuation grid         |

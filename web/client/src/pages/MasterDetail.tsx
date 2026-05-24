@@ -5,19 +5,6 @@ import { useState, useContext } from "react";
 import { Link, useParams } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-} from "recharts";
-import {
   ArrowLeft,
   Bell,
   BellOff,
@@ -96,6 +83,10 @@ const UPDATE_TYPE_COLORS: Record<string, string> = {
   인터뷰: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
   포트폴리오: "bg-violet-500/20 text-violet-400 border-violet-500/30",
 };
+
+function formatWeightPct(value: number): string {
+  return `${Number.isFinite(value) ? value.toFixed(2) : "0.00"}%`;
+}
 
 // 가상 뉴스 데이터
 const MASTER_NEWS: Record<string, any[]> = {
@@ -180,23 +171,6 @@ const MASTER_NEWS: Record<string, any[]> = {
   ],
 };
 
-// 가상 역대 변화 차트 데이터
-function getHistoricalData(id: string) {
-  const base =
-    id === "warren-buffett"
-      ? 100
-      : id === "ray-dalio"
-        ? 80
-        : id === "michael-burry"
-          ? 60
-          : 120;
-  return Array.from({ length: 8 }, (_, i) => ({
-    quarter: `${2024 + Math.floor(i / 4)}Q${(i % 4) + 1}`,
-    value: base + Math.sin(i * 0.8) * 20 + i * 3,
-    holdings: 40 + Math.floor(Math.random() * 20),
-  }));
-}
-
 export default function MasterDetail() {
   const { id } = useParams<{ id: string }>();
   const followCtx = useContext(FollowContext);
@@ -246,12 +220,28 @@ export default function MasterDetail() {
   const strategyDetail = (master as any).strategyDetail;
 
   const news = MASTER_NEWS[master.id] || [];
-  const historicalData = getHistoricalData(master.id);
-
   const pieData = master.topHoldings.map((h) => ({
     name: h.ticker,
     value: h.weight,
   }));
+  const sectorAllocation = Array.from(
+    master.topHoldings
+      .filter((h: any) => h.sector && Number.isFinite(Number(h.weight)))
+      .reduce((acc: Map<string, number>, h: any) => {
+        acc.set(h.sector, (acc.get(h.sector) ?? 0) + Number(h.weight));
+        return acc;
+      }, new Map<string, number>()),
+    ([name, value]) => ({ name, value }),
+  ).sort((a, b) => b.value - a.value);
+  const holdingsSource =
+    master.holdingsPeriodEnd || master.holdingsFiledAt
+      ? `13F ${master.holdingsPeriodEnd ? `기준일 ${master.holdingsPeriodEnd}` : ""}${
+          master.holdingsFiledAt
+            ? ` · 제출 ${master.holdingsFiledAt.slice(0, 10)}`
+            : ""
+        }`
+      : `13F/DB ${lastFiling ?? "기준일 미확인"}`;
+  const holdingsCountLabel = `${master.topHoldings.length.toLocaleString()}개 표시`;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -555,45 +545,51 @@ export default function MasterDetail() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* 파이 차트 */}
                   <div className="bg-card border border-border/50 rounded-xl p-5">
-                    <h3 className="text-sm font-semibold mb-4">
-                      포트폴리오 구성
-                    </h3>
-                    <ResponsiveContainer width="100%" height={220}>
-                      <PieChart>
-                        <Pie
-                          data={pieData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={90}
-                          paddingAngle={2}
-                          dataKey="value"
-                        >
-                          {pieData.map((_, i) => (
-                            <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          formatter={(v: any) => [`${v}%`, "비중"]}
-                          contentStyle={{
-                            background: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "8px",
-                            fontSize: "11px",
-                          }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                    <div className="flex flex-wrap gap-2 justify-center mt-2">
+                    <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                      <h3 className="text-sm font-semibold">포트폴리오 구성</h3>
+                      <span className="text-[10px] text-muted-foreground font-mono">
+                        {holdingsSource}
+                      </span>
+                    </div>
+                    <div
+                      className="space-y-3"
+                      role="list"
+                      aria-label={`포트폴리오 구성. ${holdingsSource}. ${holdingsCountLabel}`}
+                    >
                       {pieData.map((d, i) => (
-                        <div key={d.name} className="flex items-center gap-1">
-                          <div
-                            className="w-2 h-2 rounded-full"
-                            style={{ background: COLORS[i % COLORS.length] }}
-                          />
-                          <span className="text-[10px] text-muted-foreground">
-                            {d.name}
-                          </span>
+                        <div
+                          key={d.name}
+                          className="space-y-1.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
+                          role="listitem"
+                          tabIndex={0}
+                          title={`${d.name} 비중 ${formatWeightPct(d.value)}. ${holdingsSource}`}
+                          aria-label={`${d.name} 비중 ${formatWeightPct(d.value)}. ${holdingsSource}`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div
+                                className="w-2 h-2 rounded-full shrink-0"
+                                style={{
+                                  background: COLORS[i % COLORS.length],
+                                }}
+                              />
+                              <span className="text-xs text-muted-foreground truncate">
+                                {d.name}
+                              </span>
+                            </div>
+                            <span className="text-xs font-mono font-medium">
+                              {formatWeightPct(d.value)}
+                            </span>
+                          </div>
+                          <div className="h-2 rounded-full bg-muted/40 overflow-hidden">
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${Math.max(2, d.value)}%`,
+                                background: COLORS[i % COLORS.length],
+                              }}
+                            />
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -601,16 +597,34 @@ export default function MasterDetail() {
 
                   {/* 상위 보유 종목 */}
                   <div className="bg-card border border-border/50 rounded-xl p-5">
-                    <h3 className="text-sm font-semibold mb-4">
-                      상위 보유 종목
-                    </h3>
-                    <div className="space-y-3">
+                    <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                      <h3 className="text-sm font-semibold">상위 보유 종목</h3>
+                      <span className="text-[10px] text-muted-foreground font-mono">
+                        {holdingsCountLabel}
+                      </span>
+                    </div>
+                    <div
+                      className="space-y-3"
+                      role="list"
+                      aria-label={`상위 보유 종목. ${holdingsSource}. ${holdingsCountLabel}`}
+                    >
                       {master.topHoldings.map((h, i) => {
                         const ChangeIcon = CHANGE_ICONS[h.change] || Minus;
+                        const rowLabel = `${i + 1}위 ${h.ticker} ${h.name}, 비중 ${formatWeightPct(
+                          h.weight,
+                        )}, 평가액 ${h.value}, 변화 ${CHANGE_LABELS[h.change]}${
+                          h.changePct != null
+                            ? ` ${h.changePct > 0 ? "+" : ""}${h.changePct}%p`
+                            : ""
+                        }. ${holdingsSource}`;
                         return (
                           <div
                             key={h.ticker}
-                            className="flex items-center gap-3"
+                            className="flex items-center gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
+                            role="listitem"
+                            tabIndex={0}
+                            title={rowLabel}
+                            aria-label={rowLabel}
                           >
                             <span className="text-xs text-muted-foreground w-4">
                               {i + 1}
@@ -650,7 +664,7 @@ export default function MasterDetail() {
                                   />
                                 </div>
                                 <span className="text-[10px] font-mono text-muted-foreground w-10 text-right">
-                                  {h.weight}%
+                                  {formatWeightPct(h.weight)}
                                 </span>
                                 <span className="text-[10px] text-muted-foreground w-16 text-right">
                                   {h.value}
@@ -666,43 +680,55 @@ export default function MasterDetail() {
 
                 {/* 섹터 배분 바 차트 */}
                 <div className="bg-card border border-border/50 rounded-xl p-5">
-                  <h3 className="text-sm font-semibold mb-4">섹터별 배분</h3>
-                  <ResponsiveContainer width="100%" height={160}>
-                    <BarChart
-                      data={sectors.map((s: string, i: number) => ({
-                        name: s,
-                        value: 30 - i * 5 + Math.random() * 10,
-                      }))}
-                      layout="vertical"
-                      margin={{ left: 0, right: 20, top: 0, bottom: 0 }}
+                  <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                    <h3 className="text-sm font-semibold">섹터별 배분</h3>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      보유종목 비중 합산
+                    </span>
+                  </div>
+                  {sectorAllocation.length > 0 ? (
+                    <div
+                      className="space-y-3"
+                      role="list"
+                      aria-label={`섹터별 배분. ${holdingsSource}. 보유종목 비중 합산`}
                     >
-                      <XAxis
-                        type="number"
-                        tick={{ fontSize: 10 }}
-                        tickFormatter={(v) => `${v.toFixed(0)}%`}
-                      />
-                      <YAxis
-                        type="category"
-                        dataKey="name"
-                        tick={{ fontSize: 10 }}
-                        width={60}
-                      />
-                      <Tooltip
-                        formatter={(v: any) => [`${v.toFixed(1)}%`, "비중"]}
-                        contentStyle={{
-                          background: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                          fontSize: "11px",
-                        }}
-                      />
-                      <Bar
-                        dataKey="value"
-                        fill="#10b981"
-                        radius={[0, 4, 4, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+                      {sectorAllocation.map((s, i) => (
+                        <div
+                          key={s.name}
+                          className="grid grid-cols-[5.5rem_1fr_3.5rem] items-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
+                          role="listitem"
+                          tabIndex={0}
+                          title={`${s.name} 섹터 비중 ${formatWeightPct(s.value)}. ${holdingsSource}`}
+                          aria-label={`${s.name} 섹터 비중 ${formatWeightPct(s.value)}. ${holdingsSource}`}
+                        >
+                          <div className="text-xs text-muted-foreground truncate">
+                            {s.name}
+                          </div>
+                          <div className="h-2.5 rounded-full bg-muted/40 overflow-hidden">
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${Math.max(2, s.value)}%`,
+                                background: COLORS[i % COLORS.length],
+                              }}
+                            />
+                          </div>
+                          <div className="text-right text-xs font-mono font-medium">
+                            {formatWeightPct(s.value)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="h-40 flex flex-col items-center justify-center text-center text-xs text-muted-foreground">
+                      <span>섹터별 비중 데이터가 아직 없습니다</span>
+                      {sectors.length > 0 && (
+                        <span className="mt-1">
+                          분류: {sectors.join(" · ")}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
