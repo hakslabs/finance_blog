@@ -595,9 +595,13 @@ function SymbolHeader({ symbol }: { symbol: string }) {
           </div>
         </div>
       ))}
-      <div className="flex min-w-[96px] flex-col justify-center border-l border-border/50 px-3 py-2">
-        <div className="text-[9px] uppercase text-muted-foreground">Data</div>
-        <div className="text-[10px] text-primary">DB / API bars</div>
+      <div className="flex min-w-[104px] flex-col justify-center border-l border-border/50 px-3 py-2">
+        <div className="text-[9px] uppercase text-muted-foreground">
+          데이터 기준일
+        </div>
+        <div className="font-mono text-[11px] text-primary">
+          {snap ? snap.last.date : "—"}
+        </div>
       </div>
     </div>
   );
