@@ -70,6 +70,36 @@ export function useStockSearch(query: string, limit = 12) {
   return { data, loading, error };
 }
 
+export function useStockNews(ticker: string | undefined, limit = 20) {
+  return useAsync(
+    () =>
+      ticker
+        ? stocksService.news(ticker, limit).then((r) => r.items)
+        : Promise.reject(new Error("no ticker")),
+    [ticker, limit],
+  );
+}
+
+export function useStockConsensus(ticker: string | undefined) {
+  return useAsync(
+    () =>
+      ticker
+        ? stocksService.consensus(ticker)
+        : Promise.reject(new Error("no ticker")),
+    [ticker],
+  );
+}
+
+export function useStockFilings(ticker: string | undefined, limit = 20) {
+  return useAsync(
+    () =>
+      ticker
+        ? stocksService.filings(ticker, limit).then((r) => r.items)
+        : Promise.reject(new Error("no ticker")),
+    [ticker, limit],
+  );
+}
+
 export function useStockBars(ticker: string | undefined, days = 90) {
   type BarsResponse = Awaited<ReturnType<typeof stocksService.bars>>;
   type Bars = BarsResponse["items"];

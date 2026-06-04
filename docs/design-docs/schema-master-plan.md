@@ -112,7 +112,7 @@ All tables: owner-only RLS via `auth.uid() = user_id`. Writes go through the Fas
 
 ## 3. Fixture-to-tier mapping
 
-Every fixture under `web/src/fixtures/` exists because there is no table for it yet. This mapping pins each fixture entity to the tier and table that will retire it.
+Every fixture under `web/client/src/fixtures/` exists because there is no table for it yet. This mapping pins each fixture entity to the tier and table that will retire it.
 
 | Fixture file & export                                                                   | Tier  | Future table(s)                                                                                                       |
 | --------------------------------------------------------------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------- |

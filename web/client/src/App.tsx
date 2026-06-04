@@ -13,6 +13,7 @@ import Layout from "./components/Layout";
 import { ROUTE_LOADERS } from "./lib/route-prefetch";
 
 const Home = lazy(ROUTE_LOADERS.home);
+const Terminal = lazy(ROUTE_LOADERS.terminal);
 const Analysis = lazy(ROUTE_LOADERS.analysis);
 const Stocks = lazy(ROUTE_LOADERS.stocks);
 const StockDetail = lazy(ROUTE_LOADERS.stockDetail);
@@ -57,6 +58,7 @@ function Router() {
       <Suspense fallback={<PageFallback />}>
         <Switch>
           <Route path="/" component={Home} />
+          <Route path="/terminal" component={Terminal} />
           <Route path="/analysis" component={Analysis} />
           <Route path="/news" component={News} />
           <Route path="/calendar" component={CalendarPage} />

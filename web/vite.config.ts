@@ -47,7 +47,10 @@ export default defineConfig({
     host: true,
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8000",
+        // Default points at the local FastAPI on :8000. Override with
+        // VITE_PROXY_TARGET when the API runs elsewhere (e.g. :8010 when
+        // :8000 is occupied by another local service).
+        target: process.env.VITE_PROXY_TARGET ?? "http://127.0.0.1:8000",
         changeOrigin: true,
         rewrite: (p: string) => p.replace(/^\/api/, ""),
       },

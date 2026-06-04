@@ -59,7 +59,12 @@ import type { MacroIndicator, Stock } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────
 type AllStock = Stock;
-type MarketTab = "시장 개요" | "섹터 로테이션" | "스크리너" | "수익률 비교";
+type MarketTab =
+  | "시장 개요"
+  | "주식 분석"
+  | "섹터 로테이션"
+  | "스크리너"
+  | "수익률 비교";
 type StockTab =
   | "차트"
   | "재무제표"
@@ -542,11 +547,13 @@ const AI_IMPACT: Record<string, string> = {
 function MacroCard({
   ind,
   onEdit,
+  defaultExpanded = false,
 }: {
   ind: MacroIndicator;
   onEdit: (id: string) => void;
+  defaultExpanded?: boolean;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const [editing, setEditing] = useState(false);
   const [editVal, setEditVal] = useState(ind.value);
   const [editPrev, setEditPrev] = useState(ind.prev);
@@ -578,7 +585,8 @@ function MacroCard({
     setEditPrev(ind.prev);
     setHistoryRows(null);
     setHistoryError(null);
-  }, [ind]);
+    setExpanded(defaultExpanded);
+  }, [defaultExpanded, ind]);
 
   useEffect(() => {
     if (!expanded || historyRows !== null || historyLoading) return;
@@ -760,7 +768,6 @@ function MacroCard({
                   data={historyRows}
                   height={112}
                   showToolbar={false}
-                  showYAxis
                   valueFormatter={(v) =>
                     `${v.toFixed(currentInd.unit === "₩" ? 0 : 2)}${currentInd.unit}`
                   }
@@ -1025,7 +1032,7 @@ function MarketOverviewPanel({
           <div className="text-xs font-semibold flex items-center gap-2">
             <Globe size={13} className="text-primary" /> 핵심 거시지표
             <span className="text-[10px] text-muted-foreground font-normal">
-              클릭하여 히스토리 차트 + AI 분석 확인
+              히스토리 차트 자동 표시 · 클릭하여 접기/편집
             </span>
           </div>
           <button
@@ -1099,8 +1106,13 @@ function MarketOverviewPanel({
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 auto-rows-auto">
-          {localIndicators.map((ind) => (
-            <MacroCard key={ind.id} ind={ind} onEdit={onEditMacro} />
+          {localIndicators.map((ind, index) => (
+            <MacroCard
+              key={ind.id}
+              ind={ind}
+              onEdit={onEditMacro}
+              defaultExpanded={index < 4 && !ind.id.startsWith("custom-")}
+            />
           ))}
         </div>
       </div>
@@ -2241,6 +2253,7 @@ function ReturnComparisonPanel() {
                 data={yieldRows}
                 settingsScope={`analysis-yield-${yieldMarket}`}
                 height={220}
+                showToolbar={false}
                 showYAxis
                 valueFormatter={(v) => `${v.toFixed(2)}%`}
                 showRangeControls={false}
@@ -2357,6 +2370,7 @@ function ReturnComparisonPanel() {
                     data={watchlistChartData}
                     settingsScope="analysis-watchlist-compare"
                     height={220}
+                    showToolbar={false}
                     valueFormatter={(v) =>
                       `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`
                     }
@@ -2502,6 +2516,7 @@ function ReturnComparisonPanel() {
                 data={portfolioRows}
                 settingsScope="analysis-portfolio-value"
                 height={220}
+                showToolbar={false}
                 valueFormatter={(value) =>
                   formatPortfolioChartValue(value, portfolioCurrency)
                 }
@@ -2915,6 +2930,7 @@ function StockAnalysisPanel({
                     }))}
                     settingsScope="analysis-financials"
                     height={176}
+                    showToolbar={false}
                     barLayout="group"
                     showRangeControls={false}
                     allowValueTransform={false}
@@ -3317,10 +3333,58 @@ function StockAnalysisPanel({
 // ─── Main Analysis Page ───────────────────────────────────────
 const MARKET_TABS: MarketTab[] = [
   "시장 개요",
+  "주식 분석",
   "섹터 로테이션",
   "스크리너",
   "수익률 비교",
 ];
+
+function stockFromWatchlistItem(
+  item: ReturnType<typeof useWatchlist>["watchlist"][number],
+): AllStock {
+  const exchange = item.exchange as AllStock["exchange"];
+  const country: AllStock["country"] =
+    exchange === "KOSPI" || exchange === "KOSDAQ" ? "KR" : "US";
+  return {
+    ticker: item.ticker,
+    name: item.name,
+    exchange,
+    country,
+    price: item.price,
+    changePct: item.changePct,
+    change: 0,
+    volume: 0,
+    marketCap: "",
+    sector: item.sector || "—",
+  };
+}
+
+function StockCandidateButton({
+  stock,
+  onClick,
+}: {
+  stock: AllStock;
+  onClick: (stock: AllStock) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(stock)}
+      className="rounded-lg border border-border/50 bg-card cursor-pointer p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-mono text-sm font-bold tracking-tight">
+          {stock.ticker}
+        </span>
+        <PctBadge value={stock.changePct} size="xs" />
+      </div>
+      <div className="mt-1 truncate text-xs text-foreground">{stock.name}</div>
+      <div className="mt-1 text-[10px] text-muted-foreground">
+        {stock.exchange} · {stock.sector || "—"}
+      </div>
+    </button>
+  );
+}
 
 export default function Analysis() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -3352,25 +3416,50 @@ export default function Analysis() {
     );
   }, [marketFilter, searchHits]);
 
-  const selectSearchHit = useCallback(async (hit: StockSearchHit) => {
-    selectionControllerRef.current?.abort();
-    const controller = new AbortController();
-    selectionControllerRef.current = controller;
-    setSelectingTicker(hit.ticker);
-    try {
-      const stock = await hydrateSearchHit(hit, { signal: controller.signal });
-      if (controller.signal.aborted) return;
-      setSelectedStock(stock);
-      setSearchQuery("");
-    } catch (error) {
-      if (!controller.signal.aborted) throw error;
-    } finally {
-      if (selectionControllerRef.current === controller) {
-        selectionControllerRef.current = null;
-        setSelectingTicker(null);
-      }
-    }
+  const openStockAnalysis = useCallback((stock: AllStock) => {
+    setSelectedStock(stock);
+    setActiveMarketTab("주식 분석");
   }, []);
+
+  const watchlistStockCandidates = useMemo(
+    () =>
+      watchlist.map(
+        (item) =>
+          allStocks.find((stock) => stock.ticker === item.ticker) ??
+          stockFromWatchlistItem(item),
+      ),
+    [allStocks, watchlist],
+  );
+
+  const recommendedStockCandidates = useMemo(() => {
+    const watched = new Set(watchlist.map((item) => item.ticker));
+    return allStocks.filter((stock) => !watched.has(stock.ticker)).slice(0, 12);
+  }, [allStocks, watchlist]);
+
+  const selectSearchHit = useCallback(
+    async (hit: StockSearchHit) => {
+      selectionControllerRef.current?.abort();
+      const controller = new AbortController();
+      selectionControllerRef.current = controller;
+      setSelectingTicker(hit.ticker);
+      try {
+        const stock = await hydrateSearchHit(hit, {
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+        openStockAnalysis(stock);
+        setSearchQuery("");
+      } catch (error) {
+        if (!controller.signal.aborted) throw error;
+      } finally {
+        if (selectionControllerRef.current === controller) {
+          selectionControllerRef.current = null;
+          setSelectingTicker(null);
+        }
+      }
+    },
+    [openStockAnalysis],
+  );
 
   const addSearchHitToWatchlist = useCallback(
     async (hit: StockSearchHit) => {
@@ -3537,8 +3626,10 @@ export default function Analysis() {
                 <button
                   key={w.ticker}
                   onClick={() => {
-                    const stock = allStocks.find((s) => s.ticker === w.ticker);
-                    if (stock) setSelectedStock(stock);
+                    const stock =
+                      allStocks.find((s) => s.ticker === w.ticker) ??
+                      stockFromWatchlistItem(w);
+                    openStockAnalysis(stock);
                   }}
                   className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted/30 hover:bg-muted/60 border border-border/50 text-xs transition-colors"
                 >
@@ -3550,14 +3641,6 @@ export default function Analysis() {
           </div>
         )}
       </div>
-
-      {/* Stock analysis panel */}
-      {selectedStock && (
-        <StockAnalysisPanel
-          stock={selectedStock}
-          onClose={() => setSelectedStock(null)}
-        />
-      )}
 
       {/* Market analysis tabs */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -3583,6 +3666,98 @@ export default function Analysis() {
               macroIndicators={macroIndicators ?? []}
               onEditMacro={handleEditMacro}
             />
+          )}
+          {activeMarketTab === "주식 분석" && (
+            <div className="space-y-4">
+              {selectedStock ? (
+                <StockAnalysisPanel
+                  stock={selectedStock}
+                  onClose={() => setSelectedStock(null)}
+                />
+              ) : (
+                <div className="rounded-xl border border-border bg-muted/10 p-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <div className="text-sm font-bold">주식 분석 시작</div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        검색하지 않아도 관심종목이나 시장 목록에서 바로 분석
+                        패널을 열 수 있습니다.
+                      </p>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">
+                      검색창 선택도 계속 지원
+                    </span>
+                  </div>
+                  <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Zap size={11} className="text-primary" />
+                    관심종목은 바로 분석하고, 아래 추천 종목은 새 후보로
+                    확인하세요
+                  </div>
+                  <div className="mt-4 space-y-4">
+                    <section>
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <div className="text-xs font-semibold">내 관심종목</div>
+                        <span className="text-[10px] text-muted-foreground">
+                          클릭하면 바로 주식 분석 패널 열림
+                        </span>
+                      </div>
+                      {watchlistStockCandidates.length > 0 ? (
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                          {watchlistStockCandidates.map((stock) => (
+                            <StockCandidateButton
+                              key={stock.ticker}
+                              stock={stock}
+                              onClick={openStockAnalysis}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                          관심종목이 아직 없습니다. 종목 상세나 검색 결과에서
+                          ★을 눌러 추가하세요.
+                        </div>
+                      )}
+                    </section>
+
+                    <section>
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <div className="text-xs font-semibold">
+                          추천 · 시장 상위 종목
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">
+                          모멘텀 높은 종목부터 표시
+                        </span>
+                      </div>
+                      {recommendedStockCandidates.length > 0 ? (
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                          {recommendedStockCandidates.map((stock) => (
+                            <StockCandidateButton
+                              key={stock.ticker}
+                              stock={stock}
+                              onClick={openStockAnalysis}
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="col-span-full rounded-lg border border-dashed border-border p-8 text-center">
+                          <Search
+                            size={24}
+                            className="mx-auto mb-2 text-muted-foreground/30"
+                          />
+                          <div className="text-sm text-muted-foreground">
+                            상단 검색창에 티커를 입력하거나
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            홈페이지에서 관심종목에 ★을 눌러 추가하면 여기서
+                            표시됩니다
+                          </div>
+                        </div>
+                      )}
+                    </section>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
           {activeMarketTab === "섹터 로테이션" && <SectorRotationPanel />}
           {activeMarketTab === "스크리너" && <IntegratedScreenerPanel />}

@@ -3,7 +3,7 @@
  * Design: 증권사 리포트 스타일 테이블 리스트 뷰
  * Layout: 탭 + 검색/필터 바 + 테이블 목록 + 우측 상세 패널 (split view)
  */
-import { useState, useMemo, useContext, useCallback } from "react";
+import { useState, useMemo, useContext, useCallback, Fragment } from "react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { REPORTS } from "@/lib/data";
@@ -696,7 +696,7 @@ export default function Reports() {
                       | undefined;
 
                     return (
-                      <>
+                      <Fragment key={report.id}>
                         {showDivider && idx > 0 && (
                           <tr key={"div-" + report.date + idx}>
                             <td
@@ -792,7 +792,7 @@ export default function Reports() {
                             {report.source}
                           </td>
                         </tr>
-                      </>
+                      </Fragment>
                     );
                   })
                 )}

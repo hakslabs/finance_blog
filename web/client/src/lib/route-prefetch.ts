@@ -5,6 +5,7 @@ type PageLoader = () => Promise<PageModule>;
 
 export const ROUTE_LOADERS = {
   home: () => import("@/pages/Home"),
+  terminal: () => import("@/pages/Terminal"),
   analysis: () => import("@/pages/Analysis"),
   news: () => import("@/pages/News"),
   calendar: () => import("@/pages/Calendar"),
@@ -26,6 +27,7 @@ const prefetched = new Set<keyof typeof ROUTE_LOADERS>();
 function loaderKeyForPath(path: string): keyof typeof ROUTE_LOADERS {
   const cleanPath = path.split("?")[0] || "/";
   if (cleanPath === "/") return "home";
+  if (cleanPath.startsWith("/terminal")) return "terminal";
   if (cleanPath.startsWith("/analysis")) return "analysis";
   if (cleanPath.startsWith("/news")) return "news";
   if (cleanPath.startsWith("/calendar")) return "calendar";

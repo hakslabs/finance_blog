@@ -115,6 +115,56 @@ function searchHitToStockHit(
   };
 }
 
+export interface StockNewsItem {
+  id: string;
+  headline: string;
+  summary?: string | null;
+  source?: string | null;
+  url?: string | null;
+  category?: string | null;
+  datetime?: string | null;
+  image?: string | null;
+}
+export interface StockNewsResponse {
+  symbol: string;
+  items: StockNewsItem[];
+}
+
+export interface StockRecommendation {
+  period?: string | null;
+  strong_buy: number;
+  buy: number;
+  hold: number;
+  sell: number;
+  strong_sell: number;
+}
+export interface StockPriceTarget {
+  target_high?: number | null;
+  target_low?: number | null;
+  target_mean?: number | null;
+  target_median?: number | null;
+  last_updated?: string | null;
+  number_of_analysts?: number | null;
+}
+export interface StockConsensusResponse {
+  symbol: string;
+  recommendations: StockRecommendation[];
+  price_target?: StockPriceTarget | null;
+}
+
+export interface StockFilingItem {
+  accession: string;
+  form: string;
+  filed_at?: string | null;
+  description?: string | null;
+  url?: string | null;
+}
+export interface StockFilingsResponse {
+  symbol: string;
+  cik?: string | null;
+  items: StockFilingItem[];
+}
+
 export const stocksService = {
   list: (market: "US" | "KR", limit = 100): Promise<StocksResponse> =>
     apiGet<MoversResponse>(`/movers?market=${market}&limit=${limit}`).then(
@@ -191,6 +241,21 @@ export const stocksService = {
   ) =>
     apiGet<StockFinancialsResponse>(
       `/stocks/${encodeURIComponent(ticker)}/financials?freq=${freq}`,
+      init,
+    ),
+  news: (ticker: string, limit = 20, init?: RequestInit) =>
+    apiGet<StockNewsResponse>(
+      `/stocks/${encodeURIComponent(ticker)}/news?limit=${limit}`,
+      init,
+    ),
+  consensus: (ticker: string, init?: RequestInit) =>
+    apiGet<StockConsensusResponse>(
+      `/stocks/${encodeURIComponent(ticker)}/consensus`,
+      init,
+    ),
+  filings: (ticker: string, limit = 20, init?: RequestInit) =>
+    apiGet<StockFilingsResponse>(
+      `/stocks/${encodeURIComponent(ticker)}/filings?limit=${limit}`,
       init,
     ),
 };

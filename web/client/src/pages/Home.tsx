@@ -391,6 +391,7 @@ function FearGreedModal({
               }))}
               settingsScope={`home-fear-greed-${market}`}
               height={224}
+              showToolbar={false}
               valueFormatter={(v) => v.toFixed(0)}
               zeroLine={false}
               showRangeControls={false}
@@ -962,7 +963,7 @@ function IndexModal({
                 }))}
                 settingsScope={`home-market-index-${idx.symbol}`}
                 height={224}
-                showToolbar
+                showToolbar={false}
                 valueFormatter={(v) =>
                   v.toLocaleString(undefined, { maximumFractionDigits: 2 })
                 }
@@ -1895,6 +1896,7 @@ export default function Home() {
                 data={chartData}
                 settingsScope="home-market-compare"
                 height={210}
+                showToolbar={false}
                 valueFormatter={(v) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`}
                 zeroLine
                 showRangeControls={false}

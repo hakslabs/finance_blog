@@ -36,6 +36,7 @@ import {
   LogOut,
   Settings,
   Bookmark,
+  LayoutDashboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,12 @@ const ADMIN_EMAILS = ["admin@financelab.pro", "superadmin@financelab.pro"];
 
 const NAV_ITEMS = [
   { path: "/", icon: Home, label: "홈", sublabel: "Dashboard" },
+  {
+    path: "/terminal",
+    icon: LayoutDashboard,
+    label: "터미널",
+    sublabel: "Terminal",
+  },
   { path: "/analysis", icon: BarChart2, label: "분석", sublabel: "Analysis" },
   { path: "/news", icon: Newspaper, label: "뉴스", sublabel: "News" },
   { path: "/calendar", icon: Calendar, label: "캘린더", sublabel: "Calendar" },

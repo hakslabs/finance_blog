@@ -23,7 +23,7 @@ Per-PR conventions:
 
 Cross-cutting rules:
 
-- Any UI PR (touching `web/src/`) must load `docs/FRONTEND.md` and `docs/FRONTEND-MAP.md`, and its acceptance includes passing the **PR Review Checklist** in `docs/FRONTEND.md`. Update `docs/FRONTEND-MAP.md` in the same PR for any added/renamed/removed file under `web/src/`.
+- Any UI PR (touching `web/client/src/`) must load `docs/FRONTEND.md` and `docs/FRONTEND-MAP.md`, and its acceptance includes passing the **PR Review Checklist** in `docs/FRONTEND.md`. Update `docs/FRONTEND-MAP.md` in the same PR for any added/renamed/removed file under `web/client/src/`.
 - Frontend-only PRs use seeded fixtures inline; no API calls.
 - Backend PRs return typed responses with example payloads; no UI changes.
 - Data-path PRs touch one endpoint at a time and must show real values on screen.
@@ -94,9 +94,9 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 ### PR-06a — `/analysis` (static, 8-tab hub)
 
 - [x] Scope: `/analysis` from `design/wires-v3/wire-analysis.jsx`. Eight tabs: 시장 한눈에 / 시장 심리 / 기술적 분석 / 재무 분석 / 퀀트 팩터 / 적정주가 계산 / 섹터 흐름 / 신호 알림. Tab UI uses the same `<button>` + `Record<Tab, …>` pattern as `/stocks/:symbol`.
-- [x] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-analysis.jsx`, `web/src/routes/stocks/StockDetailPage.tsx` (tab pattern reference), `vercel-labs/agent-skills:react-best-practices`.
+- [x] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-analysis.jsx`, `web/client/src/routes/stocks/StockDetailPage.tsx` (tab pattern reference), `vercel-labs/agent-skills:react-best-practices`.
 - [x] Required Reuse (C-11): `PageContainer`, `Card`, `DataTable` (섹터 로테이션 표, 기술적 지표, 재무 점수, 퀀트 팩터, 섹터 모멘텀, 신호 알림 표, 심리 지표 표, 용어 해설 표, 저장한 스크린 표), `KpiTile` (DCF 4-tile strip), `Badge` (시그널 강도/방향, 섹터 라벨, A-D 등급, 심리 상태, 추세). `ChartPlaceholder` (AreaChart/Heatmap/Matrix placeholders). 시장 심리는 plan 옵션대로 DataTable+Badge skeleton로 처리 — SVG gauge 신규 작성 없음 (gauge promote는 별도 PR 필요).
-- [x] Files: `web/src/routes/analysis/AnalysisPage.tsx`, `web/src/routes/analysis/AnalysisPage.module.css`, `web/src/routes/analysis/sections/*` (8 section components, one per tab), `web/src/fixtures/analysis.ts`.
+- [x] Files: `web/client/src/routes/analysis/AnalysisPage.tsx`, `web/client/src/routes/analysis/AnalysisPage.module.css`, `web/client/src/routes/analysis/sections/*` (8 section components, one per tab), `web/client/src/fixtures/analysis.ts`.
 - [x] Skeleton vs full per tab: 시장 한눈에 = full (3-col top grid + tools + bottom grid). 시장 심리 = full content via DataTable rows (3 regions + glossary + history placeholder). 기술적 분석 / 재무 분석 / 퀀트 팩터 / 섹터 흐름 / 신호 알림 = chart placeholder + DataTable with fixture rows. 적정주가 계산 = KpiTile grid + chart placeholder.
 - [x] Acceptance: All 8 tabs render from `fixtures/analysis.ts`; tab state preserved via `useState`; `FRONTEND.md` PR Review Checklist passes including items 14–16 (primitive reuse).
 - [x] Out Of Scope: real chart implementations, signal alert subscription wiring.
@@ -104,18 +104,18 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 ### PR-06b — `/reports` list and `/reports/:id` detail (static)
 
 - [x] Scope: `/reports` list and `/reports/:id` detail from `wire-masters-learn.jsx` (the `WireReports` and `WireReportDetail` functions). Mirror the `/stocks` ↔ `/stocks/:symbol` PR-04 structure: list page is a `DataTable`, detail page is route-param-driven with `getReport(id)` fixture lookup.
-- [x] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-masters-learn.jsx` (WireReports + WireReportDetail only), `web/src/routes/stocks/` (list+detail reference), `vercel-labs/agent-skills:react-best-practices`.
+- [x] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-masters-learn.jsx` (WireReports + WireReportDetail only), `web/client/src/routes/stocks/` (list+detail reference), `vercel-labs/agent-skills:react-best-practices`.
 - [x] Required Reuse (C-11): `PageContainer`, `Card`, `DataTable` (report list, with cell renderers for date/badge/title), `Badge` (report type/status), `EmptyState` (unknown id on detail; empty list state), `KpiTile` if the detail summary uses label/value tiles.
-- [x] Files: `web/src/routes/reports/ReportsPage.tsx`, `web/src/routes/reports/ReportDetailPage.tsx`, co-located `*.module.css`, `web/src/routes/reports/sections/*`, `web/src/fixtures/reports.ts`.
+- [x] Files: `web/client/src/routes/reports/ReportsPage.tsx`, `web/client/src/routes/reports/ReportDetailPage.tsx`, co-located `*.module.css`, `web/client/src/routes/reports/sections/*`, `web/client/src/fixtures/reports.ts`.
 - [x] Acceptance: `/reports` renders fixture list via `DataTable`; `/reports/:id` resolves fixture or shows `EmptyState` with back link; checklist passes including items 14–16.
 - [x] Out Of Scope: write paths (creating/editing reports), markdown rendering pipeline.
 
 ### PR-06c — `/masters` list, `/masters/:id` detail, `/learn` (static)
 
 - [x] Scope: `/masters` (거장 목록), `/masters/:id` (거장 상세: 포트폴리오, 철학, 13F 분기 변화), `/learn` (용어사전 + 가이드 + 리포트 라이브러리) from `wire-masters-learn.jsx` (`WireMasters`, `WireLearn`, and the masters-detail body).
-- [x] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-masters-learn.jsx` (excluding WireReports/WireReportDetail which are PR-06b), `web/src/routes/stocks/StockDetailPage.tsx` (sticky-sidebar + tab pattern), `vercel-labs/agent-skills:react-best-practices`.
+- [x] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-masters-learn.jsx` (excluding WireReports/WireReportDetail which are PR-06b), `web/client/src/routes/stocks/StockDetailPage.tsx` (sticky-sidebar + tab pattern), `vercel-labs/agent-skills:react-best-practices`.
 - [x] Required Reuse (C-11): `PageContainer`, `Card`, `Section`, `DataTable` (masters list, 13F holdings table, glossary terms list), `Badge` (master strategy tags, content type), `EmptyState`, `KpiTile` (masters detail summary stats), `ChartPlaceholder` (portfolio composition placeholder).
-- [x] Files: `web/src/routes/masters/MastersPage.tsx`, `web/src/routes/masters/MasterDetailPage.tsx`, `web/src/routes/learn/LearnPage.tsx`, co-located `*.module.css`, `web/src/routes/{masters,learn}/sections/*`, `web/src/fixtures/masters.ts`, `web/src/fixtures/learn.ts`.
+- [x] Files: `web/client/src/routes/masters/MastersPage.tsx`, `web/client/src/routes/masters/MasterDetailPage.tsx`, `web/client/src/routes/learn/LearnPage.tsx`, co-located `*.module.css`, `web/client/src/routes/{masters,learn}/sections/*`, `web/client/src/fixtures/masters.ts`, `web/client/src/fixtures/learn.ts`.
 - [x] Acceptance: `/masters` renders fixture list via `DataTable`; `/masters/:id` resolves fixture (at least Warren Buffett + Ray Dalio with detail) or shows `EmptyState`; `/learn` renders glossary + guides + report library sections from fixture; checklist passes including items 14–16.
 - [x] Out Of Scope: real 13F filings pipeline, learning progress tracking, search across glossary.
 
@@ -124,7 +124,7 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 - [x] Scope: `/mypage` from `wire-mypage-admin.jsx` (the `WireMyPageAll` body only — exclude admin). Profile summary, settings sections, subscription/usage panel as fixture-driven static UI.
 - [x] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `design/wires-v3/wire-mypage-admin.jsx` (mypage body only, lines 284+), `vercel-labs/agent-skills:react-best-practices`, `vercel-labs/agent-skills:web-design-guidelines`.
 - [x] Required Reuse (C-11): `PageContainer`, `Card`, `Section`, `DataTable` (활동 로그 / 연결된 계정 등 리스트 패턴), `KpiTile` (사용량/구독 요약), `Badge` (연결 상태, 구독 등급), `EmptyState`. Form inputs stay non-interactive in this PR — render as styled `<input>` / `<button>` without state, since wiring belongs to a later PR.
-- [x] Files: `web/src/routes/mypage/MyPage.tsx`, co-located `*.module.css`, `web/src/routes/mypage/sections/*`, `web/src/fixtures/mypage.ts`.
+- [x] Files: `web/client/src/routes/mypage/MyPage.tsx`, co-located `*.module.css`, `web/client/src/routes/mypage/sections/*`, `web/client/src/fixtures/mypage.ts`.
 - [x] Acceptance: `/mypage` renders all wire sections from fixture; no interactive form state; checklist passes including items 14–16.
 - [x] Out Of Scope: form submission, account deletion, password change, real subscription/billing wiring.
 
@@ -156,7 +156,7 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 
 - [x] Scope: Backend `GET /v1/watchlists/me` returns the signed-in user's watchlist from Supabase. Frontend dashboard `WatchlistCard` reads from this endpoint with a typed client and last-updated timestamp. Auth is the dev header `X-Dev-User` per `docs/design-docs/auth.md`; real auth is deferred to PR-14 (final PR).
 - [x] Required Reading: `docs/API.md` (the `/v1/watchlists/me` section), PR-07/PR-08 outputs, `docs/design-docs/first-real-data.md`, `docs/RELIABILITY.md`.
-- [x] Files: `api/app/routes/watchlists.py`, `api/app/repos/watchlists.py`, `api/app/auth.py`, `api/app/models/watchlists.py`, `web/src/lib/api-client.ts`, `web/src/lib/useWatchlist.ts`, dashboard wiring.
+- [x] Files: `api/app/routes/watchlists.py`, `api/app/repos/watchlists.py`, `api/app/auth.py`, `api/app/models/watchlists.py`, `web/client/src/lib/api-client.ts`, `web/client/src/lib/useWatchlist.ts`, dashboard wiring.
 - [x] Acceptance: Inserting a row in Supabase reflects on the dashboard within a refresh. Empty state and error state both render.
 - [x] Out Of Scope: write endpoints, multiple watchlists.
 
@@ -164,7 +164,7 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 
 - [x] Scope: Implement the source chosen in `docs/design-docs/first-real-data.md`. Backend endpoint exposes latest quote + recent OHLCV for one symbol; frontend renders it on `/stocks/AAPL` with a real chart and a `last_refreshed_at` label. Failure shows stale data plus a warning, not a blank.
 - [x] Required Reading: `docs/API.md` (the `/v1/quotes/{symbol}` section), `docs/design-docs/first-real-data.md`, `docs/RELIABILITY.md`, `docs/references/market-data-llms.txt`, `docs/design-docs/prices-ingestion-schema.md`.
-- [x] Files: `api/app/sources/polygon.py`, `api/app/sources/alphavantage.py`, `api/app/routes/quotes.py`, `api/app/models/quotes.py`, `api/app/tests/test_quotes.py`, `web/src/lib/api-client.ts` (extend), `web/src/lib/useQuote.ts`, `web/src/components/primitives/PriceChart.tsx`, `web/src/routes/stocks/sections/ChartSection.tsx`.
+- [x] Files: `api/app/sources/polygon.py`, `api/app/sources/alphavantage.py`, `api/app/routes/quotes.py`, `api/app/models/quotes.py`, `api/app/tests/test_quotes.py`, `web/client/src/lib/api-client.ts` (extend), `web/client/src/lib/useQuote.ts`, `web/client/src/components/primitives/PriceChart.tsx`, `web/client/src/routes/stocks/sections/ChartSection.tsx`.
 - [x] Acceptance: `/stocks/AAPL` shows live values on first load; rate-limit and provider-outage paths produce stale-with-warning, not a crash. **This is the production milestone bar from `ARCHITECTURE.md`.**
 - [x] Out Of Scope: multiple providers, caching strategy beyond a simple in-memory TTL, `price_bars_daily` table writes (deferred to PR-13 cron per `docs/design-docs/prices-ingestion-schema.md`).
 
@@ -172,7 +172,7 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 
 - [x] Scope: Extend schema with `portfolios` and `transactions`. **No `positions` table** — holdings are derived in the backend from the transaction ledger using the average-cost method (decision documented in `docs/generated/db-schema.md`). Backend `GET /v1/portfolios/me` returns the primary portfolio with derived holdings + transactions. Frontend `/portfolio` reads from API; KpiStrip/HoldingsTable/TransactionsTable now consume live data, and the static `PerformanceSummary` section + `fixtures/portfolio.ts` are dropped as out-of-scope.
 - [x] Required Reading: `docs/API.md` (the `/v1/portfolios/me` section), `docs/generated/db-schema.md`, `docs/SECURITY.md`, PR-09 patterns.
-- [x] Files: `supabase/migrations/0002_portfolio.sql`, `supabase/seed/portfolio.sql`, `api/app/models/portfolios.py`, `api/app/repos/portfolios.py`, `api/app/routes/portfolios.py`, `api/app/tests/test_portfolios.py`, `web/src/lib/api-client.ts` (extend), `web/src/lib/usePortfolio.ts`, `web/src/routes/portfolio/{PortfolioPage,sections/KpiStrip,sections/HoldingsTable,sections/TransactionsTable}.tsx`. Removed: `web/src/fixtures/portfolio.ts`, `web/src/routes/portfolio/sections/PerformanceSummary.{tsx,module.css}`.
+- [x] Files: `supabase/migrations/0002_portfolio.sql`, `supabase/seed/portfolio.sql`, `api/app/models/portfolios.py`, `api/app/repos/portfolios.py`, `api/app/routes/portfolios.py`, `api/app/tests/test_portfolios.py`, `web/client/src/lib/api-client.ts` (extend), `web/client/src/lib/usePortfolio.ts`, `web/client/src/routes/portfolio/{PortfolioPage,sections/KpiStrip,sections/HoldingsTable,sections/TransactionsTable}.tsx`. Removed: `web/client/src/fixtures/portfolio.ts`, `web/client/src/routes/portfolio/sections/PerformanceSummary.{tsx,module.css}`.
 - [x] Acceptance: Manually inserted transactions render as holdings and history on `/portfolio` for the dev user. Verified end-to-end against remote Supabase: 6 sample transactions across 4 types yield AAPL 15 @ avg $160 and MSFT 5 @ avg $380 in the API response.
 - [x] Out Of Scope: transaction write UI, performance analytics (Sharpe / drawdown / benchmarks), market value join (lands when PR-13 cron populates `price_bars_daily`).
 
@@ -205,7 +205,7 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 
 - [x] Scope: Keep public research routes browsable without login, protect only private account routes, return users to the requested page after OAuth, surface signed-in user identity consistently, and add visible feedback for top-bar controls that are not yet fully implemented.
 - [x] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, `docs/design-docs/auth.md`.
-- [x] Files: `web/src/components/layout/{AuthGate,ProtectedRoute,TopBar}.*`, `web/src/lib/auth-*`, dashboard auth CTA, docs map updates.
+- [x] Files: `web/client/src/components/layout/{AuthGate,ProtectedRoute,TopBar}.*`, `web/client/src/lib/auth-*`, dashboard auth CTA, docs map updates.
 - [x] Acceptance: `/` loads without login; `/portfolio` and `/mypage` show a route-scoped login prompt when signed out; top-bar search submit navigates to a stock route; signed-in account menu shows name/email and logout; unavailable top-bar actions show a visible short message instead of doing nothing; `npm run lint` and `npm run build` pass.
 - [x] Out Of Scope: persistence for profile edits, watchlist add/delete, notification backend, full search autocomplete.
 - [x] Follow-up UX audit: PR-15 may include local-only affordances that remove dead clicks (icon buttons, notification read dot, report interest stars, MyPage quick links, loading skeletons). Anything requiring DB writes or real event delivery remains deferred: saved-report persistence, watchlist/report write endpoints, notification backend, and full cross-page saved-items surfaces.
@@ -213,8 +213,8 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 ### PR-16 — Interaction surface audit
 
 - [x] Scope: Audit all visible buttons, cards, chips, chart controls, table rows, and dashboard widgets across public/private routes. Every control must either navigate, switch in-page state, open a lightweight panel/modal, show a planned-feature notice, or be restyled as clearly non-interactive. The dashboard cards called out by user feedback (notice, todos, charts, watchlist rows, events) are the first pass.
-- [x] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, relevant route files under `web/src/routes/*`.
-- [x] Files: `web/src/components/layout/*`, shared primitives if needed, route pages/sections with dead-click surfaces, docs map updates.
+- [x] Required Reading: `docs/FRONTEND.md`, `docs/FRONTEND-MAP.md`, relevant route files under `web/client/src/routes/*`.
+- [x] Files: `web/client/src/components/layout/*`, shared primitives if needed, route pages/sections with dead-click surfaces, docs map updates.
 - [x] Acceptance: No visible element uses pointer affordance without an observable result; public routes remain browsable; private data actions that require future write endpoints show precise planned notices instead of silently doing nothing; `npm run lint` and `npm run build` pass.
 - [x] Out Of Scope: implementing every backend write path. Persistence still lands in the domain PRs for watchlists, saved reports, memos/theses, notifications, and profile settings.
 - [x] Closing polish (PR-16 wrap-up):
@@ -227,7 +227,7 @@ Each sub-PR carries a **Required Reuse** line per rule C-11; bypassing a primiti
 > **Status note.** Wireframes are being revised at the time of writing. This section captures the _structure and decisions_, not finalized table/column shapes. Do **not** convert into migrations until wires settle and the affected screens stop moving. When that happens, split into migrations 0004–0011 per the order below.
 
 - [x] Scope: Produce a complete, layered schema plan that covers (a) every entity the current UI renders from fixtures, (b) the raw market/macro data the ingestion pipeline will collect, and (c) how the two combine to drive charts and analysis. The plan must be sufficient to slice into migration-sized PRs once wires settle.
-- [x] Required Reading: `web/src/fixtures/*.ts`, `web/src/routes/*` route files, `docs/design-docs/data-sources.md`, `docs/design-docs/first-real-data.md`, `docs/design-docs/prices-ingestion-schema.md`, all existing migrations under `supabase/migrations/`.
+- [x] Required Reading: `web/client/src/fixtures/*.ts`, `web/client/src/routes/*` route files, `docs/design-docs/data-sources.md`, `docs/design-docs/first-real-data.md`, `docs/design-docs/prices-ingestion-schema.md`, all existing migrations under `supabase/migrations/`.
 - [x] Files: `docs/design-docs/schema-master-plan.md` (new — owns the table inventory and join map), updates to `docs/exec-plans/tech-debt-tracker.md`. **No** changes under `supabase/migrations/` in this PR.
 - [x] Acceptance: `schema-master-plan.md` documents the 4-tier layout, every fixture-only entity is mapped to a tier, every chart/analysis widget has a documented join path, the five open decision points (the original four plus a recorded answer for `user_settings` placement) have recorded answers, and migration order is fixed.
 - [x] Out Of Scope: writing migrations, seeding data, FastAPI endpoint changes, RLS policy SQL. Those land in the migration-slice PRs (0004…0011) after this plan is approved.
@@ -341,10 +341,10 @@ Each migration ships with RLS policies, grants, indexes, and `updated_at` trigge
   - `api/app/models/masters.py`, `api/app/models/reports.py`
   - `api/app/repos/masters.py`, `api/app/repos/reports.py`
   - `api/app/routes/masters.py`, `api/app/routes/reports.py`, `api/app/main.py`
-  - `web/src/lib/api-client.ts`, `web/src/lib/useMaster.ts`, `web/src/lib/useReport.ts`
-  - `web/src/routes/stocks/StockDetailPage.tsx`
-  - `web/src/routes/masters/MasterDetailPage.tsx`
-  - `web/src/routes/reports/ReportDetailPage.tsx`
+  - `web/client/src/lib/api-client.ts`, `web/client/src/lib/useMaster.ts`, `web/client/src/lib/useReport.ts`
+  - `web/client/src/routes/stocks/StockDetailPage.tsx`
+  - `web/client/src/routes/masters/MasterDetailPage.tsx`
+  - `web/client/src/routes/reports/ReportDetailPage.tsx`
 - [x] Acceptance: `cd web && npm run lint && npm run build` is clean; FastAPI imports without error and the new routes appear in `app.routes`. Each detail page renders correctly when the DB row is missing (fixture fallback with explicit source label) and prefers DB values when present.
 - [x] Out of scope: ingestion of masters/reports rows; financial-statement / consensus / filing data wiring (blocked on PR-21–PR-23 ingestion PRs).
 
@@ -361,8 +361,8 @@ Each migration ships with RLS policies, grants, indexes, and `updated_at` trigge
   - `api/app/settings.py` (new optional keys: `FINNHUB_API_KEY`, `NEWSAPI_KEY`, `FRED_API_KEY`, `SEC_USER_AGENT`).
   - `api/app/sources/finnhub.py`, `api/app/sources/sec.py`.
   - `api/app/routes/stocks_extra.py`, `api/app/main.py`.
-  - `web/src/lib/api-client.ts`, `web/src/lib/useStockExtras.ts`.
-  - `web/src/routes/stocks/sections/NewsSection.tsx`, `FilingsSection.tsx`, `ConsensusSection.tsx`, `FinancialsSection.tsx`, plus the matching StockDetailPage wiring.
+  - `web/client/src/lib/api-client.ts`, `web/client/src/lib/useStockExtras.ts`.
+  - `web/client/src/routes/stocks/sections/NewsSection.tsx`, `FilingsSection.tsx`, `ConsensusSection.tsx`, `FinancialsSection.tsx`, plus the matching StockDetailPage wiring.
   - `supabase/migrations/0013_masters_seed.sql`.
 - [x] Acceptance: `cd web && npm run lint && npm run build` clean. FastAPI registers `/v1/stocks/{symbol}/{news,profile,consensus,filings,financials}` and the existing endpoints still work. `supabase migration up --local` applies 0013 cleanly. Every wired section shows an explicit source label so the user can tell "Finnhub 라이브" from "fixture 표시" at a glance.
 - [x] Out of scope: persisted ingestion (write to `news_items`, `filings`, `filing_holdings`, `consensus_snapshots`, `financial_lines`); KR-side equivalents (DART, KRX); reports table seed; 13F holdings ingestion via SEC for the seeded masters; remote DB push of 0013 (requires `SUPABASE_ACCESS_TOKEN`).
@@ -391,7 +391,7 @@ Each migration ships with RLS policies, grants, indexes, and `updated_at` trigge
 
 - [x] Scope: Add FRED live-fetch macro endpoint and wire the dashboard indicator strip so it shows real Fed Funds / 10Y / CPI / unemployment / USD-KRW / VIX values instead of fixtures.
   - `api/app/sources/fred.py` + `/v1/macros/indicators` route.
-  - `web/src/lib/useMacros.ts` hook; `DashboardPage` translates FRED observations into the existing `MacroIndicator` fixture shape so `IndicatorStrip` renders live values with no UI rewrite.
+  - `web/client/src/lib/useMacros.ts` hook; `DashboardPage` translates FRED observations into the existing `MacroIndicator` fixture shape so `IndicatorStrip` renders live values with no UI rewrite.
 - [x] Out of scope (tracked as PR-32 through PR-34): ECOS (BOK rate / KOSPI macro), DART (KR filings → `filings` table), KRX (KOSPI/KOSDAQ price bars). Each requires its own auth shape + ingestion fixture and is best landed separately.
 
 ### PR-31 — Past-PR audit

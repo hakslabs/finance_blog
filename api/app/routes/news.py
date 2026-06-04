@@ -47,7 +47,7 @@ def _sb_headers(settings: Settings) -> Dict[str, str]:
 
 @router.get("", response_model=NewsResponse)
 async def list_news(
-    limit: int = Query(8, ge=1, le=50),
+    limit: int = Query(8, ge=1, le=100),
     settings: Settings = Depends(get_settings),
 ) -> NewsResponse:
     if not settings.supabase_url or not settings.supabase_service_role_key:

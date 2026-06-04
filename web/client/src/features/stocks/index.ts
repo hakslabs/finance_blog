@@ -4,4 +4,7 @@ export {
   useStock,
   useStockBars,
   useStockSearch,
+  useStockNews,
+  useStockConsensus,
+  useStockFilings,
 } from "./use-stocks";

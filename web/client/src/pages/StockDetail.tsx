@@ -6,7 +6,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "wouter";
 import { cn } from "@/lib/utils";
-import { useStocks, useStock, useStockBars } from "@/features/stocks";
+import {
+  useStocks,
+  useStock,
+  useStockBars,
+  useStockNews,
+  useStockConsensus,
+  useStockFilings,
+} from "@/features/stocks";
 import {
   stocksService,
   type StockFinancialPeriod,
@@ -639,7 +646,15 @@ export default function StockDetail() {
     );
   }
 
-  const TABS = ["차트 & 지표", "재무", "밸류에이션", "기술 신호"];
+  const TABS = [
+    "차트 & 지표",
+    "재무",
+    "밸류에이션",
+    "기술 신호",
+    "컨센서스",
+    "뉴스",
+    "공시",
+  ];
 
   return (
     <div className="space-y-5 animate-fade-in-up">
@@ -1056,6 +1071,352 @@ export default function StockDetail() {
             })}
           </div>
         </div>
+      )}
+
+      {/* ── Tab 4: Consensus ── */}
+      {activeTab === 4 && <ConsensusSection ticker={ticker} />}
+
+      {/* ── Tab 5: News ── */}
+      {activeTab === 5 && <StockNewsSection ticker={ticker} />}
+
+      {/* ── Tab 6: Filings ── */}
+      {activeTab === 6 && (
+        <FilingsSection ticker={ticker} isKR={stock.country === "KR"} />
+      )}
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Detail tab sections — live data from the stocks_extra endpoints.
+ * Restored after the StockDetail redesign dropped them (the endpoints
+ * always worked: consensus = AlphaVantage/Finnhub, news = Finnhub/DB,
+ * filings = SEC EDGAR (US) / DART (KR)).
+ * ────────────────────────────────────────────────────────────────────── */
+
+function SectionStatus({
+  loading,
+  error,
+  empty,
+  emptyText,
+  onRetry,
+}: {
+  loading: boolean;
+  error: unknown;
+  empty: boolean;
+  emptyText: string;
+  onRetry?: () => void;
+}) {
+  if (loading) {
+    return <div className="h-40 rounded-lg bg-muted/20 animate-pulse" />;
+  }
+  return (
+    <div className="h-40 flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border/70 bg-muted/10 px-4 text-center text-sm text-muted-foreground">
+      <span>{error ? "API 요청이 실패했습니다" : emptyText}</span>
+      {error != null && (
+        <span className="max-w-full truncate font-mono text-[10px] text-destructive">
+          {error instanceof Error ? error.message : String(error)}
+        </span>
+      )}
+      {onRetry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-1 inline-flex items-center gap-1 rounded border border-border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
+        >
+          <RefreshCw size={12} /> 다시 불러오기
+        </button>
+      )}
+    </div>
+  );
+}
+
+function fmtNewsTime(value?: string | null): string {
+  if (!value) return "";
+  const n = Number(value);
+  const d =
+    Number.isFinite(n) && String(value).length <= 13
+      ? new Date(n < 1e12 ? n * 1000 : n)
+      : new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value).slice(0, 16);
+  return d.toLocaleString("ko-KR", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function ConsensusSection({ ticker }: { ticker: string }) {
+  const { data, loading, error, refetch } = useStockConsensus(ticker);
+  const latest = data?.recommendations?.[0];
+  const pt = data?.price_target ?? null;
+  const total = latest
+    ? latest.strong_buy +
+      latest.buy +
+      latest.hold +
+      latest.sell +
+      latest.strong_sell
+    : 0;
+  const hasData = !!pt?.target_mean || total > 0;
+
+  if (loading || error || !hasData) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-card border border-border rounded-xl p-5">
+          <div className="mb-4 flex items-end justify-between">
+            <h2 className="text-base font-bold font-['Outfit']">
+              애널리스트 컨센서스
+            </h2>
+            <span className="text-[11px] text-muted-foreground font-mono">
+              /stocks/{ticker}/consensus
+            </span>
+          </div>
+          <SectionStatus
+            loading={loading}
+            error={error}
+            empty={!hasData}
+            emptyText="컨센서스 데이터가 아직 없습니다 (목표주가는 AlphaVantage 일일 쿼터로 채워집니다)"
+            onRetry={refetch}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  const buckets = [
+    { label: "강력매수", value: latest?.strong_buy ?? 0, color: "bg-up" },
+    { label: "매수", value: latest?.buy ?? 0, color: "bg-up/60" },
+    { label: "보유", value: latest?.hold ?? 0, color: "bg-gold/70" },
+    { label: "매도", value: latest?.sell ?? 0, color: "bg-down/60" },
+    { label: "강력매도", value: latest?.strong_sell ?? 0, color: "bg-down" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-card border border-border rounded-xl p-5">
+        <div className="mb-4 flex items-end justify-between">
+          <h2 className="text-base font-bold font-['Outfit']">목표주가</h2>
+          <span className="text-[11px] text-muted-foreground font-mono">
+            {pt?.number_of_analysts
+              ? `${pt.number_of_analysts}명 애널리스트`
+              : "AlphaVantage/Finnhub"}
+          </span>
+        </div>
+        {pt?.target_mean ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: "평균", value: pt.target_mean },
+              { label: "최고", value: pt.target_high },
+              { label: "최저", value: pt.target_low },
+              { label: "중앙값", value: pt.target_median },
+            ].map((t) => (
+              <div
+                key={t.label}
+                className="rounded-lg border border-border bg-muted/20 p-3 text-center"
+              >
+                <div className="text-xs text-muted-foreground">{t.label}</div>
+                <div className="text-lg font-bold font-mono-num mt-0.5">
+                  {t.value != null
+                    ? t.value.toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
+                      })
+                    : "—"}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-sm text-muted-foreground">
+            목표주가 데이터 없음 — 추천 분포만 제공됩니다.
+          </div>
+        )}
+      </div>
+
+      {total > 0 && (
+        <div className="bg-card border border-border rounded-xl p-5">
+          <div className="mb-4 flex items-end justify-between">
+            <h2 className="text-base font-bold font-['Outfit']">
+              투자의견 분포
+            </h2>
+            <span className="text-[11px] text-muted-foreground font-mono">
+              {latest?.period ? `기준 ${latest.period}` : "Finnhub"}
+            </span>
+          </div>
+          <div className="flex h-3 overflow-hidden rounded-full bg-muted/20 mb-3">
+            {buckets.map((b) =>
+              b.value > 0 ? (
+                <div
+                  key={b.label}
+                  className={cn(b.color)}
+                  style={{ width: `${(b.value / total) * 100}%` }}
+                  title={`${b.label} ${b.value}`}
+                />
+              ) : null,
+            )}
+          </div>
+          <div className="grid grid-cols-5 gap-2 text-center">
+            {buckets.map((b) => (
+              <div key={b.label}>
+                <div className="text-base font-bold font-mono-num">
+                  {b.value}
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  {b.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StockNewsSection({ ticker }: { ticker: string }) {
+  const { data, loading, error, refetch } = useStockNews(ticker, 20);
+  const items = data ?? [];
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-5">
+      <div className="mb-4 flex items-end justify-between">
+        <h2 className="text-base font-bold font-['Outfit']">종목 뉴스</h2>
+        <span className="text-[11px] text-muted-foreground font-mono">
+          {items.length > 0
+            ? `/stocks/${ticker}/news · ${items.length}건`
+            : "Finnhub / DB"}
+        </span>
+      </div>
+      {loading || error || items.length === 0 ? (
+        <SectionStatus
+          loading={loading}
+          error={error}
+          empty={items.length === 0}
+          emptyText="최근 종목 뉴스가 없습니다"
+          onRetry={refetch}
+        />
+      ) : (
+        <ul className="divide-y divide-border/60">
+          {items.map((n) => {
+            const inner = (
+              <div className="py-3 flex gap-3">
+                {n.image ? (
+                  <img
+                    src={n.image}
+                    alt=""
+                    loading="lazy"
+                    className="h-14 w-14 shrink-0 rounded-md object-cover bg-muted/30"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display =
+                        "none";
+                    }}
+                  />
+                ) : null}
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium leading-snug">
+                    {n.headline}
+                  </div>
+                  {n.summary ? (
+                    <div className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
+                      {n.summary}
+                    </div>
+                  ) : null}
+                  <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground font-mono">
+                    {n.source ? <span>{n.source}</span> : null}
+                    {n.datetime ? (
+                      <span>· {fmtNewsTime(n.datetime)}</span>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            );
+            return n.url ? (
+              <li key={n.id}>
+                <a
+                  href={n.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block rounded-lg px-1 transition-colors hover:bg-muted/20"
+                >
+                  {inner}
+                </a>
+              </li>
+            ) : (
+              <li key={n.id} className="px-1">
+                {inner}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function FilingsSection({ ticker, isKR }: { ticker: string; isKR: boolean }) {
+  const { data, loading, error, refetch } = useStockFilings(ticker, 20);
+  const items = data ?? [];
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-5">
+      <div className="mb-4 flex items-end justify-between">
+        <h2 className="text-base font-bold font-['Outfit']">
+          공시 {isKR ? "(DART)" : "(SEC EDGAR)"}
+        </h2>
+        <span className="text-[11px] text-muted-foreground font-mono">
+          {items.length > 0
+            ? `/stocks/${ticker}/filings · ${items.length}건`
+            : isKR
+              ? "DART 전자공시"
+              : "SEC EDGAR"}
+        </span>
+      </div>
+      {loading || error || items.length === 0 ? (
+        <SectionStatus
+          loading={loading}
+          error={error}
+          empty={items.length === 0}
+          emptyText={
+            isKR
+              ? "최근 DART 공시가 없습니다"
+              : "최근 SEC 공시가 없습니다 (US 종목은 .env의 SEC_USER_AGENT 필요)"
+          }
+          onRetry={refetch}
+        />
+      ) : (
+        <ul className="divide-y divide-border/60">
+          {items.map((f) => {
+            const inner = (
+              <div className="py-2.5 flex items-start gap-3">
+                <span className="mt-0.5 shrink-0 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-mono uppercase text-primary max-w-[120px] truncate">
+                  {f.form || "—"}
+                </span>
+                <span className="min-w-0 flex-1 text-sm text-foreground/90 truncate">
+                  {f.description || f.form || "—"}
+                </span>
+                <span className="shrink-0 text-xs text-muted-foreground font-mono-num">
+                  {f.filed_at ?? ""}
+                </span>
+              </div>
+            );
+            return f.url ? (
+              <li key={f.accession}>
+                <a
+                  href={f.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block rounded-lg px-1 transition-colors hover:bg-muted/20"
+                >
+                  {inner}
+                </a>
+              </li>
+            ) : (
+              <li key={f.accession} className="px-1">
+                {inner}
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );
