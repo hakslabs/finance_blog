@@ -12,5 +12,6 @@ export function useSectors(market: "US" | "KR") {
     () => sectorsService.list(market).then((r) => r.items),
     [market],
     [],
+    { refreshInterval: 600000 }, // 10min — Supabase sector_metrics (DB cache)
   );
 }

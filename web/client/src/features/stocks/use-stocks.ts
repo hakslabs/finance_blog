@@ -11,6 +11,8 @@ export function useStocks(market: "US" | "KR") {
   return useAsync(
     () => stocksService.list(market, 30).then((r) => r.items),
     [market],
+    null,
+    { refreshInterval: 300000 }, // 5min — /movers reads Supabase price_bars_daily
   );
 }
 

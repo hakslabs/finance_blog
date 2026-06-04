@@ -246,63 +246,67 @@ async def get_indices(
     if cached and (now - cached[0]) < _CACHE_TTL:
         return cached[1]
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        yahoo_task = _fetch_yahoo_batch(client)
-        finnhub_tasks = [
-            _fetch_finnhub(display, name, _PROXY_SYMBOL[display], market_group, settings)
-            for display, name, market_group in _DISPLAY
-            if display in _PROXY_SYMBOL
-        ]
-        usdkrw_task = _fetch_usdkrw(settings)
-        kr_tasks = [
-            _fetch_kr_index(display, next(n for s, n, _m in _DISPLAY if s == display),
-                            next(m for s, _n, m in _DISPLAY if s == display), settings, client)
-            for display in _YAHOO_SYMBOL  # iterates KOSPI, KOSDAQ
-            if display in ("KOSPI", "KOSDAQ")
-        ]
-        db_tasks = [
-            _fetch_db_proxy(display, name, _PROXY_SYMBOL[display], market_group, settings, client)
-            for display, name, market_group in _DISPLAY
-            if display in _PROXY_SYMBOL
-        ]
-        finnhub_items, usdkrw_item, kr_items, yahoo_quotes, db_items = await asyncio.gather(
-            asyncio.gather(*finnhub_tasks),
-            usdkrw_task,
-            asyncio.gather(*kr_tasks),
-            yahoo_task,
-            asyncio.gather(*db_tasks),
-        )
-
     by_symbol: Dict[str, IndexItem] = {}
 
-    for display, name, market_group in _DISPLAY:
-        yahoo_sym = _YAHOO_SYMBOL.get(display)
-        q = yahoo_quotes.get(yahoo_sym) if yahoo_sym else None
-        if q is not None:
-            by_symbol[display] = IndexItem(
-                symbol=display,
-                name=name,
-                value=q["price"],
-                change=q["change"],
-                change_pct=q["change_pct"],
-                market=market_group,
-                source="live",
-            )
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        # 1) Yahoo (free, unmetered) covers every display symbol in one batch.
+        yahoo_quotes = await _fetch_yahoo_batch(client)
+        for display, name, market_group in _DISPLAY:
+            yahoo_sym = _YAHOO_SYMBOL.get(display)
+            q = yahoo_quotes.get(yahoo_sym) if yahoo_sym else None
+            if q is not None:
+                by_symbol[display] = IndexItem(
+                    symbol=display,
+                    name=name,
+                    value=q["price"],
+                    change=q["change"],
+                    change_pct=q["change_pct"],
+                    market=market_group,
+                    source="live",
+                )
 
-    for item in finnhub_items:
-        if item is not None and item.symbol not in by_symbol:
-            by_symbol[item.symbol] = item
+        # 2) Only call metered/fallback providers for symbols Yahoo missed.
+        #    On the healthy path this is empty, so AlphaVantage (25/day),
+        #    Finnhub, and KRX quotas stay untouched and the dashboard can
+        #    poll on the free tier without exhausting them.
+        missing = [(d, n, m) for d, n, m in _DISPLAY if d not in by_symbol]
+        if missing:
+            fallback_tasks = []
+            for display, name, market_group in missing:
+                if display in ("KOSPI", "KOSDAQ"):
+                    fallback_tasks.append(
+                        _fetch_kr_index(display, name, market_group, settings, client)
+                    )
+                elif display == "USD/KRW":
+                    fallback_tasks.append(_fetch_usdkrw(settings))
+                elif display in _PROXY_SYMBOL:
+                    fallback_tasks.append(
+                        _fetch_finnhub(
+                            display, name, _PROXY_SYMBOL[display], market_group, settings
+                        )
+                    )
+            for item in await asyncio.gather(*fallback_tasks):
+                if item is not None and item.symbol not in by_symbol:
+                    by_symbol[item.symbol] = item
 
-    for item in kr_items:
-        if item is not None:
-            by_symbol[item.symbol] = item
-
-    if usdkrw_item is not None and usdkrw_item.symbol not in by_symbol:
-        by_symbol[usdkrw_item.symbol] = usdkrw_item
-
-    for item in db_items:
-        if item is not None and item.symbol not in by_symbol:
-            by_symbol[item.symbol] = item
+            # 3) Supabase DB proxy bars as the final fallback for the rest.
+            still_missing = [
+                (d, n, m)
+                for d, n, m in missing
+                if d not in by_symbol and d in _PROXY_SYMBOL
+            ]
+            if still_missing:
+                db_items = await asyncio.gather(
+                    *(
+                        _fetch_db_proxy(
+                            d, n, _PROXY_SYMBOL[d], m, settings, client
+                        )
+                        for d, n, m in still_missing
+                    )
+                )
+                for item in db_items:
+                    if item is not None and item.symbol not in by_symbol:
+                        by_symbol[item.symbol] = item
 
     items = [by_symbol[s] for s, _n, _m in _DISPLAY if s in by_symbol]
     response = IndicesResponse(

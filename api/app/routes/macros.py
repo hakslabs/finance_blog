@@ -11,7 +11,8 @@ empty payload so the page falls back gracefully.
 from __future__ import annotations
 
 import asyncio
-from typing import List, Optional
+import time
+from typing import List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -69,10 +70,22 @@ class IndicatorHistoryResponse(BaseModel):
     items: List[HistoryPoint]
 
 
+# Server-side cache: macro values change daily, so one upstream fetch per
+# 10 minutes is plenty. This lets the dashboard poll freely without spending
+# the FRED/ECOS free-tier budget on every browser request.
+_INDICATORS_TTL = 600.0
+_indicators_cache: Optional[Tuple[float, IndicatorsResponse]] = None
+
+
 @router.get("/indicators", response_model=IndicatorsResponse)
 async def list_indicators(
     settings: Settings = Depends(get_settings),
 ) -> IndicatorsResponse:
+    global _indicators_cache
+    now = time.monotonic()
+    if _indicators_cache and (now - _indicators_cache[0]) < _INDICATORS_TTL:
+        return _indicators_cache[1]
+
     results: List[Indicator] = []
 
     async def _fred(series_id: str, label: str, unit: str, country: str) -> Indicator:
@@ -105,7 +118,10 @@ async def list_indicators(
         results += list(await asyncio.gather(
             *(_ecos(stat, cycle, lbl, unit, item1) for stat, cycle, lbl, unit, item1 in ECOS_SERIES),
         ))
-    return IndicatorsResponse(indicators=results)
+    response = IndicatorsResponse(indicators=results)
+    if results:
+        _indicators_cache = (now, response)
+    return response
 
 
 @router.get("/indicators/{series_id}/history", response_model=IndicatorHistoryResponse)

@@ -15,5 +15,12 @@ export const fearGreedService = {
 };
 
 export function useFearGreed(market: "US" | "KR", days = 90) {
-  return useAsync(() => fearGreedService.get(market, days), [market, days]);
+  return useAsync(
+    () => fearGreedService.get(market, days),
+    [market, days],
+    null,
+    {
+      refreshInterval: 600000, // 10min — Supabase fear_greed_history (DB cache)
+    },
+  );
 }

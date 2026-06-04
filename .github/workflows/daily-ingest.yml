@@ -1,0 +1,45 @@
+name: Daily market-data ingest
+
+# Keeps the dashboard's daily bars / sentiment current on the free tier.
+# Replaces the unreliable Vercel Hobby cron with GitHub's (free) scheduler.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY   (write target)
+#   POLYGON_API_KEY                           (US daily bars)
+#   KRX_API_KEY                               (KR daily bars)
+# Optional: FINNHUB_API_KEY, FRED_API_KEY, SEC_USER_AGENT, ECOS_API_KEY.
+
+on:
+  schedule:
+    # 13:00 UTC daily (~22:00 KST / ~09:00 ET) — late enough that the previous
+    # US/KR session has been released on the free tiers. GitHub cron is
+    # best-effort; the script sweeps several days so a skipped run self-heals.
+    - cron: "0 13 * * *"
+  workflow_dispatch: {} # allow manual "Run workflow" from the Actions tab
+
+concurrency:
+  group: daily-ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    name: Refresh latest market data
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Run daily ingest
+        working-directory: api
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
+          KRX_API_KEY: ${{ secrets.KRX_API_KEY }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: uv run python scripts/daily_ingest.py

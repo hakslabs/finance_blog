@@ -69,6 +69,7 @@ export function useNews(params?: {
     () => newsService.list(params),
     [params?.category ?? "", params?.ticker ?? "", params?.limit ?? 50],
     { items: MARKET_NEWS, updatedAt: null as string | null },
+    { refreshInterval: 600000 }, // 10min — Supabase news_items (DB cache)
   );
   // During loading data is null — page should skeleton, not fall back
   // to the demo array. After fetch, if the server returned 0 items we

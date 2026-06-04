@@ -44,7 +44,12 @@ export const indicesService = {
 // During loading/error `data` is null so pages render skeleton/empty states
 // instead of silently mixing stale demo index numbers into market surfaces.
 export function useIndices() {
-  const r = useAsync(() => indicesService.list(), []);
+  // Gentle 5-min auto-refresh + revalidate-on-focus. Yahoo-backed (free,
+  // near-real-time) so the index strip reflects the current session without
+  // minute-by-minute churn. Not a metered free-tier API.
+  const r = useAsync(() => indicesService.list(), [], null, {
+    refreshInterval: 300000,
+  });
   const data = r.data?.items ?? null;
   const updatedAt = r.data?.updatedAt ?? null;
   return { ...r, data, updatedAt };

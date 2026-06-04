@@ -97,5 +97,7 @@ export const macroService = {
 };
 
 export function useMacroIndicators() {
-  return useAsync(() => macroService.list().then((r) => r.items), [], []);
+  return useAsync(() => macroService.list().then((r) => r.items), [], [], {
+    refreshInterval: 900000, // 15min — server caches FRED/ECOS; macros move slowly
+  });
 }
