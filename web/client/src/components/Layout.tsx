@@ -11,6 +11,7 @@ import { Link, useLocation } from "wouter";
 import { apiGet } from "@/lib/http";
 import { prefetchRoute } from "@/lib/route-prefetch";
 import { useIndices } from "@/features/indices";
+import { useDataStatus } from "@/features/market";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -133,6 +134,39 @@ function TickerBar() {
         )}
       </div>
     </div>
+  );
+}
+
+// Global data-freshness chip: which trading day the on-screen data reflects.
+// Free tiers are EOD/delayed, so this is usually the previous session (T-1/T-2).
+// The pulsing dot signals the dashboard auto-refreshes; clicking re-checks now.
+function DataFreshness() {
+  const { data, refetch } = useDataStatus();
+  const md = (d?: string | null) => (d ? d.slice(5) : "—"); // MM-DD
+  const title = data
+    ? `데이터 기준일 — US ${data.bars_latest_us ?? "—"} · KR ${
+        data.bars_latest_kr ?? "—"
+      } · 뉴스 ${data.news_latest ?? "—"}\n무료 티어는 EOD·지연이라 보통 직전 거래일(T-1~T-2) 기준입니다. 클릭 시 새로고침.`
+    : "데이터 기준일 확인 중…";
+  return (
+    <button
+      type="button"
+      onClick={() => refetch()}
+      title={title}
+      aria-label={title}
+      className="hidden md:flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-colors"
+    >
+      <span className="relative flex h-1.5 w-1.5">
+        <span className="absolute inline-flex h-full w-full rounded-full bg-up/70 animate-ping" />
+        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-up" />
+      </span>
+      <span className="text-[10px] text-muted-foreground leading-none">
+        기준일
+      </span>
+      <span className="font-mono text-[11px] text-foreground/90 leading-none">
+        US {md(data?.bars_latest_us)} · KR {md(data?.bars_latest_kr)}
+      </span>
+    </button>
   );
 }
 
@@ -875,7 +909,8 @@ function Header({ onMobileMenuOpen }: { onMobileMenuOpen: () => void }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1.5">
+        <DataFreshness />
         <ThemeToggle />
         {/* When signed in, slot the bookmark shortcut into the place
             the dark-mode toggle used to occupy (just left of the bell). */}

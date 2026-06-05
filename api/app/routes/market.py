@@ -12,7 +12,9 @@ Pure DB read against price_bars_daily + instruments.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+import time
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -47,6 +49,78 @@ def _sb_headers(settings: Settings) -> Dict[str, str]:
         "Authorization": f"Bearer {settings.supabase_service_role_key or ''}",
         "Accept": "application/json",
     }
+
+
+class DataStatusResponse(BaseModel):
+    """Freshness of the screen data — the latest trading day present in the DB.
+
+    Lets the UI show a global "데이터 기준일" so users see which session the
+    numbers reflect (free tiers are EOD/delayed, so this is usually T-1/T-2).
+    """
+
+    bars_latest_us: Optional[str] = None
+    bars_latest_kr: Optional[str] = None
+    news_latest: Optional[str] = None
+    as_of: str
+
+
+_STATUS_TTL = 60.0
+_status_cache: Optional[Tuple[float, DataStatusResponse]] = None
+
+
+@router.get("/data-status", response_model=DataStatusResponse)
+async def data_status(
+    settings: Settings = Depends(get_settings),
+) -> DataStatusResponse:
+    global _status_cache
+    now = time.monotonic()
+    if _status_cache and (now - _status_cache[0]) < _STATUS_TTL:
+        return _status_cache[1]
+
+    as_of = datetime.now(tz=timezone.utc).isoformat()
+    out = DataStatusResponse(as_of=as_of)
+
+    if settings.supabase_url and settings.supabase_service_role_key:
+        base = settings.supabase_url.rstrip("/")
+        headers = _sb_headers(settings)
+        async with httpx.AsyncClient(timeout=10.0, headers=headers) as client:
+
+            async def _latest_bar(country: str) -> Optional[str]:
+                r = await client.get(
+                    f"{base}/rest/v1/price_bars_daily",
+                    params={
+                        "select": "t,instruments!inner(country_code)",
+                        "instruments.country_code": f"eq.{country}",
+                        "order": "t.desc",
+                        "limit": "1",
+                    },
+                )
+                if r.status_code < 400 and r.json():
+                    return str(r.json()[0].get("t", ""))[:10] or None
+                return None
+
+            async def _latest_news() -> Optional[str]:
+                r = await client.get(
+                    f"{base}/rest/v1/news_items",
+                    params={
+                        "select": "published_at",
+                        "order": "published_at.desc",
+                        "limit": "1",
+                    },
+                )
+                if r.status_code < 400 and r.json():
+                    return str(r.json()[0].get("published_at", ""))[:10] or None
+                return None
+
+            out = DataStatusResponse(
+                bars_latest_us=await _latest_bar("US"),
+                bars_latest_kr=await _latest_bar("KR"),
+                news_latest=await _latest_news(),
+                as_of=as_of,
+            )
+
+    _status_cache = (now, out)
+    return out
 
 
 @router.get("/breadth", response_model=BreadthResponse)
