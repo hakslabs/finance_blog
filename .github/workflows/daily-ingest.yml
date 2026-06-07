@@ -36,6 +36,9 @@ jobs:
       - name: Run daily ingest
         working-directory: api
         env:
+          # `uv run python scripts/...` puts scripts/ (not the cwd) on sys.path,
+          # so the `app` package isn't importable without this.
+          PYTHONPATH: .
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
