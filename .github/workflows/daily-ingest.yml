@@ -33,6 +33,18 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
 
+      - name: Debug secret shape
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          python3 - <<'PY'
+          import os
+          u = os.environ.get("SUPABASE_URL", "")
+          print("len:", len(u))
+          print("scheme_prefix:", repr(u[:8]))
+          print("startswith_https:", u.startswith("https://"))
+          PY
+
       - name: Run daily ingest
         working-directory: api
         env:
