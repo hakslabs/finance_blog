@@ -87,7 +87,7 @@ async def main() -> int:
     for i, day in enumerate(days, start=1):
         try:
             result = await run(settings, target=day)
-            seen = result.get("symbols_seen", 0)
+            seen = result.get("universe_size", 0)
             rows = result.get("rows_written", 0)
             written += rows
             succeeded += 1
