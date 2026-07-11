@@ -160,3 +160,42 @@ def test_indices_fall_back_to_db_proxy_bars(
             "source": "db",
         },
     ]
+
+
+def test_index_with_only_one_bar_does_not_claim_flat_change(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    from app.routes import indices
+
+    async def empty_quotes(symbols: List[str], client: Any = None):
+        del symbols, client
+        return {}
+
+    async def no_finnhub(*args: Any, **kwargs: Any):
+        del args, kwargs
+        return None
+
+    async def no_usdkrw(*args: Any, **kwargs: Any):
+        del args, kwargs
+        return None
+
+    indices._cache.clear()
+    _FakeAsyncClient.instruments = {"SPY": [{"id": "inst-spy"}]}
+    _FakeAsyncClient.bars = {"inst-spy": [{"t": "2026-05-22", "c": 620.0}]}
+    monkeypatch.setattr(indices.httpx, "AsyncClient", _FakeAsyncClient)
+    monkeypatch.setattr(indices.yahoo, "fetch_quotes", empty_quotes)
+    monkeypatch.setattr(indices, "_fetch_finnhub", no_finnhub)
+    monkeypatch.setattr(indices, "_fetch_usdkrw", no_usdkrw)
+    app.dependency_overrides[get_settings] = _settings_with_supabase
+    try:
+        response = client.get("/v1/market/indices")
+    finally:
+        app.dependency_overrides.pop(get_settings, None)
+        indices._cache.clear()
+
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["value"] == 620.0
+    assert item["change"] is None
+    assert item["change_pct"] is None

@@ -14,6 +14,7 @@ Cached 60s in-process so a popular dashboard burst doesn't trigger rate limits.
 from __future__ import annotations
 
 import asyncio
+import math
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
@@ -73,8 +74,8 @@ class IndexItem(BaseModel):
     symbol: str
     name: str
     value: float
-    change: float
-    change_pct: float
+    change: Optional[float] = None
+    change_pct: Optional[float] = None
     market: str
     source: str  # "live" | "db"
 
@@ -82,6 +83,14 @@ class IndexItem(BaseModel):
 class IndicesResponse(BaseModel):
     items: List[IndexItem]
     updated_at: str
+
+
+def _finite_number(value: Any) -> Optional[float]:
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return None
+    return result if math.isfinite(result) else None
 
 
 async def _fetch_finnhub(
@@ -94,12 +103,20 @@ async def _fetch_finnhub(
     q = await finnhub.fetch_quote(proxy, settings.finnhub_api_key)
     if not q:
         return None
-    value = float(q.get("c") or 0.0)
-    previous = float(q.get("pc") or 0.0)
-    if value <= 0:
+    value = _finite_number(q.get("c"))
+    previous = _finite_number(q.get("pc"))
+    if value is None or value <= 0:
         return None
-    change = value - previous if previous > 0 else float(q.get("d") or 0.0)
-    change_pct = (change / previous) * 100.0 if previous > 0 else float(q.get("dp") or 0.0)
+    change = (
+        value - previous
+        if previous is not None and previous > 0
+        else _finite_number(q.get("d"))
+    )
+    change_pct = (
+        (change / previous) * 100.0
+        if change is not None and previous is not None and previous > 0
+        else _finite_number(q.get("dp"))
+    )
     return IndexItem(
         symbol=display, name=f"{name} ({proxy})",
         value=value, change=change, change_pct=change_pct,
@@ -119,7 +136,7 @@ async def _fetch_usdkrw(settings: Settings) -> Optional[IndexItem]:
     rate = r["rate"]
     return IndexItem(
         symbol="USD/KRW", name=name,
-        value=rate, change=0.0, change_pct=0.0,
+        value=rate, change=None, change_pct=None,
         market=market_group, source="live",
     )
 
@@ -220,12 +237,16 @@ async def _fetch_db_proxy(
     rows = [latest_by_date[d] for d in sorted(latest_by_date.keys(), reverse=True)[:2]]
     if not rows:
         return None
-    latest = float(rows[0]["c"])
-    previous = float(rows[1]["c"]) if len(rows) > 1 else 0.0
-    if latest <= 0:
+    latest = _finite_number(rows[0].get("c"))
+    previous = _finite_number(rows[1].get("c")) if len(rows) > 1 else None
+    if latest is None or latest <= 0:
         return None
-    change = latest - previous if previous > 0 else 0.0
-    change_pct = (change / previous) * 100.0 if previous > 0 else 0.0
+    change = latest - previous if previous is not None and previous > 0 else None
+    change_pct = (
+        (change / previous) * 100.0
+        if change is not None and previous is not None and previous > 0
+        else None
+    )
     return IndexItem(
         symbol=display,
         name=f"{name} ({proxy})",
@@ -259,8 +280,8 @@ async def get_indices(
                     symbol=display,
                     name=name,
                     value=q["price"],
-                    change=q["change"],
-                    change_pct=q["change_pct"],
+                    change=q.get("change"),
+                    change_pct=q.get("change_pct"),
                     market=market_group,
                     source="live",
                 )

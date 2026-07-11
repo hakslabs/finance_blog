@@ -68,11 +68,13 @@ const NAV_ITEMS = [
 ];
 
 function TickerBar() {
-  const { data: indices } = useIndices();
+  const { data: indices, loading, error } = useIndices();
   const tickerItems =
     indices?.map((item) => {
-      const up = item.change > 0;
-      const flat = item.change === 0;
+      const changePct = item.changePct;
+      const changeAvailable = changePct != null && Number.isFinite(changePct);
+      const up = changeAvailable && changePct > 0;
+      const flat = changeAvailable && changePct === 0;
       return {
         symbol: item.symbol,
         value:
@@ -83,7 +85,10 @@ function TickerBar() {
             : item.value.toLocaleString(undefined, {
                 maximumFractionDigits: item.value >= 1000 ? 1 : 2,
               }),
-        change: `${item.changePct > 0 ? "+" : ""}${item.changePct.toFixed(2)}%`,
+        change: changeAvailable
+          ? `${changePct > 0 ? "+" : ""}${changePct.toFixed(2)}%`
+          : "등락 미제공",
+        changeAvailable,
         up,
         flat,
       };
@@ -110,18 +115,20 @@ function TickerBar() {
               <span
                 className={cn(
                   "font-mono font-medium flex items-center gap-0.5",
-                  item.flat
+                  !item.changeAvailable || item.flat
                     ? "text-muted-foreground"
                     : item.up
                       ? "text-up"
                       : "text-down",
                 )}
               >
-                {item.up || item.flat ? (
-                  <TrendingUp size={10} />
-                ) : (
-                  <TrendingDown size={10} />
-                )}
+                {item.changeAvailable ? (
+                  item.up || item.flat ? (
+                    <TrendingUp size={10} />
+                  ) : (
+                    <TrendingDown size={10} />
+                  )
+                ) : null}
                 {item.change}
               </span>
               <span className="text-border mx-1">|</span>
@@ -129,7 +136,12 @@ function TickerBar() {
           ))
         ) : (
           <span className="inline-flex items-center gap-2 px-4 text-xs text-muted-foreground">
-            <Activity size={12} /> 시장 데이터를 불러오는 중
+            <Activity size={12} />
+            {loading
+              ? "시장 데이터를 불러오는 중"
+              : error
+                ? "시장 데이터를 불러오지 못했습니다"
+                : "표시할 시장 지수가 없습니다"}
           </span>
         )}
       </div>

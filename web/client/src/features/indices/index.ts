@@ -8,22 +8,33 @@ type BackendIndex = {
   symbol: string;
   name: string;
   value: number;
-  change: number;
-  change_pct: number;
+  change: number | null;
+  change_pct: number | null;
   market: MarketIndex["market"];
   source: "live" | "db";
 };
 
 function adapt(b: BackendIndex): MarketIndex {
+  const change =
+    b.change != null && Number.isFinite(b.change) ? b.change : null;
+  const changePct =
+    b.change_pct != null && Number.isFinite(b.change_pct) ? b.change_pct : null;
   return {
     symbol: b.symbol,
     name: b.name,
     value: b.value,
-    change: b.change,
-    changePct: b.change_pct,
+    change,
+    changePct,
     market: b.market,
     source: b.source,
-    trend: b.change > 0 ? "up" : b.change < 0 ? "down" : "flat",
+    trend:
+      change == null
+        ? undefined
+        : change > 0
+          ? "up"
+          : change < 0
+            ? "down"
+            : "flat",
   };
 }
 

@@ -10,13 +10,14 @@ Used by the dashboard indices endpoint because:
 
 Risk: it's an undocumented endpoint. Yahoo can change/break it without
 notice. We always send a desktop User-Agent (anonymous calls 401 with
-default httpx UA) and the indices route falls back to mock values when
-Yahoo errors so the dashboard never goes blank.
+default httpx UA). When every source fails, the indices route omits the
+affected item so the UI can render an explicit unavailable state.
 """
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
+import math
+from typing import Any, Dict, List, Optional
 
 import httpx
 
@@ -39,9 +40,17 @@ class YahooError(Exception):
     malformed JSON. Callers handle this by falling back to mock values."""
 
 
+def _finite_number(value: Any) -> Optional[float]:
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        return None
+    return result if math.isfinite(result) else None
+
+
 async def fetch_quotes(
     symbols: List[str], client: Optional[httpx.AsyncClient] = None,
-) -> Dict[str, Dict[str, float]]:
+) -> Dict[str, Dict[str, Optional[float]]]:
     """Fetch latest quotes for `symbols` in one call.
 
     Returns a {symbol → {price, change, change_pct, time}} dict.
@@ -72,16 +81,16 @@ async def fetch_quotes(
             await http.aclose()
 
     result = (payload.get("quoteResponse") or {}).get("result") or []
-    out: Dict[str, Dict[str, float]] = {}
+    out: Dict[str, Dict[str, Optional[float]]] = {}
     for row in result:
         sym = row.get("symbol")
-        price = row.get("regularMarketPrice")
+        price = _finite_number(row.get("regularMarketPrice"))
         if not sym or price is None:
             continue
         out[sym] = {
-            "price": float(price),
-            "change": float(row.get("regularMarketChange") or 0.0),
-            "change_pct": float(row.get("regularMarketChangePercent") or 0.0),
-            "time": float(row.get("regularMarketTime") or 0),
+            "price": price,
+            "change": _finite_number(row.get("regularMarketChange")),
+            "change_pct": _finite_number(row.get("regularMarketChangePercent")),
+            "time": _finite_number(row.get("regularMarketTime")),
         }
     return out

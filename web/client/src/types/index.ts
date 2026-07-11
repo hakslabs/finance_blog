@@ -9,8 +9,8 @@ export interface MarketIndex {
   symbol: string;
   name: string;
   value: number;
-  change: number;
-  changePct: number;
+  change: number | null;
+  changePct: number | null;
   market: "KR" | "US" | "FX" | "COMM" | "VOL" | "CRYPTO";
   source?: "live" | "db" | "mock";
   trend?: "up" | "down" | "flat";
