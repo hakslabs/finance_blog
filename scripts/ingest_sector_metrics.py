@@ -18,7 +18,7 @@ from __future__ import annotations
 import json
 import os
 import sys
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -135,6 +135,30 @@ def _pct_change(closes: List[Tuple[str, float]], lookback: int) -> Optional[floa
     return (latest / past - 1.0) * 100.0
 
 
+def _pct_change_by_calendar_days(
+    closes: List[Tuple[str, float]], days: int, *, tolerance_days: int = 7
+) -> Optional[float]:
+    """Return a calendar-period change using the nearest valid trading day.
+
+    A one-year interval spans a variable number of trading sessions. Using a
+    fixed 252-bar offset drops a valid result whenever an API window starts a
+    day after the exact anniversary, so accept the nearest trading close in a
+    one-week window around the target date.
+    """
+    if len(closes) < 2:
+        return None
+    try:
+        latest_date = date.fromisoformat(closes[-1][0][:10])
+        dated = [(date.fromisoformat(t[:10]), close) for t, close in closes[:-1]]
+    except ValueError:
+        return None
+    target = latest_date - timedelta(days=days)
+    past_date, past = min(dated, key=lambda row: abs((row[0] - target).days))
+    if abs((past_date - target).days) > tolerance_days or past <= 0:
+        return None
+    return (closes[-1][1] / past - 1.0) * 100.0
+
+
 def _money_flow(rank_change: int) -> str:
     if rank_change > 1:
         return "outflow"   # 순위 떨어짐
@@ -181,30 +205,47 @@ def _compute_rotation_us(
 ) -> List[Dict[str, Any]]:
     today = date.today()
     rows: List[Dict[str, Any]] = []
-    metrics: List[Tuple[str, Optional[float], Optional[float], Optional[float], Optional[float], str]] = []
+    metrics: List[
+        Tuple[
+            str,
+            Optional[float],
+            Optional[float],
+            Optional[float],
+            Optional[float],
+            Optional[float],
+            str,
+        ]
+    ] = []
 
     for sector, gics_labels in US_SECTORS_GROUPED:
         member_ids = _list_instruments_by_sector(client, base, headers, gics_labels)
         if not member_ids:
             print(f"  ! {sector}: no members under {gics_labels}", file=sys.stderr)
             continue
-        rds, rws, rms, rqs = [], [], [], []
+        rds, rws, rms, rqs, rys = [], [], [], [], []
         # Sample up to 30 members per sector to keep the script under
         # a minute. Polygon-ingested bars vary in depth per ticker;
         # we just drop missing closes per metric.
         for inst_id in member_ids[:30]:
-            closes = _last_n_closes(client, base, headers, inst_id, 70)
+            closes = _last_n_closes(client, base, headers, inst_id, 300)
             if len(closes) < 2:
                 continue
             rds.append(_pct_change(closes, 1))
             rws.append(_pct_change(closes, 5))
             rms.append(_pct_change(closes, 22))
             rqs.append(_pct_change(closes, 66))
-        rd, rw, rm, rq = _avg_pct(rds), _avg_pct(rws), _avg_pct(rms), _avg_pct(rqs)
+            rys.append(_pct_change_by_calendar_days(closes, 365))
+        rd, rw, rm, rq, ry = (
+            _avg_pct(rds),
+            _avg_pct(rws),
+            _avg_pct(rms),
+            _avg_pct(rqs),
+            _avg_pct(rys),
+        )
         if rd is None and rw is None and rm is None:
             print(f"  ! {sector}: no bars for any of {len(member_ids)} members", file=sys.stderr)
             continue
-        metrics.append((sector, rd, rw, rm, rq, ",".join(gics_labels[:1])))
+        metrics.append((sector, rd, rw, rm, rq, ry, ",".join(gics_labels[:1])))
 
     # Rank by month return (lower index = better).
     sorted_by_month = sorted(
@@ -226,7 +267,7 @@ def _compute_rotation_us(
         prev = rank_by_sector[m[0]]
         rank_by_sector[m[0]] = (prev[0], prev[1], i)
 
-    for sector, rd, rw, rm, rq, etf in metrics:
+    for sector, rd, rw, rm, rq, ry, etf in metrics:
         rd_rank, rw_rank, rm_rank = rank_by_sector[sector]
         rows.append({
             "sector": sector,
@@ -236,6 +277,7 @@ def _compute_rotation_us(
             "return_week": rw,
             "return_month": rm,
             "return_quarter": rq,
+            "return_year": ry,
             "rank_day": rd_rank,
             "rank_week": rw_rank,
             "rank_month": rm_rank,
@@ -253,21 +295,30 @@ def _compute_rotation_kr(
     rows: List[Dict[str, Any]] = []
     metrics = []
     for sector, syms in KR_SECTORS:
-        rds, rws, rms, rqs = [], [], [], []
+        rds, rws, rms, rqs, rys = [], [], [], [], []
         for sym in syms:
             # KR instruments are stored with suffix in seed (.KS / .KQ).
             for candidate in (f"{sym}.KS", f"{sym}.KQ", sym):
                 inst_id = _resolve_instrument_id(client, base, headers, candidate)
                 if inst_id:
-                    closes = _last_n_closes(client, base, headers, inst_id, 70)
+                    closes = _last_n_closes(client, base, headers, inst_id, 300)
                     if closes:
                         rds.append(_pct_change(closes, 1))
                         rws.append(_pct_change(closes, 5))
                         rms.append(_pct_change(closes, 22))
                         rqs.append(_pct_change(closes, 66))
+                        rys.append(_pct_change_by_calendar_days(closes, 365))
                     break
-        avg = lambda L: sum(v for v in L if v is not None) / max(len([v for v in L if v is not None]), 1) if any(L) else None  # noqa: E731
-        metrics.append((sector, avg(rds), avg(rws), avg(rms), avg(rqs)))
+        metrics.append(
+            (
+                sector,
+                _avg_pct(rds),
+                _avg_pct(rws),
+                _avg_pct(rms),
+                _avg_pct(rqs),
+                _avg_pct(rys),
+            )
+        )
 
     sorted_d = sorted(metrics, key=lambda x: (x[1] if x[1] is not None else -9999), reverse=True)
     sorted_w = sorted(metrics, key=lambda x: (x[2] if x[2] is not None else -9999), reverse=True)
@@ -283,7 +334,7 @@ def _compute_rotation_kr(
         prev = rank_by_sector[m[0]]
         rank_by_sector[m[0]] = (prev[0], prev[1], i)
 
-    for sector, rd, rw, rm, rq in metrics:
+    for sector, rd, rw, rm, rq, ry in metrics:
         rd_rank, rw_rank, rm_rank = rank_by_sector[sector]
         rows.append({
             "sector": sector,
@@ -293,6 +344,7 @@ def _compute_rotation_kr(
             "return_week": rw,
             "return_month": rm,
             "return_quarter": rq,
+            "return_year": ry,
             "rank_day": rd_rank,
             "rank_week": rw_rank,
             "rank_month": rm_rank,
