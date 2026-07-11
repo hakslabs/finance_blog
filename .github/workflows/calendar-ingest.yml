@@ -1,6 +1,6 @@
 name: Calendar data ingest
 
-# Keeps the dashboard calendar populated with upcoming US macro releases and
+# Keeps the dashboard calendar populated with upcoming macro releases and
 # dividend ex-dates. Both scripts are idempotent Supabase upserts.
 on:
   schedule:
@@ -38,8 +38,8 @@ jobs:
           PYTHONPATH: .
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
           POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
         run: |
-          uv run python ../scripts/ingest_fred_macro_releases.py --weeks-ahead "${{ inputs.weeks_ahead || '12' }}"
+          uv run python ../scripts/ingest_finnhub_macro.py --weeks-ahead "${{ inputs.weeks_ahead || '12' }}"
           uv run python ../scripts/ingest_polygon_dividends.py --weeks-ahead "${{ inputs.weeks_ahead || '12' }}"
