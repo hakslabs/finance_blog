@@ -24,12 +24,14 @@ from app.settings import get_settings
 from app.jobs import refresh_us_daily, refresh_kr_daily, ingest_fear_greed
 
 
-async def _safe(name: str, coro: Awaitable) -> None:
+async def _safe(name: str, coro: Awaitable) -> bool:
     try:
         result = await coro
         print(f"[ok]   {name}: {result}")
+        return True
     except Exception as exc:  # noqa: BLE001 — log and continue; one source failing
         print(f"[fail] {name}: {exc!r}")
+        return False
 
 
 def _recent_business_days(n: int) -> list[date]:
@@ -45,6 +47,7 @@ def _recent_business_days(n: int) -> list[date]:
 
 async def main() -> None:
     settings = get_settings()
+    failed: list[str] = []
 
     # US daily bars — sweep recent business days; Polygon free is delayed, so
     # this catches each day as soon as it is released. ~13s spacing keeps us
@@ -52,13 +55,21 @@ async def main() -> None:
     for i, day in enumerate(_recent_business_days(4)):
         if i:
             await asyncio.sleep(13)
-        await _safe(f"us_daily {day}", refresh_us_daily.run(settings, target=day))
+        if not await _safe(
+            f"us_daily {day}", refresh_us_daily.run(settings, target=day)
+        ):
+            failed.append(f"us_daily {day}")
 
     # KR daily bars — KRX EOD endpoint picks the latest published session.
-    await _safe("kr_daily", refresh_kr_daily.run(settings))
+    if not await _safe("kr_daily", refresh_kr_daily.run(settings)):
+        failed.append("kr_daily")
 
     # CNN Fear & Greed history (free, unmetered).
-    await _safe("fear_greed", ingest_fear_greed.run())
+    if not await _safe("fear_greed", ingest_fear_greed.run()):
+        failed.append("fear_greed")
+
+    if failed:
+        raise SystemExit(f"daily ingest failed: {', '.join(failed)}")
 
 
 if __name__ == "__main__":

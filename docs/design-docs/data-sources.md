@@ -45,6 +45,8 @@ Decision table for every external data domain Finance_lab depends on. Each row p
 - Signup: KRX membership + API key request. Free, key is approved within ~1 business day in most cases.
 - Endpoints we need:
   - 주식 시세 (KOSPI/KOSDAQ 일별 시세) — for KOSPI 200 daily OHLCV.
+  - ETF 일별매매정보 (`etp/etf_bydd_trd`) — for KODEX 200 and other KR ETF
+    benchmark series used by comparison charts.
   - 지수 구성종목 (KOSPI 200 구성종목 리스트) — for universe membership.
 - Cron pattern: one call per index (`KOSPI200`) returns all 200 constituents' EOD bars for the target date. Daily cron is **1–2 API calls covering all 200 KR symbols**.
 - Apply for the key **now**, in parallel with everything else, because of the 1-day approval.

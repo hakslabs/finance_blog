@@ -68,7 +68,10 @@ async def run(
         raise IngestionError("supabase config missing")
 
     instruments = await _fetch_kr_instruments(settings)
-    bars = await krx.fetch_kospi_daily(settings.krx_api_key, target=target)
+    try:
+        bars = await krx.fetch_kr_daily(settings.krx_api_key, target=target)
+    except krx.KrxError as exc:
+        raise IngestionError(str(exc)) from exc
 
     rows: List[Dict[str, Any]] = []
     for bar in bars:
@@ -86,7 +89,7 @@ async def run(
         )
     await _upsert_bars(settings, rows)
     return {
-        "target_date": bars[0]["date"] if bars else None,
+        "target_date": bars[0]["date"] if bars else (target.isoformat() if target else None),
         "universe_size": len(bars),
         "rows_written": len(rows),
     }

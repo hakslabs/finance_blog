@@ -1,0 +1,34 @@
+name: Backfill KR daily bars
+
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: "First KR trading date to backfill (YYYY-MM-DD)"
+        required: true
+        default: "2026-05-23"
+        type: string
+
+concurrency:
+  group: kr-backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    name: Backfill KR daily bars
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Backfill Korean stocks and ETFs
+        working-directory: api
+        env:
+          PYTHONPATH: .
+          APP_ENV: prod
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          KRX_API_KEY: ${{ secrets.KRX_API_KEY }}
+        run: uv run python ../scripts/backfill_kr_ytd.py --start "${{ inputs.start }}"

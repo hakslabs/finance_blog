@@ -83,6 +83,7 @@ async def main() -> int:
     succeeded = 0
     written = 0
     skipped_empty = 0
+    failed = 0
     for i, day in enumerate(days, start=1):
         try:
             result = await run(settings, target=day)
@@ -94,13 +95,18 @@ async def main() -> int:
                 skipped_empty += 1
             print(f"  [{i}/{len(days)}] {day}: seen={seen}, written={rows}")
         except IngestionError as exc:
+            failed += 1
             print(f"  [{i}/{len(days)}] {day}: FAILED — {exc}", file=sys.stderr)
         except Exception as exc:  # noqa: BLE001
+            failed += 1
             print(f"  [{i}/{len(days)}] {day}: UNCAUGHT — {exc!r}", file=sys.stderr)
         await asyncio.sleep(SLEEP_BETWEEN_CALLS_S)
 
-    print(f"Done. {succeeded}/{len(days)} succeeded, {skipped_empty} empty, {written} rows total")
-    return 0
+    print(
+        f"Done. {succeeded}/{len(days)} succeeded, {skipped_empty} empty, "
+        f"{failed} failed, {written} rows total"
+    )
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

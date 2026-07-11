@@ -10,6 +10,7 @@ Header: AUTH_KEY. Use the KRX_API_KEY env value.
 
 from __future__ import annotations
 
+import asyncio
 from datetime import date, timedelta
 from typing import Any, Dict, List, Optional
 
@@ -18,11 +19,13 @@ from fastapi import HTTPException
 
 
 BASE_URL = "https://data-dbg.krx.co.kr/svc/apis/sto"
+ETP_BASE_URL = "https://data-dbg.krx.co.kr/svc/apis/etp"
 INDEX_BASE_URL = "https://data-dbg.krx.co.kr/svc/apis/idx"
+_RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
 
 
 class KrxError(Exception):
-    """Network or shape failure. Callers fall back to mock."""
+    """Network or shape failure from the official KRX OpenAPI."""
 
 
 def _to_float(s: Optional[str]) -> Optional[float]:
@@ -108,7 +111,10 @@ def _last_weekday(d: date) -> date:
 
 
 async def fetch_kospi_daily(
-    api_key: str, target: Optional[date] = None
+    api_key: str,
+    target: Optional[date] = None,
+    *,
+    client: Optional[httpx.AsyncClient] = None,
 ) -> List[Dict[str, Any]]:
     """Return daily bars for the KOSPI universe on `target` (defaults to
     the most recent settled trading day, which is D-2 from today —
@@ -116,22 +122,94 @@ async def fetch_kospi_daily(
     partial). Empty list on holidays / weekends.
     """
     target_date = _last_weekday(target or date.today() - timedelta(days=2))
-    headers = {"AUTH_KEY": api_key}
+    rows = await _fetch_daily_rows(
+        f"{BASE_URL}/stk_bydd_trd", api_key, target_date, client=client
+    )
+    return _parse_ohlcv_rows(rows, target_date, allowed_markets={"KOSPI", "KOSDAQ"})
+
+
+async def fetch_etf_daily(
+    api_key: str,
+    target: Optional[date] = None,
+    *,
+    client: Optional[httpx.AsyncClient] = None,
+) -> List[Dict[str, Any]]:
+    """Return KRX-listed ETF daily OHLCV for ``target``.
+
+    The stock endpoint does not include ETFs, but dashboard market comparison
+    uses KODEX 200 (069500.KS). Keep it in the same EOD ingest path so its
+    comparison series cannot silently become older than the stock universe.
+    """
+    target_date = _last_weekday(target or date.today() - timedelta(days=2))
+    rows = await _fetch_daily_rows(
+        f"{ETP_BASE_URL}/etf_bydd_trd", api_key, target_date, client=client
+    )
+    return _parse_ohlcv_rows(rows, target_date)
+
+
+async def fetch_kr_daily(
+    api_key: str,
+    target: Optional[date] = None,
+) -> List[Dict[str, Any]]:
+    """Return all tracked KRX stocks plus ETFs for one trading day."""
+    stocks, etfs = await asyncio.gather(
+        fetch_kospi_daily(api_key, target=target),
+        fetch_etf_daily(api_key, target=target),
+    )
+    return [*stocks, *etfs]
+
+
+async def _fetch_daily_rows(
+    url: str,
+    api_key: str,
+    target_date: date,
+    *,
+    client: Optional[httpx.AsyncClient] = None,
+) -> List[Dict[str, Any]]:
+    headers = {"AUTH_KEY": api_key.strip()}
     params = {"basDd": target_date.strftime("%Y%m%d")}
-    url = f"{BASE_URL}/stk_bydd_trd"
+    own_client = client is None
+    http = client or httpx.AsyncClient(timeout=15.0, headers=headers)
     try:
-        async with httpx.AsyncClient(timeout=15.0, headers=headers) as client:
-            resp = await client.get(url, params=params)
-    except httpx.HTTPError as exc:
-        raise HTTPException(status_code=503, detail="upstream_unavailable") from exc
-    if resp.status_code >= 400:
-        raise HTTPException(status_code=503, detail="upstream_unavailable")
-    body = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
-    rows = body.get("OutBlock_1") or []
+        for attempt in range(3):
+            try:
+                response = await http.get(url, params=params, headers=headers)
+            except httpx.HTTPError as exc:
+                if attempt < 2:
+                    await asyncio.sleep(attempt + 1)
+                    continue
+                raise KrxError(f"KRX network error for {url}: {exc}") from exc
+            if response.status_code == 200:
+                try:
+                    body = response.json()
+                except ValueError as exc:
+                    raise KrxError(f"KRX invalid JSON for {url}") from exc
+                return body.get("OutBlock_1") or []
+            if response.status_code in _RETRYABLE_STATUS_CODES and attempt < 2:
+                await asyncio.sleep(attempt + 1)
+                continue
+            raise KrxError(f"KRX HTTP {response.status_code} for {url}")
+    finally:
+        if own_client:
+            await http.aclose()
+    raise AssertionError("unreachable")
+
+
+def _parse_ohlcv_rows(
+    rows: List[Dict[str, Any]],
+    target_date: date,
+    *,
+    allowed_markets: Optional[set[str]] = None,
+) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
     for r in rows:
-        if r.get("MKT_NM") not in ("KOSPI", "KOSDAQ"):
+        if allowed_markets is not None and r.get("MKT_NM") not in allowed_markets:
             continue
+        code = str(r.get("ISU_CD") or "").strip()
+        if not code:
+            continue
+        if code.isdigit():
+            code = code.zfill(6)
         try:
             o = float((r.get("TDD_OPNPRC") or "0").replace(",", ""))
             h = float((r.get("TDD_HGPRC") or "0").replace(",", ""))
@@ -142,9 +220,8 @@ async def fetch_kospi_daily(
             continue
         if c <= 0 or o <= 0:
             continue
-        # KRX 6-digit code → ".KS"/".KQ" exchange suffix matching our seed.
-        code = r.get("ISU_CD", "").strip()
-        suffix = ".KS" if r.get("MKT_NM") == "KOSPI" else ".KQ"
+        # KRX ETF and KOSPI codes use the .KS suffix. KOSDAQ uses .KQ.
+        suffix = ".KQ" if r.get("MKT_NM") == "KOSDAQ" else ".KS"
         out.append(
             {
                 "symbol": f"{code}{suffix}",
