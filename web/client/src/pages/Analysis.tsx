@@ -459,9 +459,21 @@ function PctBadge({
   value,
   size = "sm",
 }: {
-  value: number;
+  value: number | null | undefined;
   size?: "xs" | "sm";
 }) {
+  if (value == null || !Number.isFinite(value)) {
+    return (
+      <span
+        className={cn(
+          "inline-flex font-mono-num font-medium rounded text-muted-foreground bg-muted/30",
+          size === "xs" ? "text-[10px] px-1 py-0" : "text-xs px-1.5 py-0.5",
+        )}
+      >
+        —
+      </span>
+    );
+  }
   const up = value >= 0;
   return (
     <span
@@ -1158,18 +1170,18 @@ function SectorRotationPanel() {
   const sectors = (liveSectors ?? []) as any[];
   const PERIODS: SectorPeriod[] = ["당일", "주간", "월간", "분기", "연간"];
 
-  const getReturn = (s: (typeof sectors)[0]) => {
+  const getReturn = (s: (typeof sectors)[0]): number | null => {
     switch (period) {
       case "당일":
-        return s.returnDay;
+        return Number.isFinite(s.returnDay) ? s.returnDay : null;
       case "주간":
-        return s.returnWeek;
+        return Number.isFinite(s.returnWeek) ? s.returnWeek : null;
       case "월간":
-        return s.returnMonth;
+        return Number.isFinite(s.returnMonth) ? s.returnMonth : null;
       case "분기":
-        return s.returnQuarter;
+        return Number.isFinite(s.returnQuarter) ? s.returnQuarter : null;
       case "연간":
-        return Number.isFinite(s.returnYear) ? s.returnYear : s.returnQuarter;
+        return Number.isFinite(s.returnYear) ? s.returnYear : null;
     }
   };
 
@@ -1186,7 +1198,14 @@ function SectorRotationPanel() {
 
   const sorted = [...sectors].sort((a, b) => {
     if (sortBy === "rank") return getRank(a) - getRank(b);
-    if (sortBy === "return") return getReturn(b) - getReturn(a);
+    if (sortBy === "return") {
+      const aReturn = getReturn(a);
+      const bReturn = getReturn(b);
+      if (aReturn == null && bReturn == null) return getRank(a) - getRank(b);
+      if (aReturn == null) return 1;
+      if (bReturn == null) return -1;
+      return bReturn - aReturn;
+    }
     const flowOrder: Record<string, number> = {
       inflow: 0,
       neutral: 1,
@@ -1195,16 +1214,20 @@ function SectorRotationPanel() {
     return (flowOrder[a.moneyFlow] ?? 1) - (flowOrder[b.moneyFlow] ?? 1);
   });
 
-  const chartData = sorted.slice(0, 8).map((s) => {
-    const value = getReturn(s);
-    return {
-      sector: s.sector,
-      name: s.sector.length > 8 ? s.sector.slice(0, 8) + "…" : s.sector,
-      value,
-      rank: getRank(s),
-      moneyFlow: s.moneyFlow,
-    };
-  });
+  const chartData = sorted
+    .map((s) => {
+      const value = getReturn(s);
+      if (value == null) return null;
+      return {
+        sector: s.sector,
+        name: s.sector.length > 8 ? s.sector.slice(0, 8) + "…" : s.sector,
+        value,
+        rank: getRank(s),
+        moneyFlow: s.moneyFlow,
+      };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => entry != null)
+    .slice(0, 8);
   const maxAbsReturn = Math.max(
     1,
     ...chartData.map((row) => Math.abs(row.value)),
@@ -1217,7 +1240,7 @@ function SectorRotationPanel() {
     분기: "분기 수익률 기준입니다. 어닝 시즌 결과와 중장기 섹터 흐름을 확인하세요.",
     연간: sectors.some((s) => Number.isFinite(s.returnYear))
       ? "DB 연간 수익률 기준입니다. 구조적 성장 섹터와 소외 섹터를 구분하는 데 유용합니다."
-      : "DB에 연간 수익률이 없어서 분기 수익률을 그대로 표시합니다. sector_metrics.return_year 적재 후 자동 전환됩니다.",
+      : "연간 수익률 데이터가 아직 없습니다. sector_metrics.return_year 적재 후 자동으로 표시됩니다.",
   };
 
   return (
@@ -1283,7 +1306,9 @@ function SectorRotationPanel() {
       {/* Ranking bars */}
       {chartData.length === 0 ? (
         <div className="h-32 flex items-center justify-center rounded-lg border border-dashed border-border/70 bg-muted/10 text-xs text-muted-foreground">
-          섹터 로테이션 DB 데이터를 불러올 수 없습니다
+          {period === "연간"
+            ? "연간 수익률 데이터가 아직 없습니다"
+            : "섹터 로테이션 DB 데이터를 불러올 수 없습니다"}
         </div>
       ) : (
         <div
