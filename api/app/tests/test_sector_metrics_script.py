@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -46,3 +47,16 @@ def test_us_sector_rows_include_a_real_year_return(monkeypatch) -> None:
     rows = ingest_sector_metrics._compute_rotation_us(None, "", {})
 
     assert rows[0]["return_year"] == 25.0
+
+
+def test_return_year_schema_probe_allows_older_deployments() -> None:
+    from scripts import ingest_sector_metrics
+
+    class _Client:
+        def get(self, *args, **kwargs):
+            return SimpleNamespace(
+                status_code=400,
+                text="Could not find the 'return_year' column of 'sector_metrics'",
+            )
+
+    assert not ingest_sector_metrics._supports_return_year(_Client(), "https://example", {})

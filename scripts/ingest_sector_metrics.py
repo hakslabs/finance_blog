@@ -125,6 +125,31 @@ def _resolve_instrument_id(
     return rows[0]["id"] if rows else None
 
 
+def _supports_return_year(
+    client: httpx.Client, base: str, headers: Dict[str, str]
+) -> bool:
+    """Detect whether the deployed schema has the annual-return column.
+
+    This keeps the existing daily/weekly/monthly sector refresh alive while a
+    database migration is rolling out. Any other PostgREST error remains a
+    hard failure instead of being mistaken for a missing column.
+    """
+    response = client.get(
+        f"{base}/rest/v1/sector_metrics",
+        params={"select": "return_year", "limit": "1"},
+        headers=headers,
+        timeout=15.0,
+    )
+    if response.status_code < 400:
+        return True
+    if response.status_code == 400 and "return_year" in response.text:
+        print("  ! sector_metrics.return_year migration is not applied; skipping annual return")
+        return False
+    raise RuntimeError(
+        f"could not inspect sector_metrics schema: {response.status_code} {response.text[:200]}"
+    )
+
+
 def _pct_change(closes: List[Tuple[str, float]], lookback: int) -> Optional[float]:
     if len(closes) <= lookback:
         return None
@@ -375,6 +400,9 @@ def main() -> int:
         # key sets. Pad each row with None for any field the other
         # market populates.
         all_rows = us_rows + kr_rows
+        if not _supports_return_year(client, base, headers):
+            for row in all_rows:
+                row.pop("return_year", None)
         all_keys = set().union(*[set(r.keys()) for r in all_rows])
         for r in all_rows:
             for k in all_keys:
