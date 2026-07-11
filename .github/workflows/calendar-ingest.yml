@@ -1,0 +1,45 @@
+name: Calendar data ingest
+
+# Keeps the dashboard calendar populated with upcoming US macro releases and
+# dividend ex-dates. Both scripts are idempotent Supabase upserts.
+on:
+  schedule:
+    # Run after the daily price refresh. GitHub schedules are best-effort, but
+    # each run refreshes a future window so a delayed run remains useful.
+    - cron: "30 13 * * *"
+  workflow_dispatch:
+    inputs:
+      weeks_ahead:
+        description: "Number of future weeks to refresh"
+        required: false
+        default: "12"
+        type: string
+
+concurrency:
+  group: calendar-ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    name: Refresh calendar data
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Ingest macro releases and dividends
+        working-directory: api
+        env:
+          APP_ENV: prod
+          PYTHONPATH: .
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
+        run: |
+          uv run python ../scripts/ingest_fred_macro_releases.py --weeks-ahead "${{ inputs.weeks_ahead || '12' }}"
+          uv run python ../scripts/ingest_polygon_dividends.py --weeks-ahead "${{ inputs.weeks_ahead || '12' }}"
