@@ -193,6 +193,44 @@ def _relative_strength(
     return sector_factor / benchmark_factor
 
 
+def _prior_month_ranks(
+    client: httpx.Client,
+    base: str,
+    headers: Dict[str, str],
+    market: str,
+    before: date,
+) -> Dict[str, int]:
+    """Read each sector's latest stored monthly rank before this refresh."""
+    response = client.get(
+        f"{base}/rest/v1/sector_metrics",
+        params={
+            "market": f"eq.{market}",
+            "date": f"lt.{before.isoformat()}",
+            "select": "sector,rank_month,date",
+            "order": "date.desc",
+            "limit": "300",
+        },
+        headers=headers,
+        timeout=15.0,
+    )
+    if response.status_code >= 400:
+        print(
+            f"  ! {market}: prior sector ranks unavailable; rank movement will remain neutral",
+            file=sys.stderr,
+        )
+        return {}
+    prior: Dict[str, int] = {}
+    for row in response.json() or []:
+        sector = row.get("sector")
+        try:
+            rank = int(row.get("rank_month"))
+        except (TypeError, ValueError):
+            continue
+        if sector and rank > 0 and sector not in prior:
+            prior[sector] = rank
+    return prior
+
+
 def _pct_change_by_calendar_days(
     closes: List[Tuple[str, float]], days: int, *, tolerance_days: int = 7
 ) -> Optional[float]:
@@ -328,8 +366,10 @@ def _compute_rotation_us(
     benchmark_month_return = _benchmark_monthly_return(
         client, base, headers, BENCHMARK_SYMBOLS["US"]
     )
+    prior_ranks = _prior_month_ranks(client, base, headers, "US", today)
     for sector, rd, rw, rm, rq, ry, etf in metrics:
         rd_rank, rw_rank, rm_rank = rank_by_sector[sector]
+        prev_rank = prior_ranks.get(sector, rm_rank)
         rows.append({
             "sector": sector,
             "market": "US",
@@ -342,8 +382,8 @@ def _compute_rotation_us(
             "rank_day": rd_rank,
             "rank_week": rw_rank,
             "rank_month": rm_rank,
-            "prev_rank_month": rm_rank,  # no history yet; same as current
-            "money_flow": _money_flow(0),
+            "prev_rank_month": prev_rank,
+            "money_flow": _money_flow(rm_rank - prev_rank),
             "relative_strength": _relative_strength(rm, benchmark_month_return),
             "etf": etf,
         })
@@ -399,8 +439,10 @@ def _compute_rotation_kr(
     benchmark_month_return = _benchmark_monthly_return(
         client, base, headers, BENCHMARK_SYMBOLS["KR"]
     )
+    prior_ranks = _prior_month_ranks(client, base, headers, "KR", today)
     for sector, rd, rw, rm, rq, ry in metrics:
         rd_rank, rw_rank, rm_rank = rank_by_sector[sector]
+        prev_rank = prior_ranks.get(sector, rm_rank)
         rows.append({
             "sector": sector,
             "market": "KR",
@@ -413,8 +455,8 @@ def _compute_rotation_kr(
             "rank_day": rd_rank,
             "rank_week": rw_rank,
             "rank_month": rm_rank,
-            "prev_rank_month": rm_rank,
-            "money_flow": _money_flow(0),
+            "prev_rank_month": prev_rank,
+            "money_flow": _money_flow(rm_rank - prev_rank),
             "relative_strength": _relative_strength(rm, benchmark_month_return),
         })
     return rows

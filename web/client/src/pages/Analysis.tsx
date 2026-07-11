@@ -1482,7 +1482,7 @@ function SectorRotationPanel() {
       {/* Legend */}
       <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground p-2 bg-muted/10 rounded-lg">
         <span>
-          <strong>순위변화</strong>: 이전 월간 대비 순위 상승/하락
+          <strong>순위변화</strong>: 직전 수집 기준 순위 상승/하락
         </span>
         <span>
           <strong>상대강도</strong>: 시장 대비 초과수익률 배수 (1.0 = 시장과
