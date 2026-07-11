@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import sys
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -194,6 +195,7 @@ async def _ingest_one_accession(
             "form_kind": "13F",
             "accession_no": acc["accession"],
             "filed_at": filed_at_iso,
+            "period_end": acc.get("report_date"),
             "source": "sec",
             "url": acc.get("url"),
             "summary": f"13F-HR · {len(holdings)} positions",
@@ -320,8 +322,14 @@ def main() -> Tuple[int, Dict[str, Any]]:
 
     result = asyncio.run(run(get_settings()))
     print(result)
-    return 0, result
+    failed = any(
+        master.get("status") == "error"
+        or any(filing.get("status") == "error" for filing in master.get("filings", []))
+        for master in result["results"]
+    )
+    return (1 if failed else 0), result
 
 
 if __name__ == "__main__":
-    main()
+    exit_code, _ = main()
+    sys.exit(exit_code)

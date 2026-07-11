@@ -73,6 +73,7 @@ async def fetch_submissions(
     accession = recent.get("accessionNumber") or []
     form = recent.get("form") or []
     filing_date = recent.get("filingDate") or []
+    report_date = recent.get("reportDate") or []
     primary_doc = recent.get("primaryDocument") or []
     primary_desc = recent.get("primaryDocDescription") or []
     items: List[Dict[str, Any]] = []
@@ -89,6 +90,7 @@ async def fetch_submissions(
                 "accession": acc,
                 "form": form[i] if i < len(form) else "",
                 "filed_at": filing_date[i] if i < len(filing_date) else None,
+                "report_date": report_date[i] if i < len(report_date) else None,
                 "description": primary_desc[i] if i < len(primary_desc) else "",
                 "url": url,
             }

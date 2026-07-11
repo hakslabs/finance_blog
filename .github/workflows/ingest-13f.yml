@@ -1,0 +1,34 @@
+name: Refresh 13F holdings
+
+# 13F filings change quarterly. GitHub Actions has enough runtime for all
+# tracked masters, unlike a short serverless cron invocation.
+on:
+  schedule:
+    - cron: "30 6 * * 1"
+  workflow_dispatch: {}
+
+concurrency:
+  group: ingest-13f
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    name: Refresh institutional holdings
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Ingest latest 13F filings
+        working-directory: api
+        env:
+          APP_ENV: prod
+          PYTHONPATH: .
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SEC_USER_AGENT: FinanceLab/1.0 contact=hi@haklee.me
+        run: uv run python -c "import sys; from app.jobs.ingest_13f import main; exit_code, _ = main(); sys.exit(exit_code)"
