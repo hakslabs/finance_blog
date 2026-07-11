@@ -1,7 +1,7 @@
 """GET /v1/calendar — unified macro + earnings + dividend calendar.
 
 Pulls from two tables:
-  - economic_events            (mig 0009)   — FRED / Finnhub ingest
+  - economic_events            (mig 0009)   — official US schedule ingest
   - stock_calendar_events      (mig 0025)   — Polygon ingest
 
 Filtering:

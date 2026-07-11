@@ -1,7 +1,7 @@
 name: Calendar data ingest
 
-# Keeps the dashboard calendar populated with upcoming macro releases and
-# dividend ex-dates. Both scripts are idempotent Supabase upserts.
+# Keeps the dashboard calendar populated with upcoming official US macro
+# releases and dividend ex-dates. Both scripts are idempotent Supabase upserts.
 on:
   schedule:
     # Run after the daily price refresh. GitHub schedules are best-effort, but
@@ -38,8 +38,7 @@ jobs:
           PYTHONPATH: .
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
           POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
         run: |
-          uv run python ../scripts/ingest_finnhub_macro.py --weeks-ahead "${{ inputs.weeks_ahead || '12' }}"
+          uv run python ../scripts/ingest_public_us_macro_calendar.py --weeks-ahead "${{ inputs.weeks_ahead || '12' }}"
           uv run python ../scripts/ingest_polygon_dividends.py --weeks-ahead "${{ inputs.weeks_ahead || '12' }}"
