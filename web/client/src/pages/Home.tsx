@@ -104,6 +104,18 @@ function PctBadge({ value }: { value: number }) {
     </span>
   );
 }
+
+function hasIndexChange(
+  index: MarketIndex,
+): index is MarketIndex & { change: number; changePct: number } {
+  return (
+    index.change != null &&
+    index.changePct != null &&
+    Number.isFinite(index.change) &&
+    Number.isFinite(index.changePct)
+  );
+}
+
 function SectionHeader({
   title,
   sub,
@@ -875,8 +887,13 @@ function IndexModal({
   idx: MarketIndex;
   onClose: () => void;
 }) {
-  const up = idx.change >= 0;
-  const color = up ? "var(--up)" : "var(--down)";
+  const changeAvailable = hasIndexChange(idx);
+  const up = changeAvailable && idx.change >= 0;
+  const color = changeAvailable
+    ? up
+      ? "var(--up)"
+      : "var(--down)"
+    : "var(--muted-foreground)";
   const { bars, source, proxy } = useIndexHistory(idx);
   const historyBars = bars ?? [];
   const hasBars = historyBars.length > 0;
@@ -891,7 +908,7 @@ function IndexModal({
   const first = hasBars ? historyBars[0].c : idx.value;
   const last = hasBars ? historyBars[historyBars.length - 1].c : idx.value;
   const periodReturn = hasBars ? ((last - first) / first) * 100 : null;
-  const periodUp = (periodReturn ?? 0) >= 0;
+  const periodUp = periodReturn != null && periodReturn >= 0;
 
   return createPortal(
     <div
@@ -923,13 +940,23 @@ function IndexModal({
           <div
             className={cn(
               "flex items-center gap-1.5 mt-1.5 text-sm font-mono",
-              up ? "text-up" : "text-down",
+              !changeAvailable
+                ? "text-muted-foreground"
+                : up
+                  ? "text-up"
+                  : "text-down",
             )}
           >
-            {up ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-            {up ? "+" : ""}
-            {idx.change.toFixed(2)} ({up ? "+" : ""}
-            {idx.changePct.toFixed(2)}%)
+            {changeAvailable ? (
+              <>
+                {up ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                {up ? "+" : ""}
+                {idx.change.toFixed(2)} ({up ? "+" : ""}
+                {idx.changePct.toFixed(2)}%)
+              </>
+            ) : (
+              "등락 데이터 없음"
+            )}
           </div>
         </div>
 
@@ -998,7 +1025,11 @@ function IndexModal({
             <div
               className={cn(
                 "text-sm font-bold font-mono",
-                periodUp ? "text-up" : "text-down",
+                periodReturn == null
+                  ? "text-muted-foreground"
+                  : periodUp
+                    ? "text-up"
+                    : "text-down",
               )}
             >
               {periodUp ? "+" : ""}
@@ -1561,7 +1592,8 @@ export default function Home() {
               </div>
             ))
           : topIndices.map((idx) => {
-              const up = idx.change >= 0;
+              const changeAvailable = hasIndexChange(idx);
+              const up = changeAvailable && idx.change >= 0;
               return (
                 <div
                   key={idx.name}
@@ -1577,13 +1609,27 @@ export default function Home() {
                   <div
                     className={cn(
                       "flex items-center gap-1 mt-1 text-xs font-mono",
-                      up ? "text-up" : "text-down",
+                      !changeAvailable
+                        ? "text-muted-foreground"
+                        : up
+                          ? "text-up"
+                          : "text-down",
                     )}
                   >
-                    {up ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-                    {up ? "+" : ""}
-                    {idx.change.toFixed(2)} ({up ? "+" : ""}
-                    {idx.changePct.toFixed(2)}%)
+                    {changeAvailable ? (
+                      <>
+                        {up ? (
+                          <TrendingUp size={11} />
+                        ) : (
+                          <TrendingDown size={11} />
+                        )}
+                        {up ? "+" : ""}
+                        {idx.change.toFixed(2)} ({up ? "+" : ""}
+                        {idx.changePct.toFixed(2)}%)
+                      </>
+                    ) : (
+                      "등락 데이터 없음"
+                    )}
                   </div>
                 </div>
               );
