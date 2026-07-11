@@ -27,7 +27,7 @@ class SectorData(BaseModel):
     rankMonth: int = 0
     prevRankMonth: int = 0
     moneyFlow: str = "neutral"
-    relativeStrength: float = 1.0
+    relativeStrength: Optional[float] = None
 
 
 class SectorsResponse(BaseModel):
@@ -77,7 +77,7 @@ async def list_sectors(
             rankMonth=row.get("rank_month") or 0,
             prevRankMonth=row.get("prev_rank_month") or 0,
             moneyFlow=row.get("money_flow") or "neutral",
-            relativeStrength=row.get("relative_strength") or 1.0,
+            relativeStrength=row.get("relative_strength"),
         )
         for row in latest
     ])

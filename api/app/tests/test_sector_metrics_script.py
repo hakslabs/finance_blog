@@ -8,7 +8,10 @@ from types import SimpleNamespace
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
-from scripts.ingest_sector_metrics import _pct_change_by_calendar_days  # noqa: E402
+from scripts.ingest_sector_metrics import (  # noqa: E402
+    _pct_change_by_calendar_days,
+    _relative_strength,
+)
 
 
 def test_year_return_accepts_the_nearest_trading_day_to_the_anniversary() -> None:
@@ -29,6 +32,12 @@ def test_year_return_requires_history_near_the_anniversary() -> None:
     assert _pct_change_by_calendar_days(closes, 365) is None
 
 
+def test_relative_strength_uses_the_same_period_market_return() -> None:
+    assert _relative_strength(5.0, 2.0) == 1.05 / 1.02
+    assert _relative_strength(None, 2.0) is None
+    assert _relative_strength(5.0, None) is None
+
+
 def test_us_sector_rows_include_a_real_year_return(monkeypatch) -> None:
     from scripts import ingest_sector_metrics
 
@@ -43,10 +52,42 @@ def test_us_sector_rows_include_a_real_year_return(monkeypatch) -> None:
         "_last_n_closes",
         lambda *args: [("2025-07-11", 100.0), ("2026-07-10", 125.0)],
     )
+    monkeypatch.setattr(
+        ingest_sector_metrics,
+        "_benchmark_monthly_return",
+        lambda *args: None,
+    )
 
     rows = ingest_sector_metrics._compute_rotation_us(None, "", {})
 
     assert rows[0]["return_year"] == 25.0
+
+
+def test_us_sector_rows_include_market_relative_strength(monkeypatch) -> None:
+    from scripts import ingest_sector_metrics
+
+    monkeypatch.setattr(ingest_sector_metrics, "US_SECTORS_GROUPED", [("테스트", ["Test"])])
+    monkeypatch.setattr(
+        ingest_sector_metrics,
+        "_list_instruments_by_sector",
+        lambda *args: ["instrument-id"],
+    )
+    monkeypatch.setattr(
+        ingest_sector_metrics,
+        "_last_n_closes",
+        lambda *args: [
+            (f"2026-06-{day:02d}", 100.0 + day - 1) for day in range(1, 24)
+        ],
+    )
+    monkeypatch.setattr(
+        ingest_sector_metrics,
+        "_benchmark_monthly_return",
+        lambda *args: 2.0,
+    )
+
+    rows = ingest_sector_metrics._compute_rotation_us(None, "", {})
+
+    assert rows[0]["relative_strength"] == 1.22 / 1.02
 
 
 def test_return_year_schema_probe_allows_older_deployments() -> None:

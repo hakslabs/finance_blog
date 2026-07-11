@@ -1406,6 +1406,9 @@ function SectorRotationPanel() {
             ) : (
               sorted.map((s, i) => {
                 const ret = getReturn(s);
+                const relativeStrength = Number.isFinite(s.relativeStrength)
+                  ? s.relativeStrength
+                  : null;
                 const comment = SECTOR_COMMENTS[s.sector];
                 return (
                   <tr
@@ -1450,10 +1453,16 @@ function SectorRotationPanel() {
                     <td className="py-2 px-2 text-right font-mono-num">
                       <span
                         className={cn(
-                          s.relativeStrength >= 1 ? "text-up" : "text-down",
+                          relativeStrength == null || relativeStrength === 1
+                            ? "text-muted-foreground"
+                            : relativeStrength > 1
+                              ? "text-up"
+                              : "text-down",
                         )}
                       >
-                        {s.relativeStrength.toFixed(2)}x
+                        {relativeStrength == null
+                          ? "—"
+                          : `${relativeStrength.toFixed(2)}x`}
                       </span>
                     </td>
                     <td className="py-2 px-2 text-center">

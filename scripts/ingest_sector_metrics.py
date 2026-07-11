@@ -76,6 +76,11 @@ KR_SECTORS: List[Tuple[str, List[str]]] = [
     ("통신",       ["017670", "030200"]),         # SK텔레콤, KT
 ]
 
+BENCHMARK_SYMBOLS = {
+    "US": "SPY",
+    "KR": "069500.KS",  # KODEX 200
+}
+
 
 def _sb_headers(service_key: str) -> Dict[str, str]:
     return {
@@ -158,6 +163,34 @@ def _pct_change(closes: List[Tuple[str, float]], lookback: int) -> Optional[floa
     if past <= 0:
         return None
     return (latest / past - 1.0) * 100.0
+
+
+def _benchmark_monthly_return(
+    client: httpx.Client,
+    base: str,
+    headers: Dict[str, str],
+    symbol: str,
+) -> Optional[float]:
+    instrument_id = _resolve_instrument_id(client, base, headers, symbol)
+    if not instrument_id:
+        return None
+    return _pct_change(
+        _last_n_closes(client, base, headers, instrument_id, 70),
+        22,
+    )
+
+
+def _relative_strength(
+    sector_return: Optional[float], benchmark_return: Optional[float]
+) -> Optional[float]:
+    """Return the sector-to-market performance ratio over the same period."""
+    if sector_return is None or benchmark_return is None:
+        return None
+    sector_factor = 1.0 + sector_return / 100.0
+    benchmark_factor = 1.0 + benchmark_return / 100.0
+    if sector_factor <= 0 or benchmark_factor <= 0:
+        return None
+    return sector_factor / benchmark_factor
 
 
 def _pct_change_by_calendar_days(
@@ -292,6 +325,9 @@ def _compute_rotation_us(
         prev = rank_by_sector[m[0]]
         rank_by_sector[m[0]] = (prev[0], prev[1], i)
 
+    benchmark_month_return = _benchmark_monthly_return(
+        client, base, headers, BENCHMARK_SYMBOLS["US"]
+    )
     for sector, rd, rw, rm, rq, ry, etf in metrics:
         rd_rank, rw_rank, rm_rank = rank_by_sector[sector]
         rows.append({
@@ -308,6 +344,7 @@ def _compute_rotation_us(
             "rank_month": rm_rank,
             "prev_rank_month": rm_rank,  # no history yet; same as current
             "money_flow": _money_flow(0),
+            "relative_strength": _relative_strength(rm, benchmark_month_return),
             "etf": etf,
         })
     return rows
@@ -359,6 +396,9 @@ def _compute_rotation_kr(
         prev = rank_by_sector[m[0]]
         rank_by_sector[m[0]] = (prev[0], prev[1], i)
 
+    benchmark_month_return = _benchmark_monthly_return(
+        client, base, headers, BENCHMARK_SYMBOLS["KR"]
+    )
     for sector, rd, rw, rm, rq, ry in metrics:
         rd_rank, rw_rank, rm_rank = rank_by_sector[sector]
         rows.append({
@@ -375,6 +415,7 @@ def _compute_rotation_kr(
             "rank_month": rm_rank,
             "prev_rank_month": rm_rank,
             "money_flow": _money_flow(0),
+            "relative_strength": _relative_strength(rm, benchmark_month_return),
         })
     return rows
 

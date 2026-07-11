@@ -49,7 +49,7 @@ export interface SectorData {
   rankMonth: number; // 월간 순위
   prevRankMonth: number; // 전월 순위 (순위 변화 계산용)
   moneyFlow: "inflow" | "outflow" | "neutral"; // 자금 흐름
-  relativeStrength: number; // 시장 대비 상대강도 (1.0 = 시장과 동일)
+  relativeStrength?: number | null; // 시장 대비 상대강도 (1.0 = 시장과 동일)
 }
 
 // ── 거시 지표 ──────────────────────────────────────────────────
