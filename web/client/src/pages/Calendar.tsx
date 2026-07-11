@@ -575,8 +575,8 @@ export default function CalendarPage() {
   return (
     <div className="space-y-5 animate-fade-in-up">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold font-['Outfit'] text-foreground">
             내 캘린더
           </h1>
@@ -584,7 +584,7 @@ export default function CalendarPage() {
             실적·배당·매크로 이벤트 통합 관리
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
           <Button
             variant="outline"
             size="sm"
