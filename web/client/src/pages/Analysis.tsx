@@ -1409,6 +1409,9 @@ function SectorRotationPanel() {
                 const relativeStrength = Number.isFinite(s.relativeStrength)
                   ? s.relativeStrength
                   : null;
+                const relativeStrengthIsNeutral =
+                  relativeStrength != null &&
+                  Math.abs(relativeStrength - 1) < 0.005;
                 const comment = SECTOR_COMMENTS[s.sector];
                 return (
                   <tr
@@ -1453,7 +1456,7 @@ function SectorRotationPanel() {
                     <td className="py-2 px-2 text-right font-mono-num">
                       <span
                         className={cn(
-                          relativeStrength == null || relativeStrength === 1
+                          relativeStrength == null || relativeStrengthIsNeutral
                             ? "text-muted-foreground"
                             : relativeStrength > 1
                               ? "text-up"
