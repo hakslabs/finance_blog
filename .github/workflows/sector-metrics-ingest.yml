@@ -1,3 +1,8 @@
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+
 name: Refresh sector metrics
 
 # Computes the sector-rotation panel after the daily US/KR price refresh has
