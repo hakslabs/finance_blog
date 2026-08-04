@@ -1,3 +1,8 @@
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+
 name: Calendar data ingest
 
 # Keeps the dashboard calendar populated with upcoming official US macro
